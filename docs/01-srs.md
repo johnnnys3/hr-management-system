@@ -197,7 +197,6 @@ The system will be developed in phases to reduce implementation risk and allow t
 - Manage salary structures.
 - Manage pay grades.
 - Manage bonus cycles.
-- Manage equity where applicable.
 - Manage benefits enrollment.
 
 **Leave Management**
@@ -577,7 +576,7 @@ HRMS-FR-055: The system shall support predictive attrition analytics in later ve
 
 #### 4.6 Description and Priority
 
-Compensation and Benefits manages salary structures, pay grades, bonus cycles, equity, and benefits enrollment such as health insurance and allowances.
+Compensation and Benefits manages salary structures, pay grades, bonus cycles, and benefits enrollment such as health insurance and allowances.
 
 Priority: Medium
 
