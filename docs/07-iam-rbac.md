@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | John Kessie | July 2026 | Initial IAM and RBAC design; reconciles role list against SRS §2.3 user classes | 1.0 |
 | John Kessie | 2026-07-15 | §7.3 revised: self-grant of an assigned role is refused and a privileged grant requires an approver who is not the requester, closing the grant route to payroll data left open against HRMS-NFR-019. The credential-reset route is recorded as detected-not-prevented and referred to the project owner as an SRS question. §8 gains the `iam.approve_role_grant` holder, the break-glass procedure, and the credential-reset question as open items; the break-glass item was previously cited to a section that did not exist. §9 traceability updated | 1.1 |
+| John Kessie | 2026-07-15 | §7.3 audit immutability re-based from a Django permission to a PostgreSQL grant. The prior guarantee — that no role holds update or delete permission on audit records — did not bind the §7.2 break-glass account, which holds no role and bypasses `has_perm()` entirely. The application's database role now holds `INSERT` and `SELECT` only. The operational ceiling above that grant is stated, and an off-host audit sink is recorded in §8 against TBD-003 | 1.2 |
 
 ---
 
@@ -295,10 +296,27 @@ A System Administrator manages roles. Unconstrained, the role could therefore gr
 
 The credential-reset route cannot be closed by this design. Closing it needs either a second factor bound to payroll users — HRMS-NFR-024 asks only that MFA be *considered*, so it is not currently required — or the removal of credential administration from the System Administrator, which contradicts SRS §2.3.1. Both are SRS questions. Recorded in §8.
 
-**Detection, for what the constraints do not reach.** HRMS-NFR-022 requires permission changes to be logged. Additionally:
+**Detection, for what the constraints do not reach.** HRMS-NFR-022 requires permission changes to be logged. Refused self-grants, privileged grant requests, approvals, and credential resets on accounts holding a privileged role are each recorded with actor, target, role, and timestamp, and are reportable events.
 
-- The audit log is **append-only from the application**. No role, System Administrator included, has update or delete permission on audit records. HRMS-NFR-010 establishes the pattern for payroll history; the same reasoning applies with greater force to the audit trail, since the account able to grant permissions must not be able to erase evidence of having done so.
-- Refused self-grants, privileged grant requests, approvals, and credential resets on accounts holding a privileged role are each recorded with actor, target, role, and timestamp, and are reportable events.
+Detection is only a control if the record survives the party it incriminates. That is the subject of the rest of this section.
+
+**Audit immutability is enforced by the database, not by a permission.**
+
+An earlier version of this design stated that the audit log is append-only because no role, System Administrator included, holds update or delete permission on audit records. That is not sufficient, and §7.2 is the reason why. The break-glass account carries `is_superuser`, which makes `has_perm()` return `True` unconditionally. It holds no role, so a control expressed as "no role has this permission" does not bind it. It could delete audit records through the Django admin or the ORM, and the design would not have noticed the hole because the guarantee was stated in terms of the one mechanism `is_superuser` bypasses.
+
+Django permissions are therefore the wrong layer for this guarantee. The control:
+
+| Control | Mechanism | Binds `is_superuser`? |
+|---|---|---|
+| The application's database role holds `INSERT` and `SELECT` on audit tables, and **no `UPDATE` and no `DELETE`** | PostgreSQL grant (ADR-0003) | **Yes.** `is_superuser` short-circuits `has_perm()`, a Python check. It confers no SQL privilege. An admin or ORM delete is refused by the database |
+| Schema changes to audit tables run as a separate migration role whose credentials the application process does not hold | Deployment configuration | Yes, for the running application |
+| No role, break-glass included, is granted Django `change`/`delete` permission on audit models | Django permission | No — defence in depth only, not the guarantee |
+
+The first row is the guarantee. The third is retained because it makes the intent visible in the code and removes the affordance from the admin interface, but it is not what enforces immutability and this design no longer claims it is.
+
+HRMS-NFR-010 establishes the pattern for payroll history; it applies with greater force to the audit trail, since the account able to grant permissions must not be able to erase the evidence of having done so.
+
+**The ceiling.** A holder of the database owner or PostgreSQL superuser credentials, or of host or backup access, can still alter audit rows; a grant does not bind the party who can rewrite grants. No application-layer design closes this, and this document does not claim to. It is an operational control — custody of database credentials separate from application credentials, and audit events shipped off-host to storage the application's deployment cannot rewrite. Shipping to an external append-only sink is the stronger control and is not specifiable while the hosting target is open (TBD-003, ADR-0009); it is recorded in §8 for resolution alongside it.
 
 Log retention and review cadence depend on the operating organisation and remain open (TBD-009).
 
@@ -312,6 +330,7 @@ Log retention and review cadence depend on the operating organisation and remain
 | Payroll finalisation approver | **Resolved as a deployment-time grant** (§4.4), not a design-time choice. The permission exists and is granted to no role by default; the organisation designates the holder. Self-approval is blocked by the system regardless |
 | Manager visibility depth | **Resolved** (§5). Direct reports only; no transitive chain visibility |
 | TBD-009 — document retention policy | **Open.** Bears on §7.3 audit log retention |
+| Off-host audit sink | **Open, tied to TBD-003.** §7.3 enforces audit immutability by database grant, which binds the application and the break-glass account but not a holder of database owner, host, or backup credentials. Shipping audit events off-host to storage the deployment cannot rewrite closes that ceiling and cannot be specified until the hosting target is (ADR-0009) |
 | `iam.approve_role_grant` holder | **Deferred to deployment** (§7.3), not a design-time choice, on the same reasoning as §4.4. The permission is granted to no role by default and **must not be granted to a System Administrator** — doing so reduces the §7.3 control to detection. Requires an operating organisation (TBD-001) |
 | Break-glass account procedure | **Open.** §7.2 reserves `is_superuser` for break-glass but no operational procedure exists for credential custody, invocation, or review. Not writable without an operating organisation (TBD-001) |
 | Credential reset as a route to payroll data | **Open. Requires an SRS decision, not a design decision** (§7.3). SRS §2.3.1 places user accounts within the System Administrator's scope, so the role can reset a Payroll Officer's credentials and authenticate as them. Closing it requires either MFA bound to payroll users — HRMS-NFR-024 asks only that it be *considered* — or narrowing §2.3.1. Both are SRS revisions. Referred to the project owner |
