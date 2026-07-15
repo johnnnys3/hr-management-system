@@ -46,7 +46,7 @@ Convenience of initial construction was not a selection criterion.
 
 | Document | Content |
 |---|---|
-| `docs/01-srs.pdf` | Software Requirements Specification v1.0 |
+| `docs/01-srs.md` | Software Requirements Specification v1.0. Authoritative |
 | `CONTEXT.md` | Domain glossary and design constraints |
 | `docs/adr/` | Architecture decision records |
 

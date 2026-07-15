@@ -2,7 +2,7 @@
 
 The Human Resource Management System is a web-based platform for managing employee records, recruitment, onboarding, payroll, self-service, leave, compensation, benefits, and HR reporting for a Ghana-based organisation. It replaces manual HR processes: spreadsheets, paper files, email-based approvals, and disconnected payroll records.
 
-The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.pdf`). Where this document and the SRS disagree, the SRS governs and this document is wrong.
+The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.md`). Where this document and the SRS disagree, the SRS governs and this document is wrong. `docs/01-srs.pdf` is a rendering of v1.0 retained for distribution; where the two disagree, the Markdown governs and the PDF is stale.
 
 ## Glossary
 
@@ -86,7 +86,8 @@ Mobile is web-first by decision (SRS §2.5, §6.4). This bears on ADR-0004: sess
 
 ## Related documents
 
-- `docs/01-srs.pdf` — Software Requirements Specification v1.0. Authoritative.
+- `docs/01-srs.md` — Software Requirements Specification v1.0. Authoritative.
+- `docs/01-srs.pdf` — rendering of the SRS at v1.0, retained for distribution. Not authoritative.
 - `docs/03-tech-stack.md` — technology selection.
 - `docs/adr/` — architecture decision records.
 - `docs/agents/` — issue tracker and domain documentation conventions.

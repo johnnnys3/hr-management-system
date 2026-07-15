@@ -38,7 +38,8 @@ This document covers authorisation. Authentication mechanism is recorded in ADR-
 
 | Document | Content |
 |---|---|
-| `docs/01-srs.pdf` | Software Requirements Specification v1.0. Authoritative |
+| `docs/01-srs.md` | Software Requirements Specification v1.0. Authoritative |
+| `docs/01-srs.pdf` | Rendering of the SRS at v1.0, for distribution. Not authoritative |
 | `docs/03-tech-stack.md` | Technology selection |
 | `CONTEXT.md` | Domain glossary |
 | ADR-0004 | Session cookie authentication |
