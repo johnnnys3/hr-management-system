@@ -144,6 +144,18 @@ def module_starts(text):
     return starts
 
 
+def names_agree(said, real):
+    """Whether prose's name for a module is §6.1's, as far as it goes.
+
+    A prefix, not a substring: prose truncates at the first lowercase word,
+    so "M14 Compensation" is §6.1's "Compensation and Benefits" and passes.
+    "M1 Audit Something" is not "Audit" and does not -- a substring test
+    accepted it, which is what made the check weaker than it looked.
+    """
+    s, r = said.split(), real.split()
+    return len(s) <= len(r) and r[:len(s)] == s
+
+
 def check_module_refs(text):
     """Every 'M<n> <Name>' in prose must name the module §6.1 numbers that way.
 
@@ -160,12 +172,13 @@ def check_module_refs(text):
     for para in re.split(r"\n|(?<=\.) ", text):
         if re.search(r"v1\.[0-2]", para):
             continue  # a version-scoped claim states the old number on purpose
-        for n, said in set(re.findall(r"\bM(\d+) ([A-Z][A-Za-z/]*(?: [A-Z][A-Za-z/]*)?)", para)):
-            real, cmp = names.get(int(n)), norm.get(int(n))
-            if real is None or said.split()[0] not in cmp:
-                hit = next((k for k, v in norm.items() if said.split()[0] in v), None)
+        para = re.sub(r"\s*/\s*", "/", para)  # "RBAC / IAM" and "RBAC/IAM" are one name
+        for n, said in set(re.findall(r"\bM(\d+) ([A-Z][A-Za-z/-]*(?: [A-Z][A-Za-z/-]*)?)", para)):
+            real = names.get(int(n))
+            if real is None or not names_agree(said, norm[int(n)]):
+                hit = next((k for k, v in norm.items() if names_agree(said, v)), None)
                 bad.append(f"  M{n} {said}: §6.1 has M{n} as {real or 'nothing'}"
-                           + (f"; {said.split()[0]} is M{hit}" if hit else ""))
+                           + (f"; {said} is M{hit}" if hit else ""))
     return sorted(set(bad)) or None
 
 
@@ -175,6 +188,8 @@ def check_tbd_deadlines(text):
     for n, iso in re.findall(r"Before M(\d+)[^,|]*begins, (\d{4}-\d{2}-\d{2})", text):
         start = starts.get(int(n))
         if start is None:
+            bad.append(f"  §8.1 M{n}: deadline {iso}, but §6.3 allocates M{n} no start "
+                       f"-- the deadline is unchecked, not correct")
             continue
         want = workday(start - 1)
         if want.isoformat() != iso:
