@@ -164,13 +164,21 @@ def check_module_refs(text):
 
     Passages naming a version state the number as it was then -- "M15 Payroll
     here is M14 Payroll at v1.2" is the point being made, not a stale ref --
-    so anything scoped to v1.0 to v1.2 is left alone.
+    so a passage scoped to any *superseded* version is left alone.
+
+    Superseded is read off the header rather than hardcoded: v1.3 spelled the
+    exemption "v1.0 to v1.2", which silently became wrong the moment v1.4
+    issued and left the v1.3 history row failing a check about v1.4's numbers.
+    A boundary that has to be edited every revision is one that will be missed
+    in some revision.
     """
     names = module_names(text)
     norm = {k: re.sub(r"\s*/\s*", "/", v) for k, v in names.items()}
+    header = re.search(r"^\| Version \| \d+\.(\d+) \|", text, re.M)
+    current = int(header.group(1)) if header else 0
     bad = []
     for para in re.split(r"\n|(?<=\.) ", text):
-        if re.search(r"v1\.[0-2]", para):
+        if any(int(v) < current for v in re.findall(r"\bv1\.(\d+)", para)):
             continue  # a version-scoped claim states the old number on purpose
         para = re.sub(r"\s*/\s*", "/", para)  # "RBAC / IAM" and "RBAC/IAM" are one name
         for n, said in set(re.findall(r"\bM(\d+) ([A-Z][A-Za-z/-]*(?: [A-Z][A-Za-z/-]*)?)", para)):
