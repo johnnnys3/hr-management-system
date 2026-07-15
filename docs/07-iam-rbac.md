@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.4 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-15 | §7.3 revised: self-grant of an assigned role is refused and a privileged grant requires an approver who is not the requester, closing the grant route to payroll data left open against HRMS-NFR-019. The credential-reset route is recorded as detected-not-prevented and referred to the project owner as an SRS question. §8 gains the `iam.approve_role_grant` holder, the break-glass procedure, and the credential-reset question as open items; the break-glass item was previously cited to a section that did not exist. §9 traceability updated | 1.1 |
 | John Kessie | 2026-07-15 | §7.3 audit immutability re-based from a Django permission to a PostgreSQL grant. The prior guarantee — that no role holds update or delete permission on audit records — did not bind the §7.2 break-glass account, which holds no role and bypasses `has_perm()` entirely. The application's database role now holds `INSERT` and `SELECT` only. The operational ceiling above that grant is stated, and an off-host audit sink is recorded in §8 against TBD-003 | 1.2 |
 | John Kessie | 2026-07-15 | §7.3 proxy-account route re-recorded as open. The prior entry claimed it closed by the privileged-grant constraint; that constraint distinguishes identities, not parties, and SRS §2.3.1 places the designated approver's account within the System Administrator's scope, so the requester can authenticate as the approver. The proxy route and the credential-reset route are one residual, and the design no longer claims otherwise. The enforcement boundary of both constraints is stated. §8 `iam.approve_role_grant` and credential-reset items qualified accordingly | 1.3 |
+| John Kessie | 2026-07-15 | §7.3 wording corrected on review. The privileged-grant constraint is restated as separating authenticated *identities* rather than *parties*, which the same section's enforcement boundary already established but which one sentence still contradicted. The Django audit-permission row is restated to say that `is_superuser` bypasses `has_perm()` without consulting a permission, so the row constrains ordinary users only; the guarantee remains the PostgreSQL grant | 1.4 |
 
 ---
 
@@ -284,7 +285,7 @@ A System Administrator manages roles. Unconstrained, the role could therefore gr
 | A grant of an assigned role where the granting user is the target user is **refused** | System. Not a warning, not an override |
 | A grant of a **privileged** role takes effect only on approval by a holder of `iam.approve_role_grant` who is **not** the requester | System. Applies to Payroll Officer, HR Administrator, HR Officer, Executive, System Administrator |
 
-`iam.approve_role_grant` follows §4.4 exactly: the permission exists, is **granted to no role by default** per the deny-by-default principle of §1.3, and the organisation designates its holder at deployment. It is **not** granted to System Administrator. A privileged grant is therefore a request by one party and an approval by another, both logged under HRMS-NFR-022.
+`iam.approve_role_grant` follows §4.4 exactly: the permission exists, is **granted to no role by default** per the deny-by-default principle of §1.3, and the organisation designates its holder at deployment. It is **not** granted to System Administrator. A privileged grant is therefore a request by one authenticated identity and an approval by another, both logged under HRMS-NFR-022. It does not establish a separation of *parties* while credential administration remains within the System Administrator's scope; see the enforcement boundary below.
 
 **This does not enforce §2.3.6's *should* as a *shall*.** §6.1 stands unchanged: Payroll Officer combined with an HR role is still permitted, still warned, still logged, and an approver may still grant it. These constraints govern *who may effect a grant*, not *which combinations are permissible*. Their basis is HRMS-NFR-019, a *shall*.
 
@@ -313,7 +314,7 @@ Django permissions are therefore the wrong layer for this guarantee. The control
 |---|---|---|
 | The application's database role holds `INSERT` and `SELECT` on audit tables, and **no `UPDATE` and no `DELETE`** | PostgreSQL grant (ADR-0003) | **Yes.** `is_superuser` short-circuits `has_perm()`, a Python check. It confers no SQL privilege. An admin or ORM delete is refused by the database |
 | Schema changes to audit tables run as a separate migration role whose credentials the application process does not hold | Deployment configuration | Yes, for the running application |
-| No role, break-glass included, is granted Django `change`/`delete` permission on audit models | Django permission | No — defence in depth only, not the guarantee |
+| No role is granted Django `change`/`delete` permission on audit models | Django permission | No. The break-glass account holds no role, and `is_superuser` bypasses `has_perm()` without consulting a permission at all — this row constrains ordinary users only. Defence in depth, not the guarantee |
 
 The first row is the guarantee. The third is retained because it makes the intent visible in the code and removes the affordance from the admin interface, but it is not what enforces immutability and this design no longer claims it is.
 
