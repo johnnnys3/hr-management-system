@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | July 2026 | Initial IAM and RBAC design; reconciles role list against SRS §2.3 user classes | 1.0 |
+| John Kessie | 2026-07-15 | §7.3 revised: self-grant of an assigned role is refused and a privileged grant requires an approver who is not the requester, closing the grant route to payroll data left open against HRMS-NFR-019. The credential-reset route is recorded as detected-not-prevented and referred to the project owner as an SRS question. §8 gains the `iam.approve_role_grant` holder, the break-glass procedure, and the credential-reset question as open items; the break-glass item was previously cited to a section that did not exist. §9 traceability updated | 1.1 |
 
 ---
 
@@ -270,14 +271,34 @@ Row-level scoping (§5) is application code and is not bypassed by the flag, so 
 
 `is_superuser` is reserved for a **break-glass account**: not used for routine administration, credentials held under separate control, use logged and reviewed.
 
-### 7.3 Escalation Is Detected, Not Prevented
+### 7.3 Escalation: Self-Grant Is Prevented, the Residual Is Detected
 
-A System Administrator manages roles and may therefore grant themselves Payroll Officer. This cannot be prevented; it is inherent to holding permission administration.
+A System Administrator manages roles. Unconstrained, the role could therefore grant itself Payroll Officer and reach payroll data at will, which **HRMS-NFR-019 forbids as a *shall***. §7.2 closes the `is_superuser` route to the same outcome. This section closes the grant route.
 
-The control is detection. HRMS-NFR-022 requires permission changes to be logged. Additionally:
+**Two constraints on the grant path. Neither is configurable.**
+
+| Constraint | Enforcement |
+|---|---|
+| A grant of an assigned role where the granting user is the target user is **refused** | System. Not a warning, not an override |
+| A grant of a **privileged** role takes effect only on approval by a holder of `iam.approve_role_grant` who is **not** the requester | System. Applies to Payroll Officer, HR Administrator, HR Officer, Executive, System Administrator |
+
+`iam.approve_role_grant` follows §4.4 exactly: the permission exists, is **granted to no role by default** per the deny-by-default principle of §1.3, and the organisation designates its holder at deployment. It is **not** granted to System Administrator. A privileged grant is therefore a request by one party and an approval by another, both logged under HRMS-NFR-022.
+
+**This does not enforce §2.3.6's *should* as a *shall*.** §6.1 stands unchanged: Payroll Officer combined with an HR role is still permitted, still warned, still logged, and an approver may still grant it. These constraints govern *who may effect a grant*, not *which combinations are permissible*. Their basis is HRMS-NFR-019, a *shall*.
+
+**What this does not close.**
+
+| Route | Position |
+|---|---|
+| **Proxy account.** A System Administrator creates an account and grants it Payroll Officer | Closed by the second constraint. The grant still needs an approver who is not the requester. Account creation alone confers no payroll access |
+| **Credential reset.** A System Administrator resets an existing Payroll Officer's credentials and authenticates as them | **Open. Detected, not prevented.** SRS §2.3.1 places user accounts in this role's scope, so the route is within the role as the SRS defines it. It changes no role membership, so no grant approval is triggered. HRMS-NFR-022 logs the record change and the login; nothing blocks it |
+
+The credential-reset route cannot be closed by this design. Closing it needs either a second factor bound to payroll users — HRMS-NFR-024 asks only that MFA be *considered*, so it is not currently required — or the removal of credential administration from the System Administrator, which contradicts SRS §2.3.1. Both are SRS questions. Recorded in §8.
+
+**Detection, for what the constraints do not reach.** HRMS-NFR-022 requires permission changes to be logged. Additionally:
 
 - The audit log is **append-only from the application**. No role, System Administrator included, has update or delete permission on audit records. HRMS-NFR-010 establishes the pattern for payroll history; the same reasoning applies with greater force to the audit trail, since the account able to grant permissions must not be able to erase evidence of having done so.
-- Self-grants are recorded with actor, target, role, and timestamp, and are a reportable event.
+- Refused self-grants, privileged grant requests, approvals, and credential resets on accounts holding a privileged role are each recorded with actor, target, role, and timestamp, and are reportable events.
 
 Log retention and review cadence depend on the operating organisation and remain open (TBD-009).
 
@@ -291,6 +312,9 @@ Log retention and review cadence depend on the operating organisation and remain
 | Payroll finalisation approver | **Resolved as a deployment-time grant** (§4.4), not a design-time choice. The permission exists and is granted to no role by default; the organisation designates the holder. Self-approval is blocked by the system regardless |
 | Manager visibility depth | **Resolved** (§5). Direct reports only; no transitive chain visibility |
 | TBD-009 — document retention policy | **Open.** Bears on §7.3 audit log retention |
+| `iam.approve_role_grant` holder | **Deferred to deployment** (§7.3), not a design-time choice, on the same reasoning as §4.4. The permission is granted to no role by default and **must not be granted to a System Administrator** — doing so reduces the §7.3 control to detection. Requires an operating organisation (TBD-001) |
+| Break-glass account procedure | **Open.** §7.2 reserves `is_superuser` for break-glass but no operational procedure exists for credential custody, invocation, or review. Not writable without an operating organisation (TBD-001) |
+| Credential reset as a route to payroll data | **Open. Requires an SRS decision, not a design decision** (§7.3). SRS §2.3.1 places user accounts within the System Administrator's scope, so the role can reset a Payroll Officer's credentials and authenticate as them. Closing it requires either MFA bound to payroll users — HRMS-NFR-024 asks only that it be *considered* — or narrowing §2.3.1. Both are SRS revisions. Referred to the project owner |
 | Delegation of manager authority | **Out of scope.** Not in the SRS. See §3.3 |
 | Role grant configuration at deployment | **Deferred to deployment**, by design. Which users hold which assigned roles, and who holds `payroll.approve_payroll_run`, are organisational decisions requiring an operating organisation (TBD-001) |
 
@@ -304,7 +328,7 @@ Log retention and review cadence depend on the operating organisation and remain
 | HRMS-NFR-016 (role-based access control) | §2, §4 |
 | HRMS-NFR-017 (employees access own records) | §4.2, §5 |
 | HRMS-NFR-018 (managers access assigned team) | §4.2, §5 |
-| HRMS-NFR-019 (payroll data restricted) | §4.2, §4.3, §5, §7.1 |
+| HRMS-NFR-019 (payroll data restricted) | §4.2, §4.3, §5, §7.1, §7.2, §7.3 |
 | HRMS-NFR-022 (log permission changes) | §2.3, §6.1, §7.3 |
 | HRMS-NFR-013 (audit log) | §4.2, §7.3 |
 | HRMS-BR-005 (only authorised HR modify master records) | §4.2 |

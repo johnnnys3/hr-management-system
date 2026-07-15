@@ -56,13 +56,13 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **User class** — a requirements concept from SRS §2.3 describing who uses the system. Not the same as a role, and not one-to-one with roles: eight roles serve the seven user classes. *Avoid* using the two terms interchangeably; conflating them is what allowed the role list to drift from the SRS.
 
-**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several.
+**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several. **No one may grant an assigned role to themselves**, and a privileged grant additionally requires an approver who is not the requester. See `docs/07-iam-rbac.md` §7.3.
 
 **Derived role** — computed from existing data, never granted, cannot drift. Two exist: **Employee** (has an employee record whose employment status permits access — which makes HRMS-BR-012 self-enforcing) and **Manager** (has direct reports). See `docs/07-iam-rbac.md` §3.
 
 *Note on naming:* SRS §2.3.1 says "System Administrator"; earlier project planning said "Super Admin". The SRS name governs. Earlier planning also omitted the Executive class; that omission was rejected, as removing a user class is a scope reduction requiring SRS revision.
 
-**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. See `docs/07-iam-rbac.md` §7.
+**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. The role cannot reach payroll data by granting itself Payroll Officer either: self-grant is refused and a privileged grant needs a second party. One route remains open — the role administers accounts (SRS §2.3.1) and can reset a payroll user's credentials; that is logged, not blocked, and closing it is an SRS question. See `docs/07-iam-rbac.md` §7.
 
 ## Constraints that shape the design
 
