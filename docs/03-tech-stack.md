@@ -61,7 +61,7 @@ Convenience of initial construction was not a selection criterion.
 | Backend framework | Django with Django REST Framework |
 | Database | PostgreSQL |
 | Background processing | Celery with Celery Beat |
-| Message broker and cache | Redis |
+| Message broker and cache | Redis (two instances: broker, cache) |
 | Object storage | S3-compatible; MinIO for self-hosted deployment |
 | Frontend build | Vite |
 | Frontend language | TypeScript |
@@ -102,7 +102,7 @@ Recorded in ADR-0002.
 
 ### 4.2 Background Processing
 
-Celery provides task execution, Celery Beat provides scheduling, and Redis serves as message broker.
+Celery provides task execution, Celery Beat provides scheduling, and Redis serves as message broker. The broker runs as its own Redis instance, configured `noeviction` with AOF persistence and kept separate from the cache instance, so that cache eviction cannot discard a queued payroll task. Recorded in ADR-0006.
 
 Background processing is required rather than optional. Payroll processing is expected to complete within a few minutes (HRMS-NFR-005), which exceeds a reasonable request lifetime. Leave accrual is calendar-driven. Payslip generation, bank transfer file generation, notification delivery, and large report exports are batch operations.
 
@@ -165,7 +165,7 @@ Recorded in ADR-0008.
 
 ### 7.1 Containerisation
 
-The system is deployed as containers orchestrated by Docker Compose: the Django application, Celery worker and scheduler, Redis, PostgreSQL, MinIO, and Caddy as reverse proxy.
+The system is deployed as containers orchestrated by Docker Compose: the Django application, Celery worker and scheduler, two Redis instances (broker and cache), PostgreSQL, MinIO, and Caddy as reverse proxy.
 
 Caddy serves the built React application at `/` and proxies `/api` to Django, presenting a single origin. This satisfies the requirement of the authentication design described in Section 8 in every environment, including local development, so that the authentication path is exercised as deployed.
 

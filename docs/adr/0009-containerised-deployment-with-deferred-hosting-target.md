@@ -20,7 +20,7 @@ SRS §2.4 anticipates this: the server environment may be cloud-based or on-prem
 
 ## Decision
 
-Deployment is **containerised**: Docker with Docker Compose, comprising the Django application, Celery worker and scheduler, Redis, PostgreSQL, MinIO, and **Caddy** as reverse proxy.
+Deployment is **containerised**: Docker with Docker Compose, comprising the Django application, Celery worker and scheduler, two Redis instances — broker and cache, separately configured per ADR-0006 — PostgreSQL, MinIO, and **Caddy** as reverse proxy.
 
 Caddy serves the built React application at `/` and proxies `/api` to Django, presenting a **single origin** as ADR-0004 requires.
 
