@@ -2,7 +2,7 @@
 
 The Human Resource Management System is a web-based platform for managing employee records, recruitment, onboarding, payroll, self-service, leave, compensation, benefits, and HR reporting for a Ghana-based organisation. It replaces manual HR processes: spreadsheets, paper files, email-based approvals, and disconnected payroll records.
 
-The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.md`). Where this document and the SRS disagree, the SRS governs and this document is wrong. `docs/01-srs.pdf` is a rendering of v1.0 retained for distribution; where the two disagree, the Markdown governs and the PDF is stale.
+The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.md`), at v1.1. Where this document and the SRS disagree, the SRS governs and this document is wrong. `docs/01-srs.pdf` is a rendering of v1.0 retained for distribution; it predates the v1.1 revision. Where the two disagree, the Markdown governs and the PDF is stale.
 
 ## Glossary
 
@@ -56,13 +56,13 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **User class** — a requirements concept from SRS §2.3 describing who uses the system. Not the same as a role, and not one-to-one with roles: eight roles serve the seven user classes. *Avoid* using the two terms interchangeably; conflating them is what allowed the role list to drift from the SRS.
 
-**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several. **No one may grant an assigned role to themselves**, and a privileged grant additionally requires an approver who is not the requester. See `docs/07-iam-rbac.md` §7.3.
+**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several. **No one may grant an assigned role to themselves**, and a privileged grant additionally requires an approver who is not the requester — an approver who must hold a second factor under HRMS-NFR-024, or the constraint separates identities without separating parties. See `docs/07-iam-rbac.md` §7.3.
 
 **Derived role** — computed from existing data, never granted, cannot drift. Two exist: **Employee** (has an employee record whose employment status permits access — which makes HRMS-BR-012 self-enforcing) and **Manager** (has direct reports). See `docs/07-iam-rbac.md` §3.
 
 *Note on naming:* SRS §2.3.1 says "System Administrator"; earlier project planning said "Super Admin". The SRS name governs. Earlier planning also omitted the Executive class; that omission was rejected, as removing a user class is a scope reduction requiring SRS revision.
 
-**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. The role cannot reach payroll data by granting itself Payroll Officer either: self-grant is refused, and a privileged grant needs an approver who is not the requester. That second constraint distinguishes **identities, not parties**, and one route remains open behind it — the role administers every account (SRS §2.3.1), so it can reset the credentials of a payroll user, or of the designated approver, and authenticate as them. That is logged, not blocked, and closing it is an SRS question. See `docs/07-iam-rbac.md` §7.
+**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. The role cannot reach payroll data by granting itself Payroll Officer either: self-grant is refused, and a privileged grant needs an approver who is not the requester. It cannot reach payroll data by resetting a payroll user's credentials and authenticating as them either: HRMS-NFR-024 is a *shall* as of SRS v1.1, so payroll users hold a second factor this role can neither enrol, reset, nor disable. It can still reset the password — SRS §2.3.1 is unchanged — but a password no longer authenticates the account. One narrow route remains: the privileged-grant constraint distinguishes **identities**, and acquires the force of distinct **parties** only where the approver is itself within HRMS-NFR-024's scope. An approver outside that scope can still be reset and impersonated, so who holds `iam.approve_role_grant` is a deployment condition, not a free choice. See `docs/07-iam-rbac.md` §7.
 
 ## Constraints that shape the design
 
@@ -86,8 +86,8 @@ Mobile is web-first by decision (SRS §2.5, §6.4). This bears on ADR-0004: sess
 
 ## Related documents
 
-- `docs/01-srs.md` — Software Requirements Specification v1.0. Authoritative.
-- `docs/01-srs.pdf` — rendering of the SRS at v1.0, retained for distribution. Not authoritative.
+- `docs/01-srs.md` — Software Requirements Specification v1.1. Authoritative.
+- `docs/01-srs.pdf` — rendering of the SRS at v1.0, retained for distribution. Not authoritative, and stale against v1.1.
 - `docs/03-tech-stack.md` — technology selection.
 - `docs/adr/` — architecture decision records.
 - `docs/agents/` — issue tracker and domain documentation conventions.
