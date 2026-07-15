@@ -44,7 +44,9 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **Job requisition** — an approved request to hire. Distinct from **job posting**, which is the published advertisement arising from it.
 
-**Audit log** — the record of sensitive actions (HRMS-NFR-013, HRMS-BR-015): login attempts, record changes, payroll actions, approvals, permission changes (HRMS-NFR-022).
+**Audit log** — the record of sensitive actions (HRMS-NFR-013, HRMS-BR-015): login attempts, record changes, payroll actions, approvals, permission changes (HRMS-NFR-022). One store, named once as a data entity by SRS §6.1.
+
+**Audit history** — not a second store. It is HRMS-FR-010's name for a filtered read of the **audit log** where the target is an employee record, and record changes are one of the five categories above. The two terms are used interchangeably by the SRS and are distinguished here because they read as siblings: a second store would put employee-record changes outside the single database grant on which audit immutability rests (`docs/07-iam-rbac.md` §7.3).
 
 ### Architecture
 
