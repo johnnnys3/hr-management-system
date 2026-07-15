@@ -191,8 +191,8 @@ The risk of out-of-order authorship is that the earlier document assumed somethi
 
 | # | Module | Principal requirements |
 |---|---|---|
-| 1 | Authentication | HRMS-NFR-014, HRMS-NFR-015, HRMS-NFR-020, HRMS-NFR-023; ADR-0004 |
-| 2 | RBAC / IAM | HRMS-NFR-016 to HRMS-NFR-019, HRMS-BR-005, HRMS-BR-012, HRMS-BR-014; `docs/07-iam-rbac.md` |
+| 1 | Authentication | HRMS-NFR-014, HRMS-NFR-015, HRMS-NFR-020, HRMS-NFR-023; **HRMS-NFR-024 second factor: enrolment by the account holder, and presentation on every authentication**; ADR-0004 |
+| 2 | RBAC / IAM | HRMS-NFR-016 to HRMS-NFR-019, HRMS-BR-005, HRMS-BR-012, HRMS-BR-014; **HRMS-NFR-024 recovery approval and the prohibition on factor administration**; `docs/07-iam-rbac.md` |
 | 3 | Dashboard | SRS §3.1 role-specific dashboards |
 | 4 | Employee Management | HRMS-FR-001 to HRMS-FR-012, HRMS-BR-001 to HRMS-BR-003, HRMS-DR-001 to HRMS-DR-004, HRMS-DR-007, HRMS-DR-008, HRMS-DR-010, HRMS-NFR-007, HRMS-NFR-008 |
 | 5 | Departments | HRMS-BR-002; SRS §2.7 HR configuration |
@@ -220,30 +220,46 @@ Modules 7 and 13 are new at v1.1 and close the coverage gap of §2.4. The module
 
 A module is complete when its models, service layer, API endpoints, visibility rule, permission tests, and client interface are done and its tests pass. A module without permission tests asserting both the permitted and the denied path is not complete (ADR-0005; `docs/07-iam-rbac.md` §5).
 
-### 6.2 Week-by-Week Allocation
+### 6.2 The Week Convention
 
-Week boundaries fall on Wednesdays. Each week carries five working days. The window runs 2026-07-15 to 2026-10-21: 14 weeks, 70 working days, against the 68 required by §7.3.
+**A week runs Wednesday to Tuesday inclusive and carries exactly five working days: Wednesday, Thursday, Friday, Monday, Tuesday. Week *N* ends on the working day numbered 5*N*, counting 2026-07-15 as working day 1. Every date in this document is derived from that rule and from no other.**
+
+The convention is stated here, once, because v1.1 did not state it and the omission propagated. v1.1 said that week boundaries fall on Wednesdays and that each week carries five working days. **Those two sentences contradict each other.** 2026-07-15 to 2026-07-22, Wednesday to Wednesday inclusive, is six working days, not five: Wednesday, Thursday, Friday, Monday, Tuesday, Wednesday. A reader could take the Wednesday boundary or the five-day week but not both, and the two readings produce different dates for every milestone in §5.2.
+
+That is not a presentational defect. It is why v1.1 stated at §7 that 68 working days complete on 2026-10-16 while §6.2 allocated the user guide into 2026-10-19 with 2 slack days after it — two incompatible positions on the same fortnight, each correct under a different reading of an unstated convention. Pinning the convention is therefore the first act of this revision, and the arithmetic at §7.2 follows from it rather than sitting alongside it.
+
+The Wednesday-to-Tuesday reading is chosen over the alternative — retaining Wednesday end-markers and defining them as exclusive — for one reason: an inclusive boundary is the one a reader assumes. A table whose "Ends" column names a date on which no work happens invites exactly the off-by-one that produced B1, and it would invite it again from the next reader. The end-marker convention is defensible and would have been cheaper to introduce; it is not chosen, because the cost of this convention is paid once, here, and the cost of the other is paid by every reader who does not notice the word "exclusive". Week 1 accordingly ends on **2026-07-21**, a Tuesday, not on 2026-07-22.
+
+The project start of 2026-07-15 is a Wednesday and is unchanged. It is what makes Wednesday the natural week start; nothing else recommends it.
+
+### 6.3 Week-by-Week Allocation
+
+The window runs 2026-07-15 to 2026-11-03: 16 weeks, 80 working days, against the 78 required by §7.3.
 
 | Week | Ends | Allocation |
 |---|---|---|
-| 1 | 2026-07-22 | `docs/02-project-plan.md` (1d); Environment Setup (2d); `docs/04-system-architecture.md` (2d) |
-| 2 | 2026-07-29 | `docs/05-database-schema.md` (2d); `docs/06-api-contracts.md` (2d); `docs/08-testing-plan.md` (1d of 2) |
-| 3 | 2026-08-05 | `docs/08-testing-plan.md` (1d); M1 Authentication (2d); M2 RBAC/IAM (2d of 3) |
-| 4 | 2026-08-12 | M2 RBAC/IAM (1d); M3 Dashboard (1.5d); M4 Employee Management (2.5d of 4) |
-| 5 | 2026-08-19 | M4 Employee Management (1.5d); M5 Departments (1d); M6 Reporting Structure (1.5d); M7 Notification (1d of 1.5) |
-| 6 | 2026-08-26 | M7 Notification (0.5d); M8 Recruitment (4d); M9 Onboarding (0.5d of 2) |
-| 7 | 2026-09-02 | M9 Onboarding (1.5d); M10 Employee Self-Service (2.5d); M11 Manager Self-Service (1d of 2) |
-| 8 | 2026-09-09 | M11 Manager Self-Service (1d); M12 Leave Management (4d) |
-| 9 | 2026-09-16 | M13 Compensation and Benefits (4d); M14 Payroll (1d of 8) |
-| 10 | 2026-09-23 | M14 Payroll (5d) |
-| 11 | 2026-09-30 | M14 Payroll (2d); M15 Reports (3d) |
-| 12 | 2026-10-07 | M16 Testing (4d); M17 UAT (1d of 3) |
-| 13 | 2026-10-14 | M17 UAT (2d); M18 Deployment (3d) |
-| 14 | 2026-10-21 | `docs/09-deployment-plan.md` (1.5d); `docs/10-user-guide.md` (1.5d); **2d unallocated** |
+| 1 | 2026-07-21 | `docs/02-project-plan.md` (1d); Environment Setup (2d); `docs/04-system-architecture.md` (2d) |
+| 2 | 2026-07-28 | `docs/05-database-schema.md` (2d); `docs/06-api-contracts.md` (2d); `docs/08-testing-plan.md` (1d of 2) |
+| 3 | 2026-08-04 | `docs/08-testing-plan.md` (1d); M1 Authentication (2d); M1 second factor (2d of 6) |
+| 4 | 2026-08-11 | M1 second factor (4d); M2 RBAC/IAM (1d of 3) |
+| 5 | 2026-08-18 | M2 RBAC/IAM (2d); M2 factor recovery and administration prohibition (3d of 4) |
+| 6 | 2026-08-25 | M2 factor recovery and administration prohibition (1d); M3 Dashboard (1.5d); M4 Employee Management (2.5d of 4) |
+| 7 | 2026-09-01 | M4 Employee Management (1.5d); M5 Departments (1d); M6 Reporting Structure (1.5d); M7 Notification (1d of 1.5) |
+| 8 | 2026-09-08 | M7 Notification (0.5d); M8 Recruitment (4d); M9 Onboarding (0.5d of 2) |
+| 9 | 2026-09-15 | M9 Onboarding (1.5d); M10 Employee Self-Service (2.5d); M11 Manager Self-Service (1d of 2) |
+| 10 | 2026-09-22 | M11 Manager Self-Service (1d); M12 Leave Management (4d) |
+| 11 | 2026-09-29 | M13 Compensation and Benefits (4d); M14 Payroll (1d of 8) |
+| 12 | 2026-10-06 | M14 Payroll (5d) |
+| 13 | 2026-10-13 | M14 Payroll (2d); M15 Reports (3d) |
+| 14 | 2026-10-20 | M16 Testing (4d); M17 UAT (1d of 3) |
+| 15 | 2026-10-27 | M17 UAT (2d); M18 Deployment (3d) |
+| 16 | 2026-11-03 | `docs/09-deployment-plan.md` (1.5d); `docs/10-user-guide.md` (1.5d); **2d unallocated** |
 
-Weeks 1 to 4 are unchanged from v1.0; the re-baseline does not disturb them, and they are not rewritten to look revised. Week 5 changes at its last day only, where Notification takes the slot Recruitment held. Everything from week 6 is displaced by the 5.5 days the two new modules add.
+Weeks 1 and 2 are unchanged in content from v1.1 and their end dates move back by one day under §6.2. Weeks 3 to 5 absorb the 10 days of HRMS-NFR-024 (§7.3). Everything from week 6 is displaced by those 10 days and is otherwise the v1.1 sequence unaltered: no module has been reordered, resized, or resequenced by this revision, and the tail from M13 onward is the v1.1 tail shifted two weeks.
 
-**The 2 unallocated days in week 14 are slack, and they are shown as slack.** 68 days of work are allocated against 70 days of capacity. The two days are not filled with work to make the table reach the end date, and no estimate elsewhere has been enlarged to absorb them, because a plan that pads its estimates to consume its margin has no margin and has also lost the ability to say what anything costs. They are the whole of the buffer between this schedule and 2026-10-21. Section 7.4 states what 2 days of buffer against 68 days of uncalibrated estimate is worth.
+**The 2 unallocated days in week 16 are slack, and they are shown as slack.** 78 days of work are allocated against 80 days of capacity. The two days are not filled with work to make the table reach the end date, and no estimate elsewhere has been enlarged to absorb them, because a plan that pads its estimates to consume its margin has no margin and has also lost the ability to say what anything costs. They are the whole of the buffer between this schedule and 2026-11-03. Section 7.4 states what 2 days of buffer against 78 days of uncalibrated estimate is worth.
+
+**That the margin is 2 days at v1.2 exactly as it was at v1.1 is a coincidence of arithmetic and should not be read as a policy of holding two days back.** 78 days requires 16 weeks because 15 weeks is 75; the 80 days those 16 weeks supply leave 2 over. The margin is what the week grid happens to leave, as it was at v1.1. It is not a reserve anyone sized.
 
 The table is the consequence of the estimates in Section 7.1 laid against the confirmed order. It is not compressed to reach the end date. `docs/08-testing-plan.md` precedes development deliberately: tests are written against a plan, and writing the plan after the code it judges would defeat the only independent control this project has (Section 3). The extension does not change this, and the testing plan is not moved later to bring development forward.
 
