@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-15 |
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | John Kessie | 2026-07-15 | Initial project plan. Authored after `docs/03-tech-stack.md` and `docs/07-iam-rbac.md`; records the sequence, effort, and risk position for the remaining work | 1.0 |
 | John Kessie | 2026-07-15 | Schedule re-baselined to 2026-10-21 on the project owner's decision to take Option B of §7.5 and extend the end date rather than reduce the content of the release. Because scope is not reduced, the §2.4 coverage gap is closed rather than carried: Compensation and Benefits and Notification enter the build order, and the plan is baselined on the 68-day figure of §7.3 rather than the 62.5-day figure of §7.1. §§2.4, 5.2, 6.1, 6.2, 7, 8.2, 11 revised accordingly | 1.1 |
+| John Kessie | 2026-07-15 | Re-baselined to 2026-11-03 against `docs/01-srs.md` v1.1, and the week convention pinned. Two changes, of different kinds. **First, a defect fix.** v1.1 held that week boundaries fall on Wednesdays and that each week carries five working days; the two are inconsistent, and the unpinned convention produced dates that contradicted each other — §7's 2026-10-16 against §6.2's user guide running into 2026-10-19, and §5.2's M1 of 2026-07-16 against its M2 of 2026-07-21. New §6.2 pins a week as Wednesday to Tuesday inclusive, week *N* ending on working day 5*N* from 2026-07-15, and every date in the document is recomputed from that rule alone. Week 1 ends 2026-07-21. M1 to M5 move earlier; no work is resequenced. **Second, a re-baseline.** SRS v1.1 promotes HRMS-NFR-024 to a *shall*, making multi-factor authentication mandatory for administrators and payroll users with the second factor outside the control of the roles that administer accounts and credentials. §11 question 8 had carried it as unowned and unestimated, and is resolved by the requirement changing rather than by any decision of this plan. §6.1 gives it owners in modules 1 and 2; §7.3 estimates it at 10 days, taking the baseline from 68 to 78 and the window to 16 weeks and 80 working days. Margin remains 2 days and is therefore thinner: 2.6% against v1.1's 2.9%. §8.1 carries TBD-016 and TBD-017, new at SRS v1.1, taking the register to seventeen items, four resolved and thirteen open, and corrects §8.2's "nine of the twelve", which matched neither its own register nor the true count. New §11 question 9 records that the owner confirmed Option B's principle and named 2026-10-21; the extension to 2026-11-03 applies that principle to a requirement he has not been asked about and is the plan's inference, not his decision. No scope is added, reduced, or deferred by this revision, and no SRS revision is requested. §§1.1, 2.1, 2.3, 2.4, 5.2, 6, 7, 8, 11, 12 revised accordingly | 1.2 |
 
 ---
 
@@ -59,7 +60,9 @@ The project owner, and any developer, reviewer, or examiner who needs to know th
 
 ### 2.1 What Is In
 
-The requirement set of `docs/01-srs.md` v1.0: 71 functional requirements (HRMS-FR-001 to HRMS-FR-071), 36 nonfunctional requirements (HRMS-NFR-001 to HRMS-NFR-036), 15 business rules (HRMS-BR-001 to HRMS-BR-015), and 10 data validation rules (HRMS-DR-001 to HRMS-DR-010).
+The requirement set of `docs/01-srs.md` v1.1: 71 functional requirements (HRMS-FR-001 to HRMS-FR-071), 36 nonfunctional requirements (HRMS-NFR-001 to HRMS-NFR-036), 15 business rules (HRMS-BR-001 to HRMS-BR-015), and 10 data validation rules (HRMS-DR-001 to HRMS-DR-010).
+
+SRS v1.1 adds and removes no requirement, and the counts are those of v1.0. What it changes is modality and testability: HRMS-NFR-024 becomes a *shall*, which §7.3 costs; HRMS-NFR-001 to HRMS-NFR-006 become measurable, which §8.1 costs in unknowns rather than days. **The scope baseline is unchanged and this plan does not reduce or extend it.**
 
 ### 2.2 What Is Out
 
@@ -68,6 +71,8 @@ The items listed at SRS §6.4, reproduced in `CONTEXT.md` under "Scope boundary"
 ### 2.3 Deferred by the SRS Itself
 
 HRMS-FR-055 requires predictive attrition analytics "in later versions where enough historical data exists". The condition is not met: the system holds no historical HR data and, per TBD-001, has no operating organisation to supply any. The requirement is therefore not built in this release. This is the SRS's own deferral, not a reduction made by this plan.
+
+**HRMS-FR-051 joins it at SRS v1.1.** Training completion reports were deferred on the same pattern as HRMS-FR-055, the training data their condition presupposed being excluded by SRS §6.4. The deferral is the SRS's, made under its own change control, and is recorded here because §2.1 baselines this plan on v1.1 and a reader must be able to see which of the 71 functional requirements this release does not build. It changes no estimate at §7.1: M15 Reports was estimated against HRMS-FR-049 to HRMS-FR-054 and is unaffected, and the plan does not reduce the estimate to claim a saving from a requirement it never costed.
 
 ### 2.4 Requirements Without a Module, and How the Gap Was Closed
 
@@ -531,7 +536,7 @@ Recorded because they are unresolved, not because they are minor. Each names wha
 |---|---|---|
 | 1 | **Resolved at v1.1.** Which module owns HRMS-FR-056 to HRMS-FR-062? The build order had no Compensation and Benefits module, yet `docs/07-iam-rbac.md` §4.2 already assigned permissions for those requirements across five roles | Resolved. §6.1 module 13, immediately before Payroll, **confirmed by the project owner 2026-07-15** on the dependency reasoning at §6.1. `docs/04-system-architecture.md` records the assignment at M2; it does not reopen the placement |
 | 2 | **Where does Notification sit in the build order?** §6.1 places it at module 7, before M8 Recruitment, because Recruitment is the first module with an approval flow (HRMS-FR-014) and HRMS-FR-033 and HRMS-FR-034 are the notification of a pending approval and of the decision on it. **This is the plan's inference and is not confirmed.** The owner confirmed the extension, confirmed that scope is not cut, and confirmed the Compensation and Benefits placement; he did not speak to this one | The project owner, with `docs/04-system-architecture.md` at M2, 2026-07-21, and not later than 2026-07-29 (§5.2). Every week from 7 onward in §6.3 depends on the answer, and a later placement returns HRMS-FR-033 and HRMS-FR-034 to consumers already built |
-| 3 | Is audit logging a module, or cross-cutting infrastructure consumed by every module? `docs/07-iam-rbac.md` §7.3 designs it; nothing implements it. §7.3 of this plan absorbs it within M2 and M4 and gives it no separate estimate, which presumes the second answer | `docs/04-system-architecture.md`, at M2. If it is a module, it carries an estimate that §7.1 does not include and the 78-day figure is low. HRMS-NFR-024 sharpens this: SRS §2.3 requires second-factor enrolment, recovery, disablement, and failed presentation to be logged, so M1 and M2 are now audit-log consumers as well, and their estimates at §7.1 assume the same absorption |
+| 3 | Is audit logging a module, or cross-cutting infrastructure consumed by every module? `docs/07-iam-rbac.md` §7.3 designs it; nothing implements it. §7.3 of this plan absorbs it within M2 and M4 and gives it no separate estimate, which presumes the second answer | `docs/04-system-architecture.md`, at M2. If it is a module, it carries an estimate that §7.1 does not include and the 78-day figure is low. HRMS-NFR-024 sharpens this: it requires second-factor enrolment, recovery, disablement, and failed presentation to be logged, so M1 and M2 are now audit-log consumers as well, and their estimates at §7.1 assume the same absorption |
 | 4 | What is the working calendar? The repository defines no public holiday schedule, and every estimate in §7.1 assumes five uninterrupted days per week | The project owner. Bears directly on §7.2, and more sharply at each re-baseline: the schedule now runs to 2026-11-03 with 2 days of margin against 78 rather than 68, so a single public holiday inside the window still consumes half of it while the work it must cover has grown by 10 days |
 | 5 | **Retired at v1.1.** Whether Option A required a re-baselined SRS phase boundary or a second release with its own SRS | Retired. Option A was not chosen (§7.5); the question it asked does not arise. Recorded rather than deleted so that the v1.0 numbering can be followed |
 | 6 | What does M17 UAT mean with no users? UAT is acceptance by the people who will use the system. TBD-001 leaves no organisation, so the sole participant is the author, who wrote the code and the SRS | The project owner. If it is self-verification against SRS §4, it should be named that, and `docs/08-testing-plan.md` should say so rather than call it acceptance |
@@ -547,15 +552,19 @@ Recorded because they are unresolved, not because they are minor. Each names wha
 |---|---|
 | §2.1 scope baseline | HRMS-FR-001 to HRMS-FR-071, HRMS-NFR-001 to HRMS-NFR-036, HRMS-BR-001 to HRMS-BR-015, HRMS-DR-001 to HRMS-DR-010 |
 | §2.2 exclusions | SRS §6.4 |
-| §2.3 deferral of HRMS-FR-055 | SRS §4.5, which defers it by its own terms |
+| §2.3 deferral of HRMS-FR-055 and HRMS-FR-051 | SRS §4.5, which defers both by their own terms |
 | §4 stage sequence | SRS §1.4, §2.1 phased development |
 | §5.1 document set | SRS §3.3, which records the stack as TBD to be confirmed in technical architecture planning |
 | §5.3 out-of-order reconciliation | `docs/07-iam-rbac.md` §3, §4.2, §4.4, §5; ADR-0005; ADR-0010 |
 | §6.1 build order | SRS §2.2 phases; ADR-0001 module boundaries |
 | §6.1 module 7 Notification | HRMS-FR-033, HRMS-FR-034; SRS §3.4 in-app and email channels |
 | §6.1 module 13 Compensation and Benefits | HRMS-FR-056 to HRMS-FR-062; SRS §4.6; HRMS-DR-010; `CONTEXT.md` compensation record; `docs/07-iam-rbac.md` §4.2 |
+| §6.1 modules 1 and 2, HRMS-NFR-024 | HRMS-NFR-024; HRMS-NFR-019, whose gap it closes; ADR-0004; ADR-0010; `docs/07-iam-rbac.md` §7.2 |
+| §6.2 week convention | Nothing in the SRS. It is this plan's own, and governs only this plan's dates |
+| §7.3 HRMS-NFR-024 estimate | HRMS-NFR-024; ADR-0005 and `docs/07-iam-rbac.md` §5 for the permission tests it requires |
 | §7.5 Option C rejection | ADR-0005; `docs/07-iam-rbac.md` §5; HRMS-NFR-016 to HRMS-NFR-019 |
-| §8.1 TBD register | SRS Appendix C, TBD-001 to TBD-015 |
+| §8.1 TBD register | SRS Appendix C, TBD-001 to TBD-017 |
+| §8.1 TBD-016, TBD-017 | SRS §5.1, HRMS-NFR-001 to HRMS-NFR-005; SRS Appendix C |
 | §8.2 payroll constraint | SRS §2.5, §6.3; ADR-0003; ADR-0006; HRMS-FR-039 to HRMS-FR-042, HRMS-FR-046 |
 | §8.3 deployment block | ADR-0009; SRS §2.4, §6.3; HRMS-NFR-012, HRMS-NFR-020, HRMS-NFR-035 |
 | §9 quality controls | ADR-0003, ADR-0005; HRMS-DR-001 to HRMS-DR-010; HRMS-NFR-028, HRMS-NFR-029 |
