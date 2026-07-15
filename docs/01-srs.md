@@ -190,7 +190,7 @@ The system will be developed in phases to reduce implementation risk and allow t
 - Provide headcount dashboards.
 - Provide turnover reports.
 - Provide payroll cost reports.
-- Support predictive analytics on attrition risk where data is available.
+- Support predictive analytics on attrition risk in later versions where enough historical data exists (deferred; see HRMS-FR-055).
 
 **Compensation and Benefits**
 
