@@ -639,17 +639,19 @@ HRMS-FR-071: The system shall provide a leave calendar for HR and managers.
 
 ### 5.1 Performance Requirements
 
-HRMS-NFR-001: The system shall load common pages within 2 to 4 seconds under normal network conditions.
+HRMS-NFR-001 to HRMS-NFR-005 state response times at the 95th percentile of requests, measured at the application server boundary and therefore excluding client network transit, over a rolling 60-minute measurement window, at the concurrent load stated in HRMS-NFR-006. The data volumes against which they are verified are TBD-016.
 
-HRMS-NFR-002: The system shall return standard employee search results within 3 seconds for small to medium datasets.
+HRMS-NFR-001: The system shall load common pages within 4 seconds at the 95th percentile.
 
-HRMS-NFR-003: Employee profile pages shall load within 3 seconds under normal conditions.
+HRMS-NFR-002: The system shall return standard employee search results within 3 seconds at the 95th percentile, over the employee record volume stated in TBD-016.
 
-HRMS-NFR-004: Reports should load within 5 to 10 seconds depending on report size.
+HRMS-NFR-003: Employee profile pages shall load within 3 seconds at the 95th percentile.
 
-HRMS-NFR-005: Payroll processing for small to medium organizations should complete within a few minutes.
+HRMS-NFR-004: Reports should load within 10 seconds at the 95th percentile, over the data volume stated in TBD-016.
 
-HRMS-NFR-006: The system should support 50 to 200 concurrent users in the first version.
+HRMS-NFR-005: Payroll processing should complete within the elapsed time stated in TBD-017, measured from submission of a payroll run to availability of its payslips and bank transfer file, for the organization size stated in TBD-016.
+
+HRMS-NFR-006: The system should support 200 concurrent users in the first version, sustaining HRMS-NFR-001 to HRMS-NFR-005 at that load.
 
 HRMS-NFR-007: File uploads should support PDF, JPG, PNG, and DOCX formats.
 
@@ -919,3 +921,5 @@ Executive -> Dashboards and High-Level Reports
 | TBD-013 | Whether biometric attendance integration will be added later |
 | TBD-014 | Reporting dashboard KPIs |
 | TBD-015 | Data migration approach |
+| TBD-016 | Organization size and data volumes against which HRMS-NFR-001 to HRMS-NFR-005 are verified: employee record count, payroll history volume, and document storage volume. Depends on TBD-001 |
+| TBD-017 | Payroll processing elapsed time threshold for HRMS-NFR-005. Depends on TBD-016 |
