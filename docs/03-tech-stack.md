@@ -177,11 +177,11 @@ The composition runs identically on a local machine, an on-premises server, an i
 
 This is a decision, not an omission. SRS §2.4 states that the server environment may be cloud-based or on-premises depending on organisational decision. TBD-001 records that the organisation itself is undetermined; there is no controller, no counsel, and no production personal data. A hosting selection made now would have no basis.
 
-The system holds personal data of Ghanaian employees, and Ghana's Data Protection Act 2012 (Act 843) constrains where such data may reside. That constraint is a legal question. SRS §6.3 provides the correct disposition: legal and regulatory requirements shall be confirmed with qualified professionals before go-live. Nothing in this document constitutes legal advice.
+The system holds personal data of Ghanaian employees. Ghana's Data Protection Act 2012 (Act 843) requires a controller to register with the Data Protection Commission and to disclose the countries it transfers personal data to. Whether it further restricts where such data may reside is an **open question of legal interpretation**, not a settled constraint this document may state as one — the Act sets out no adequacy regime of the kind the GDPR establishes. SRS §6.3 provides the correct disposition: legal and regulatory requirements shall be confirmed with qualified professionals before go-live. Nothing in this document constitutes legal advice.
 
 The hosting target is selected when an operating organisation exists, subject to:
 
-1. Written confirmation from qualified legal counsel on obligations under Act 843 for personal data of Ghanaian employees.
+1. Written confirmation from qualified legal counsel on obligations under Act 843 for personal data of Ghanaian employees, including whether the Act restricts transfer of that data outside Ghana and on what test.
 2. Registration with the Data Protection Commission where applicable to the controller.
 3. Confirmation that the target satisfies HRMS-NFR-020 (HTTPS in production), HRMS-NFR-012 (backups), and HRMS-NFR-035 (95–98% availability during working hours).
 

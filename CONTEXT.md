@@ -72,7 +72,7 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **Access is denied by default.** Both action-level and row-level. See ADR-0005.
 
-**Data residency is unresolved and consequential.** Ghana's Data Protection Act 2012 (Act 843) constrains where employee personal data may reside, and the position is not settled. The architecture defers the hosting decision rather than pre-empting it. See ADR-0009.
+**Data residency is unresolved and consequential.** Ghana's Data Protection Act 2012 (Act 843) requires a controller to register with the Data Protection Commission and to disclose the countries it transfers personal data to. Whether it further restricts *where* employee personal data may reside — and on what test — is an open question of legal interpretation for counsel, not a settled constraint; the Act sets out no adequacy regime of the GDPR's kind. Do not restate it as one. The architecture defers the hosting decision rather than pre-empting it in either direction. See ADR-0009.
 
 **Statutory rates change.** Rate tables are versioned configuration. Payroll history must remain reproducible against the rates in force at the time it ran.
 
