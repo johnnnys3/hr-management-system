@@ -189,7 +189,6 @@ The system will be developed in phases to reduce implementation risk and allow t
 
 - Provide headcount dashboards.
 - Provide turnover reports.
-- Provide training completion reports.
 - Provide payroll cost reports.
 - Support predictive analytics on attrition risk where data is available.
 
@@ -550,7 +549,7 @@ HRMS-FR-048: The system shall maintain payroll history.
 
 #### 4.5 Description and Priority
 
-Reporting and Analytics provides dashboards on headcount, turnover, training completion, payroll costs, and predictive analytics on attrition risk.
+Reporting and Analytics provides dashboards on headcount, turnover, and payroll costs. Training completion reporting (HRMS-FR-051) and predictive analytics on attrition risk (HRMS-FR-055) are deferred to later versions and are not delivered by this module in the first version.
 
 Priority: Medium
 
@@ -564,7 +563,7 @@ HRMS-FR-049: The system shall provide headcount dashboards.
 
 HRMS-FR-050: The system shall provide turnover reports.
 
-HRMS-FR-051: The system shall provide training completion reports where training data exists.
+HRMS-FR-051: The system shall support training completion reports in later versions where a source of training data exists.
 
 HRMS-FR-052: The system shall provide payroll cost reports.
 
