@@ -61,7 +61,7 @@ Convenience of initial construction was not a selection criterion.
 | Backend framework | Django with Django REST Framework |
 | Database | PostgreSQL |
 | Background processing | Celery with Celery Beat |
-| Message broker and cache | Redis |
+| Message broker and cache | Redis (two instances: broker, cache) |
 | Object storage | S3-compatible; MinIO for self-hosted deployment |
 | Frontend build | Vite |
 | Frontend language | TypeScript |
@@ -102,7 +102,7 @@ Recorded in ADR-0002.
 
 ### 4.2 Background Processing
 
-Celery provides task execution, Celery Beat provides scheduling, and Redis serves as message broker.
+Celery provides task execution, Celery Beat provides scheduling, and Redis serves as message broker. The broker runs as its own Redis instance, configured `noeviction` with AOF persistence and kept separate from the cache instance, so that cache eviction cannot discard a queued payroll task. Recorded in ADR-0006.
 
 Background processing is required rather than optional. Payroll processing is expected to complete within a few minutes (HRMS-NFR-005), which exceeds a reasonable request lifetime. Leave accrual is calendar-driven. Payslip generation, bank transfer file generation, notification delivery, and large report exports are batch operations.
 
@@ -165,7 +165,7 @@ Recorded in ADR-0008.
 
 ### 7.1 Containerisation
 
-The system is deployed as containers orchestrated by Docker Compose: the Django application, Celery worker and scheduler, Redis, PostgreSQL, MinIO, and Caddy as reverse proxy.
+The system is deployed as containers orchestrated by Docker Compose: the Django application, Celery worker and scheduler, two Redis instances (broker and cache), PostgreSQL, MinIO, and Caddy as reverse proxy.
 
 Caddy serves the built React application at `/` and proxies `/api` to Django, presenting a single origin. This satisfies the requirement of the authentication design described in Section 8 in every environment, including local development, so that the authentication path is exercised as deployed.
 
@@ -177,11 +177,11 @@ The composition runs identically on a local machine, an on-premises server, an i
 
 This is a decision, not an omission. SRS §2.4 states that the server environment may be cloud-based or on-premises depending on organisational decision. TBD-001 records that the organisation itself is undetermined; there is no controller, no counsel, and no production personal data. A hosting selection made now would have no basis.
 
-The system holds personal data of Ghanaian employees, and Ghana's Data Protection Act 2012 (Act 843) constrains where such data may reside. That constraint is a legal question. SRS §6.3 provides the correct disposition: legal and regulatory requirements shall be confirmed with qualified professionals before go-live. Nothing in this document constitutes legal advice.
+The system holds personal data of Ghanaian employees. Ghana's Data Protection Act 2012 (Act 843) requires a controller to register with the Data Protection Commission and to disclose the countries it transfers personal data to. Whether it further restricts where such data may reside is an **open question of legal interpretation**, not a settled constraint this document may state as one — the Act sets out no adequacy regime of the kind the GDPR establishes. SRS §6.3 provides the correct disposition: legal and regulatory requirements shall be confirmed with qualified professionals before go-live. Nothing in this document constitutes legal advice.
 
 The hosting target is selected when an operating organisation exists, subject to:
 
-1. Written confirmation from qualified legal counsel on obligations under Act 843 for personal data of Ghanaian employees.
+1. Written confirmation from qualified legal counsel on obligations under Act 843 for personal data of Ghanaian employees, including whether the Act restricts transfer of that data outside Ghana and on what test.
 2. Registration with the Data Protection Commission where applicable to the controller.
 3. Confirmation that the target satisfies HRMS-NFR-020 (HTTPS in production), HRMS-NFR-012 (backups), and HRMS-NFR-035 (95–98% availability during working hours).
 
@@ -211,7 +211,7 @@ Recorded in ADR-0004.
 
 Access control operates at two levels.
 
-**Action-level** access uses Django groups and permissions. Each role maps to a group, governing which operations a user may perform.
+**Action-level** access uses Django groups and permissions. Each **assigned** role maps to a group, governing which operations a user may perform. The two **derived** roles, Employee and Manager, attach from employment and reporting data rather than from a grant, and have no group. Recorded in ADR-0010.
 
 **Row-level** access uses queryset scoping: a visibility rule per module, expressed as a manager method deriving visibility from organisational data. This satisfies HRMS-NFR-017, HRMS-NFR-018, HRMS-NFR-019, HRMS-BR-006, and HRMS-BR-007.
 

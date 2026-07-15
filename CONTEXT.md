@@ -56,13 +56,13 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **User class** — a requirements concept from SRS §2.3 describing who uses the system. Not the same as a role, and not one-to-one with roles: eight roles serve the seven user classes. *Avoid* using the two terms interchangeably; conflating them is what allowed the role list to drift from the SRS.
 
-**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several.
+**Assigned role** — a Django group, granted by a System Administrator and logged. Six exist: System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive. Additive — a user may hold several. **No one may grant an assigned role to themselves**, and a privileged grant additionally requires an approver who is not the requester. See `docs/07-iam-rbac.md` §7.3.
 
 **Derived role** — computed from existing data, never granted, cannot drift. Two exist: **Employee** (has an employee record whose employment status permits access — which makes HRMS-BR-012 self-enforcing) and **Manager** (has direct reports). See `docs/07-iam-rbac.md` §3.
 
 *Note on naming:* SRS §2.3.1 says "System Administrator"; earlier project planning said "Super Admin". The SRS name governs. Earlier planning also omitted the Executive class; that omission was rejected, as removing a user class is a scope reduction requiring SRS revision.
 
-**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. See `docs/07-iam-rbac.md` §7.
+**System Administrator** — administers accounts, roles, permissions, audit, and system configuration. Holds **no** payroll, compensation, or employee record access; HRMS-NFR-019 is a *shall*. Implemented as a group with explicit permissions, **never** as Django's `is_superuser` — that flag short-circuits every permission check and would make HRMS-NFR-019 unenforceable. `is_superuser` is reserved for a break-glass account. The role cannot reach payroll data by granting itself Payroll Officer either: self-grant is refused, and a privileged grant needs an approver who is not the requester. That second constraint distinguishes **identities, not parties**, and one route remains open behind it — the role administers every account (SRS §2.3.1), so it can reset the credentials of a payroll user, or of the designated approver, and authenticate as them. That is logged, not blocked, and closing it is an SRS question. See `docs/07-iam-rbac.md` §7.
 
 ## Constraints that shape the design
 
@@ -72,7 +72,7 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **Access is denied by default.** Both action-level and row-level. See ADR-0005.
 
-**Data residency is unresolved and consequential.** Ghana's Data Protection Act 2012 (Act 843) constrains where employee personal data may reside, and the position is not settled. The architecture defers the hosting decision rather than pre-empting it. See ADR-0009.
+**Data residency is unresolved and consequential.** Ghana's Data Protection Act 2012 (Act 843) requires a controller to register with the Data Protection Commission and to disclose the countries it transfers personal data to. Whether it further restricts *where* employee personal data may reside — and on what test — is an open question of legal interpretation for counsel, not a settled constraint; the Act sets out no adequacy regime of the GDPR's kind. Do not restate it as one. The architecture defers the hosting decision rather than pre-empting it in either direction. See ADR-0009.
 
 **Statutory rates change.** Rate tables are versioned configuration. Payroll history must remain reproducible against the rates in force at the time it ran.
 

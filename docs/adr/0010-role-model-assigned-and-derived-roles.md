@@ -42,8 +42,9 @@ The divergence arose from conflating two distinct concepts. A **user class** is 
 2. **The HR class is served by two roles**, on separation-of-duties grounds.
 3. **Roles are additive.** A user may hold several assigned roles; derived roles attach automatically.
 4. **Separation-of-duties conflicts warn rather than block.**
-5. **System Administrator is not a superuser.** It is a group with explicit permissions.
-6. **The SRS name governs.** "System Administrator", not "Super Admin".
+5. **Self-grant of an assigned role is refused, and a privileged grant requires a second party.** A System Administrator cannot grant themselves any assigned role, and cannot complete a grant of a privileged role alone.
+6. **System Administrator is not a superuser.** It is a group with explicit permissions.
+7. **The SRS name governs.** "System Administrator", not "Super Admin".
 
 ## Rationale
 
@@ -87,7 +88,21 @@ Two grounds.
 
 Accordingly, `is_superuser` is reserved for a break-glass account: not used for routine administration, credentials held separately, use logged and reviewed.
 
-**Escalation is detected, not prevented.** The System Administrator administers roles and can therefore grant themselves Payroll Officer. This is inherent to the function and cannot be designed away. The control is HRMS-NFR-022 permission-change logging, with the audit log append-only from the application, so that the party able to grant a permission cannot silently remove the record of having done so.
+**Self-grant is refused; privileged grants take two.** The System Administrator administers roles. An earlier draft of this record concluded that self-granting Payroll Officer was therefore inherent to the function and could not be designed away, leaving detection as the only control. That conclusion was wrong, and it mattered: HRMS-NFR-019 is a *shall*, and a route by which the holder of the administration function reaches payroll data at will leaves it unenforced. The `is_superuser` prohibition above closes one such route; this decision closes the direct grant route, which had been left open.
+
+Two constraints, both at the grant path and neither configurable:
+
+1. **The actor may not be the subject.** A grant of any assigned role where the granting user is the target user is refused. Self-grant is not a warning; it is not a permitted grant.
+2. **A privileged grant requires an approver who is not the requester.** Payroll Officer, HR Administrator, HR Officer, Executive, and System Administrator are privileged. A System Administrator *requests* such a grant; it takes effect only when a holder of `iam.approve_role_grant` approves it, and the approver may not be the requester. This follows the mechanism already established for payroll finalisation at `docs/07-iam-rbac.md` §4.4: the permission exists, is granted to no role by default per deny-by-default, and the organisation designates its holder at deployment.
+
+**This does not enforce a *should* as a *shall*.** SRS §2.3.6 recommends separating the Payroll Officer from general HR roles, and the decision above still leaves that combination available — an approver may grant it, and §6.1 of the IAM design warns rather than blocks, unchanged. What the constraint governs is *who may effect a grant*, not *which combinations are permissible*. Its basis is HRMS-NFR-019, which is a *shall*, not §2.3.6, which is not.
+
+**What is enforced by code, what by policy, and what by neither.** Constraints 1 and 2 are code, at the single grant path, and hold regardless of role combination. They bind the grant of an **assigned role**, and they operate on the *authenticated identities* of the requester, the subject, and the approver. They presuppose what §4.4 and §7.3 of the IAM design already state: that assignment of a permission to a role — `iam.approve_role_grant` included — is deployment configuration and not a runtime operation reachable from the role administration function. The load-bearing policy element is that `iam.approve_role_grant` is **not** held by a System Administrator: this is a deployment-time grant like `payroll.approve_payroll_run`, and an organisation that grants it to the same person who administers roles has reduced the control back to detection. The system cannot prevent that choice, because there is no operating organisation to constrain (TBD-001); it can only refuse the default and log the grant.
+
+Two routes remain open and are stated rather than assumed away:
+
+- **Proxy account.** A System Administrator administers user accounts and may create one. That account reaches payroll only through a privileged grant, which constraint 2 refers to an approver who is not the requester. Account creation alone therefore confers nothing. **But constraint 2 closes this route only where the approver's identity is outside the requester's control, and under SRS §2.3.1 it is not.** The System Administrator administers every account, the designated approver's included. It can reset that approver's credentials and authenticate as them to approve its own request. Constraint 2 establishes that the requesting and approving identities differ; it cannot establish that they answer to different people. An earlier draft of this record called the proxy route closed. That was too strong: the route does not stand or fall on its own, it collapses into the credential-reset residual below, and it is closed exactly as far as that residual is — which is not at all.
+- **Credential reset of an existing Payroll Officer.** SRS §2.3.1 places user accounts within the System Administrator's scope, so resetting an existing payroll user's credentials is within the role as the SRS defines it. That route changes no role membership and therefore triggers no grant approval; constraints 1 and 2 do not reach it. Nor, as the bullet above records, do they survive it: an actor able to authenticate as an arbitrary account can satisfy constraint 2 as readily as it can bypass the grant path altogether. This is the single residual, and both routes reduce to it. It is detected — HRMS-NFR-022 logs the record change and the subsequent login — and it is not prevented. Closing it requires either binding a second factor to payroll users, which HRMS-NFR-024 only asks be *considered*, or removing credential administration from the System Administrator, which contradicts SRS §2.3.1. Both are SRS-level questions and neither is settled here. This is the residual, and it is the honest limit of what this ADR enforces.
 
 ## Consequences
 
@@ -96,14 +111,18 @@ Accordingly, `is_superuser` is reserved for a break-glass account: not used for 
 - Every SRS user class is served. No requirement is orphaned.
 - HRMS-BR-012 and manager visibility are self-enforcing, following from data rather than from remembered administrative steps.
 - Separation of duties is available to the organisation without being imposed on it.
-- The privileged role has a bounded, stated scope consistent with HRMS-NFR-019.
+- The privileged role has a bounded, stated scope consistent with HRMS-NFR-019, and two of the routes by which it could have reached payroll data unilaterally — `is_superuser`, and self-grant — are closed by construction rather than by instruction. This list is not exhaustive; the routes that run through account administration are not closed, and are stated in the rationale above rather than left to be discovered.
+- The grant path is a single enforcement point. Both constraints sit on it, so they hold for every assigned role and every combination of roles without per-role special-casing.
 
 **Negative**
 
 - Derived roles are not Django's native model. Manager and Employee determination requires custom permission logic rather than group membership, and must be applied consistently.
 - Derivation cannot express **delegation**: an acting manager, or approval while a manager is absent. This is not in scope per the SRS. Should it enter scope, it requires an explicit delegation record and an SRS amendment, not an adjustment to the derivation.
-- Separation of duties depends on grant policy rather than system enforcement. A single user granted both HR roles reproduces the risk the split was intended to reduce. The warning and the audit record are the mitigations.
-- Reserving `is_superuser` for break-glass requires an operational procedure that does not yet exist. Recorded in Section 11 of the IAM/RBAC design.
+- Separation of duties between the two HR roles depends on grant policy rather than system enforcement. A single user granted both reproduces the risk the split was intended to reduce. The warning and the audit record are the mitigations; SRS §2.3.6 is a *should*, so this is deliberate.
+- **The privileged-grant control is only as good as the `iam.approve_role_grant` grant.** An organisation that gives it to a System Administrator restores the position this decision was written to fix, and does so without any code change and without any warning the system can usefully issue. The default is the control; the default is also overridable by the party it constrains.
+- **A grant now requires a second party, so a grant can now be blocked.** With `iam.approve_role_grant` held by one person who is unavailable, no privileged role can be granted at all. This is the correct failure direction, but it is a real operational cost and the organisation must hold the permission widely enough to function.
+- Reserving `is_superuser` for break-glass requires an operational procedure that does not yet exist, and one cannot be written without an operating organisation (TBD-001). Recorded as an open item at `docs/07-iam-rbac.md` §8.
+- The credential-reset route to payroll data is detected and not prevented, and cannot be closed without an SRS revision. It also bounds constraint 2: the requirement for a second party holds against a requester who cannot authenticate as the approver, and the System Administrator can. The constraint is therefore worth what the residual leaves it worth, and no more. See the rationale above.
 
 ## Related
 

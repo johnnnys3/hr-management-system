@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.4 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -15,6 +15,10 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | July 2026 | Initial IAM and RBAC design; reconciles role list against SRS §2.3 user classes | 1.0 |
+| John Kessie | 2026-07-15 | §7.3 revised: self-grant of an assigned role is refused and a privileged grant requires an approver who is not the requester, closing the grant route to payroll data left open against HRMS-NFR-019. The credential-reset route is recorded as detected-not-prevented and referred to the project owner as an SRS question. §8 gains the `iam.approve_role_grant` holder, the break-glass procedure, and the credential-reset question as open items; the break-glass item was previously cited to a section that did not exist. §9 traceability updated | 1.1 |
+| John Kessie | 2026-07-15 | §7.3 audit immutability re-based from a Django permission to a PostgreSQL grant. The prior guarantee — that no role holds update or delete permission on audit records — did not bind the §7.2 break-glass account, which holds no role and bypasses `has_perm()` entirely. The application's database role now holds `INSERT` and `SELECT` only. The operational ceiling above that grant is stated, and an off-host audit sink is recorded in §8 against TBD-003 | 1.2 |
+| John Kessie | 2026-07-15 | §7.3 proxy-account route re-recorded as open. The prior entry claimed it closed by the privileged-grant constraint; that constraint distinguishes identities, not parties, and SRS §2.3.1 places the designated approver's account within the System Administrator's scope, so the requester can authenticate as the approver. The proxy route and the credential-reset route are one residual, and the design no longer claims otherwise. The enforcement boundary of both constraints is stated. §8 `iam.approve_role_grant` and credential-reset items qualified accordingly | 1.3 |
+| John Kessie | 2026-07-15 | §7.3 wording corrected on review. The privileged-grant constraint is restated as separating authenticated *identities* rather than *parties*, which the same section's enforcement boundary already established but which one sentence still contradicted. The Django audit-permission row is restated to say that `is_superuser` bypasses `has_perm()` without consulting a permission, so the row constrains ordinary users only; the guarantee remains the PostgreSQL grant | 1.4 |
 
 ---
 
@@ -270,14 +274,53 @@ Row-level scoping (§5) is application code and is not bypassed by the flag, so 
 
 `is_superuser` is reserved for a **break-glass account**: not used for routine administration, credentials held under separate control, use logged and reviewed.
 
-### 7.3 Escalation Is Detected, Not Prevented
+### 7.3 Escalation: Self-Grant Is Prevented, the Residual Is Detected
 
-A System Administrator manages roles and may therefore grant themselves Payroll Officer. This cannot be prevented; it is inherent to holding permission administration.
+A System Administrator manages roles. Unconstrained, the role could therefore grant itself Payroll Officer and reach payroll data at will, which **HRMS-NFR-019 forbids as a *shall***. §7.2 closes the `is_superuser` route to the same outcome. This section closes the grant route.
 
-The control is detection. HRMS-NFR-022 requires permission changes to be logged. Additionally:
+**Two constraints on the grant path. Neither is configurable.**
 
-- The audit log is **append-only from the application**. No role, System Administrator included, has update or delete permission on audit records. HRMS-NFR-010 establishes the pattern for payroll history; the same reasoning applies with greater force to the audit trail, since the account able to grant permissions must not be able to erase evidence of having done so.
-- Self-grants are recorded with actor, target, role, and timestamp, and are a reportable event.
+| Constraint | Enforcement |
+|---|---|
+| A grant of an assigned role where the granting user is the target user is **refused** | System. Not a warning, not an override |
+| A grant of a **privileged** role takes effect only on approval by a holder of `iam.approve_role_grant` who is **not** the requester | System. Applies to Payroll Officer, HR Administrator, HR Officer, Executive, System Administrator |
+
+`iam.approve_role_grant` follows §4.4 exactly: the permission exists, is **granted to no role by default** per the deny-by-default principle of §1.3, and the organisation designates its holder at deployment. It is **not** granted to System Administrator. A privileged grant is therefore a request by one authenticated identity and an approval by another, both logged under HRMS-NFR-022. It does not establish a separation of *parties* while credential administration remains within the System Administrator's scope; see the enforcement boundary below.
+
+**This does not enforce §2.3.6's *should* as a *shall*.** §6.1 stands unchanged: Payroll Officer combined with an HR role is still permitted, still warned, still logged, and an approver may still grant it. These constraints govern *who may effect a grant*, not *which combinations are permissible*. Their basis is HRMS-NFR-019, a *shall*.
+
+**What this does not close.**
+
+| Route | Position |
+|---|---|
+| **Proxy account.** A System Administrator creates an account and grants it Payroll Officer | **Open, by way of the row below.** Account creation alone confers no payroll access, and the grant still needs an approver who is not the requester. But that constraint holds only where the approver's identity is outside the requester's control. SRS §2.3.1 places *every* account in this role's scope, the designated approver's included, so the requester can reset the approver's credentials and approve its own request. An earlier version of this design recorded this route as closed by the second constraint; it is not |
+| **Credential reset.** A System Administrator resets an existing Payroll Officer's credentials and authenticates as them | **Open. Detected, not prevented.** SRS §2.3.1 places user accounts in this role's scope, so the route is within the role as the SRS defines it. It changes no role membership, so no grant approval is triggered. HRMS-NFR-022 logs the record change and the login; nothing blocks it |
+
+**Where the enforcement boundary lies.** Both constraints sit on the assigned-role grant path in application code, and both are evaluated against the identities as **authenticated**. The system can establish that requester, subject, and approver are distinct identities. It cannot establish that they are distinct parties, because the party that administers credentials can present as any of them. The two rows above are one residual, not two: the second constraint requires a second *identity*, and it acquires the force of a second *party* only when credential administration is separated from role administration. That separation is not available to this design.
+
+The credential-reset route cannot be closed by this design. Closing it needs either a second factor bound to payroll users — HRMS-NFR-024 asks only that MFA be *considered*, so it is not currently required — or the removal of credential administration from the System Administrator, which contradicts SRS §2.3.1. Both are SRS questions. Recorded in §8.
+
+**Detection, for what the constraints do not reach.** HRMS-NFR-022 requires permission changes to be logged. Refused self-grants, privileged grant requests, approvals, and credential resets on accounts holding a privileged role are each recorded with actor, target, role, and timestamp, and are reportable events.
+
+Detection is only a control if the record survives the party it incriminates. That is the subject of the rest of this section.
+
+**Audit immutability is enforced by the database, not by a permission.**
+
+An earlier version of this design stated that the audit log is append-only because no role, System Administrator included, holds update or delete permission on audit records. That is not sufficient, and §7.2 is the reason why. The break-glass account carries `is_superuser`, which makes `has_perm()` return `True` unconditionally. It holds no role, so a control expressed as "no role has this permission" does not bind it. It could delete audit records through the Django admin or the ORM, and the design would not have noticed the hole because the guarantee was stated in terms of the one mechanism `is_superuser` bypasses.
+
+Django permissions are therefore the wrong layer for this guarantee. The control:
+
+| Control | Mechanism | Binds `is_superuser`? |
+|---|---|---|
+| The application's database role holds `INSERT` and `SELECT` on audit tables, and **no `UPDATE` and no `DELETE`** | PostgreSQL grant (ADR-0003) | **Yes.** `is_superuser` short-circuits `has_perm()`, a Python check. It confers no SQL privilege. An admin or ORM delete is refused by the database |
+| Schema changes to audit tables run as a separate migration role whose credentials the application process does not hold | Deployment configuration | Yes, for the running application |
+| No role is granted Django `change`/`delete` permission on audit models | Django permission | No. The break-glass account holds no role, and `is_superuser` bypasses `has_perm()` without consulting a permission at all — this row constrains ordinary users only. Defence in depth, not the guarantee |
+
+The first row is the guarantee. The third is retained because it makes the intent visible in the code and removes the affordance from the admin interface, but it is not what enforces immutability and this design no longer claims it is.
+
+HRMS-NFR-010 establishes the pattern for payroll history; it applies with greater force to the audit trail, since the account able to grant permissions must not be able to erase the evidence of having done so.
+
+**The ceiling.** A holder of the database owner or PostgreSQL superuser credentials, or of host or backup access, can still alter audit rows; a grant does not bind the party who can rewrite grants. No application-layer design closes this, and this document does not claim to. It is an operational control — custody of database credentials separate from application credentials, and audit events shipped off-host to storage the application's deployment cannot rewrite. Shipping to an external append-only sink is the stronger control and is not specifiable while the hosting target is open (TBD-003, ADR-0009); it is recorded in §8 for resolution alongside it.
 
 Log retention and review cadence depend on the operating organisation and remain open (TBD-009).
 
@@ -291,6 +334,10 @@ Log retention and review cadence depend on the operating organisation and remain
 | Payroll finalisation approver | **Resolved as a deployment-time grant** (§4.4), not a design-time choice. The permission exists and is granted to no role by default; the organisation designates the holder. Self-approval is blocked by the system regardless |
 | Manager visibility depth | **Resolved** (§5). Direct reports only; no transitive chain visibility |
 | TBD-009 — document retention policy | **Open.** Bears on §7.3 audit log retention |
+| Off-host audit sink | **Open, tied to TBD-003.** §7.3 enforces audit immutability by database grant, which binds the application and the break-glass account but not a holder of database owner, host, or backup credentials. Shipping audit events off-host to storage the deployment cannot rewrite closes that ceiling and cannot be specified until the hosting target is (ADR-0009) |
+| `iam.approve_role_grant` holder | **Deferred to deployment** (§7.3), not a design-time choice, on the same reasoning as §4.4. The permission is granted to no role by default and **must not be granted to a System Administrator** — doing so reduces the §7.3 control to detection. Withholding it does not raise the control above detection either while credential reset remains open: the holder must additionally be an account the System Administrator cannot authenticate as, which SRS §2.3.1 does not currently permit. Requires an operating organisation (TBD-001) |
+| Break-glass account procedure | **Open.** §7.2 reserves `is_superuser` for break-glass but no operational procedure exists for credential custody, invocation, or review. Not writable without an operating organisation (TBD-001) |
+| Credential reset as a route to payroll data | **Open. Requires an SRS decision, not a design decision** (§7.3). SRS §2.3.1 places user accounts within the System Administrator's scope, so the role can reset a Payroll Officer's credentials and authenticate as them. It is also what bounds the §7.3 privileged-grant constraint, which requires a second identity and can only require a second party once this is closed. Closing it requires either MFA bound to payroll users — HRMS-NFR-024 asks only that it be *considered*, which does not bind — or narrowing §2.3.1. Both are SRS revisions. Referred to the project owner |
 | Delegation of manager authority | **Out of scope.** Not in the SRS. See §3.3 |
 | Role grant configuration at deployment | **Deferred to deployment**, by design. Which users hold which assigned roles, and who holds `payroll.approve_payroll_run`, are organisational decisions requiring an operating organisation (TBD-001) |
 
@@ -304,7 +351,7 @@ Log retention and review cadence depend on the operating organisation and remain
 | HRMS-NFR-016 (role-based access control) | §2, §4 |
 | HRMS-NFR-017 (employees access own records) | §4.2, §5 |
 | HRMS-NFR-018 (managers access assigned team) | §4.2, §5 |
-| HRMS-NFR-019 (payroll data restricted) | §4.2, §4.3, §5, §7.1 |
+| HRMS-NFR-019 (payroll data restricted) | §4.2, §4.3, §5, §7.1, §7.2, §7.3 |
 | HRMS-NFR-022 (log permission changes) | §2.3, §6.1, §7.3 |
 | HRMS-NFR-013 (audit log) | §4.2, §7.3 |
 | HRMS-BR-005 (only authorised HR modify master records) | §4.2 |
