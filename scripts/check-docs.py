@@ -42,15 +42,38 @@ def word(text, pattern):
     return WORDS.get(m.group(1).lower()) if m else None
 
 
+def check_version(text):
+    """The header must carry the version the revision history's last row issues.
+
+    v1.3's history row landed while the header still said 1.2, and nothing
+    here noticed: a superseded plan that says it is current.
+    """
+    header = re.search(r"^\| Version \| ([\d.]+) \|", text, re.M)
+    rows = re.findall(r"^\| John Kessie \|.*\| ([\d.]+) \|\s*$", text, re.M)
+    if not header or not rows:
+        return ["  cannot read the version header or the revision history"]
+    if header.group(1) != rows[-1]:
+        return [f"  header says v{header.group(1)}; the revision history issues v{rows[-1]}"]
+    return None
+
+
 def check_milestones(text):
-    """§5.2: every 'Working day N' must resolve to the date its own row states."""
-    bad = []
+    """§5.2: every 'Working day N' must resolve to the date its own row states.
+
+    M1 to M7 must all parse. Validating only the rows that happen to match
+    lets a renamed or malformed row pass by being invisible.
+    """
+    bad, seen = [], set()
     for name, iso, n in re.findall(
-        r"^\| (M\d+) \|[^|]*\| (\d{4}-\d{2}-\d{2})[^|]*\| Working day (\d+)", text, re.M
+        r"^\| (M\d+) \|[^|]*\| (\d{4}-\d{2}-\d{2})[^|]*\| Working day (\d+)", section(text, "5.2"), re.M
     ):
+        seen.add(name)
         want = workday(int(n))
         if want.isoformat() != iso:
             bad.append(f"  §5.2 {name}: states {iso}, working day {n} is {want}")
+    missing = [f"M{i}" for i in range(1, 8) if f"M{i}" not in seen]
+    if missing:
+        bad.append(f"  §5.2: no parseable row for {', '.join(missing)}")
     return bad or None
 
 
@@ -171,7 +194,7 @@ def selfcheck():
 if __name__ == "__main__":
     selfcheck()
     plan = (DOCS / "02-project-plan.md").read_text()
-    fails = [line for check in (check_milestones, check_tbds, check_srs_version,
+    fails = [line for check in (check_version, check_milestones, check_tbds, check_srs_version,
                            check_module_refs, check_tbd_deadlines)
              for line in (check(plan) or [])]
     print("\n".join(fails) if fails else "docs consistent")
