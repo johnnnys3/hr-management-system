@@ -46,8 +46,7 @@ The project owner, and any developer, reviewer, or examiner who needs to know th
 
 | Document | Content |
 |---|---|
-| `docs/01-srs.md` | Software Requirements Specification v1.0. Authoritative |
-| `docs/01-srs.pdf` | Rendering of the SRS at v1.0, for distribution. Not authoritative |
+| `docs/01-srs.md` | Software Requirements Specification v1.1. Authoritative |
 | `CONTEXT.md` | Domain glossary, design constraints, scope boundary |
 | `docs/03-tech-stack.md` | Technology selection |
 | `docs/07-iam-rbac.md` | IAM and role-based access control design |
@@ -456,7 +455,7 @@ The SRS is authoritative. This plan does not amend it and cannot.
 - A change to *when work happens* is a revision of this document, recorded in the Revision History.
 - Work is tracked as GitHub issues per `docs/agents/issue-tracker.md`.
 
-Where a document and the SRS disagree, the SRS governs and the document is wrong. Where `docs/01-srs.md` and `docs/01-srs.pdf` disagree, the Markdown governs.
+Where a document and the SRS disagree, the SRS governs and the document is wrong.
 
 ---
 

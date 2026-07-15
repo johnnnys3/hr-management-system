@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.5 |
+| Version | 1.6 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -20,6 +20,7 @@
 | John Kessie | 2026-07-15 | §7.3 proxy-account route re-recorded as open. The prior entry claimed it closed by the privileged-grant constraint; that constraint distinguishes identities, not parties, and SRS §2.3.1 places the designated approver's account within the System Administrator's scope, so the requester can authenticate as the approver. The proxy route and the credential-reset route are one residual, and the design no longer claims otherwise. The enforcement boundary of both constraints is stated. §8 `iam.approve_role_grant` and credential-reset items qualified accordingly | 1.3 |
 | John Kessie | 2026-07-15 | §7.3 wording corrected on review. The privileged-grant constraint is restated as separating authenticated *identities* rather than *parties*, which the same section's enforcement boundary already established but which one sentence still contradicted. The Django audit-permission row is restated to say that `is_superuser` bypasses `has_perm()` without consulting a permission, so the row constrains ordinary users only; the guarantee remains the PostgreSQL grant | 1.4 |
 | John Kessie | 2026-07-15 | Re-based on SRS v1.1, in which HRMS-NFR-024 is a *shall*. §7.3: the credential-reset route is recorded as **closed** — a second factor the account-administering role can neither enrol nor reset means a password reset no longer yields authentication as a payroll user. The proxy-account route is **not** closed with it; the two remain one residual, now narrowed to a single opening — a credential reset against an approver outside HRMS-NFR-024's scope — and reduced from a property of the design to a deployment condition on the `iam.approve_role_grant` holder. The enforcement boundary is restated: the privileged-grant constraint separates *parties* rather than *identities* exactly where the approver holds a second factor. What HRMS-NFR-024 does not reach is stated: break-glass custody, the operational ceiling, and the roles the requirement covers. §8: the credential-reset item is resolved; the approver holder item gains the scope condition; the coverage of "administrators and payroll users" and the enrolment and recovery approver are recorded as new open items. §1.4 and §9 updated | 1.5 |
+| John Kessie | 2026-07-15 | §1.4: the `docs/01-srs.pdf` row is removed. The rendering was stale against SRS v1.1 and has been deleted from the repository on the project owner's decision; a related-documents table may not point at a file that does not exist. No design content changes | 1.6 |
 
 ---
 
@@ -44,7 +45,6 @@ This document covers authorisation. Authentication mechanism is recorded in ADR-
 | Document | Content |
 |---|---|
 | `docs/01-srs.md` | Software Requirements Specification v1.1. Authoritative |
-| `docs/01-srs.pdf` | Rendering of the SRS at v1.0, for distribution. Not authoritative, and now stale: it predates the v1.1 revision |
 | `docs/03-tech-stack.md` | Technology selection |
 | `CONTEXT.md` | Domain glossary |
 | ADR-0004 | Session cookie authentication |
