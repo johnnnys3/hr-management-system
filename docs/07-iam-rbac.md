@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.4 |
+| Version | 1.5 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -19,6 +19,7 @@
 | John Kessie | 2026-07-15 | §7.3 audit immutability re-based from a Django permission to a PostgreSQL grant. The prior guarantee — that no role holds update or delete permission on audit records — did not bind the §7.2 break-glass account, which holds no role and bypasses `has_perm()` entirely. The application's database role now holds `INSERT` and `SELECT` only. The operational ceiling above that grant is stated, and an off-host audit sink is recorded in §8 against TBD-003 | 1.2 |
 | John Kessie | 2026-07-15 | §7.3 proxy-account route re-recorded as open. The prior entry claimed it closed by the privileged-grant constraint; that constraint distinguishes identities, not parties, and SRS §2.3.1 places the designated approver's account within the System Administrator's scope, so the requester can authenticate as the approver. The proxy route and the credential-reset route are one residual, and the design no longer claims otherwise. The enforcement boundary of both constraints is stated. §8 `iam.approve_role_grant` and credential-reset items qualified accordingly | 1.3 |
 | John Kessie | 2026-07-15 | §7.3 wording corrected on review. The privileged-grant constraint is restated as separating authenticated *identities* rather than *parties*, which the same section's enforcement boundary already established but which one sentence still contradicted. The Django audit-permission row is restated to say that `is_superuser` bypasses `has_perm()` without consulting a permission, so the row constrains ordinary users only; the guarantee remains the PostgreSQL grant | 1.4 |
+| John Kessie | 2026-07-15 | Re-based on SRS v1.1, in which HRMS-NFR-024 is a *shall*. §7.3: the credential-reset route is recorded as **closed** — a second factor the account-administering role can neither enrol nor reset means a password reset no longer yields authentication as a payroll user. The proxy-account route is **not** closed with it; the two remain one residual, now narrowed to a single opening — a credential reset against an approver outside HRMS-NFR-024's scope — and reduced from a property of the design to a deployment condition on the `iam.approve_role_grant` holder. The enforcement boundary is restated: the privileged-grant constraint separates *parties* rather than *identities* exactly where the approver holds a second factor. What HRMS-NFR-024 does not reach is stated: break-glass custody, the operational ceiling, and the roles the requirement covers. §8: the credential-reset item is resolved; the approver holder item gains the scope condition; the coverage of "administrators and payroll users" and the enrolment and recovery approver are recorded as new open items. §1.4 and §9 updated | 1.5 |
 
 ---
 
@@ -42,8 +43,8 @@ This document covers authorisation. Authentication mechanism is recorded in ADR-
 
 | Document | Content |
 |---|---|
-| `docs/01-srs.md` | Software Requirements Specification v1.0. Authoritative |
-| `docs/01-srs.pdf` | Rendering of the SRS at v1.0, for distribution. Not authoritative |
+| `docs/01-srs.md` | Software Requirements Specification v1.1. Authoritative |
+| `docs/01-srs.pdf` | Rendering of the SRS at v1.0, for distribution. Not authoritative, and now stale: it predates the v1.1 revision |
 | `docs/03-tech-stack.md` | Technology selection |
 | `CONTEXT.md` | Domain glossary |
 | ADR-0004 | Session cookie authentication |
@@ -274,7 +275,7 @@ Row-level scoping (§5) is application code and is not bypassed by the flag, so 
 
 `is_superuser` is reserved for a **break-glass account**: not used for routine administration, credentials held under separate control, use logged and reviewed.
 
-### 7.3 Escalation: Self-Grant Is Prevented, the Residual Is Detected
+### 7.3 Escalation: Self-Grant Is Prevented, the Residual Is a Deployment Condition
 
 A System Administrator manages roles. Unconstrained, the role could therefore grant itself Payroll Officer and reach payroll data at will, which **HRMS-NFR-019 forbids as a *shall***. §7.2 closes the `is_superuser` route to the same outcome. This section closes the grant route.
 
@@ -293,12 +294,16 @@ A System Administrator manages roles. Unconstrained, the role could therefore gr
 
 | Route | Position |
 |---|---|
-| **Proxy account.** A System Administrator creates an account and grants it Payroll Officer | **Open, by way of the row below.** Account creation alone confers no payroll access, and the grant still needs an approver who is not the requester. But that constraint holds only where the approver's identity is outside the requester's control. SRS §2.3.1 places *every* account in this role's scope, the designated approver's included, so the requester can reset the approver's credentials and approve its own request. An earlier version of this design recorded this route as closed by the second constraint; it is not |
-| **Credential reset.** A System Administrator resets an existing Payroll Officer's credentials and authenticates as them | **Open. Detected, not prevented.** SRS §2.3.1 places user accounts in this role's scope, so the route is within the role as the SRS defines it. It changes no role membership, so no grant approval is triggered. HRMS-NFR-022 logs the record change and the login; nothing blocks it |
+| **Proxy account.** A System Administrator creates an account and grants it Payroll Officer | **Open where the approver holds no second factor.** Account creation alone confers no payroll access, and the grant still needs an approver who is not the requester. SRS §2.3.1 places *every* account in this role's scope, so that constraint holds only where the approver's identity is outside the requester's control. HRMS-NFR-024 places it outside that control **where the approver is within the requirement's scope** — administrators and payroll users. Where the designated approver is not, the requester can still reset the approver's credentials and approve its own request. See the deployment condition below |
+| **Credential reset.** A System Administrator resets an existing Payroll Officer's credentials and authenticates as them | **Closed by HRMS-NFR-024.** The requirement is a *shall* as of SRS v1.1: payroll users authenticate with a second factor, and no role administering accounts or credentials may enrol, reset, disable, or bypass it. A password reset does not restore access to the account. The reset remains logged under HRMS-NFR-022, now as a detected failure rather than a successful route |
 
-**Where the enforcement boundary lies.** Both constraints sit on the assigned-role grant path in application code, and both are evaluated against the identities as **authenticated**. The system can establish that requester, subject, and approver are distinct identities. It cannot establish that they are distinct parties, because the party that administers credentials can present as any of them. The two rows above are one residual, not two: the second constraint requires a second *identity*, and it acquires the force of a second *party* only when credential administration is separated from role administration. That separation is not available to this design.
+**Where the enforcement boundary lies.** Both constraints sit on the assigned-role grant path in application code, and both are evaluated against the identities as **authenticated**. The system can establish that requester, subject, and approver are distinct identities. Whether they are distinct *parties* turns on whether the party administering credentials can present as any of them — which, before SRS v1.1, it always could.
 
-The credential-reset route cannot be closed by this design. Closing it needs either a second factor bound to payroll users — HRMS-NFR-024 asks only that MFA be *considered*, so it is not currently required — or the removal of credential administration from the System Administrator, which contradicts SRS §2.3.1. Both are SRS questions. Recorded in §8.
+HRMS-NFR-024 severs that, but only for the accounts it covers. A second factor the account-administering role can neither enrol nor reset means that role cannot authenticate as the account holder, whatever it does to their password. The §7.3 privileged-grant constraint therefore acquires the force of a second *party* **exactly where the approver is within HRMS-NFR-024's scope**, and retains only the force of a second *identity* where the approver is outside it.
+
+The two rows above remain **one residual, not two.** What survives is a single opening: a credential reset against an approver whom HRMS-NFR-024 does not cover. It is no longer a property of the design that cannot be closed — it is a **deployment condition**: the holder of `iam.approve_role_grant` must be an account within HRMS-NFR-024's scope. Recorded in §8.
+
+**What HRMS-NFR-024 does not reach.** It binds authentication. It does not bind the break-glass account of §7.2, whose control is custody rather than authentication, and whose procedure remains open in §8. It does not touch the operational ceiling below — a party holding database owner, host, or backup credentials reaches payroll data without authenticating at all. The requirement also does not name the roles it covers: "administrators and payroll users" is the SRS's phrasing, and System Administrator and Payroll Officer fall within it unambiguously, but whether HR Administrator or Executive does is not settled by the SRS. That bears directly on the deployment condition above and is recorded in §8.
 
 **Detection, for what the constraints do not reach.** HRMS-NFR-022 requires permission changes to be logged. Refused self-grants, privileged grant requests, approvals, and credential resets on accounts holding a privileged role are each recorded with actor, target, role, and timestamp, and are reportable events.
 
@@ -335,9 +340,11 @@ Log retention and review cadence depend on the operating organisation and remain
 | Manager visibility depth | **Resolved** (§5). Direct reports only; no transitive chain visibility |
 | TBD-009 — document retention policy | **Open.** Bears on §7.3 audit log retention |
 | Off-host audit sink | **Open, tied to TBD-003.** §7.3 enforces audit immutability by database grant, which binds the application and the break-glass account but not a holder of database owner, host, or backup credentials. Shipping audit events off-host to storage the deployment cannot rewrite closes that ceiling and cannot be specified until the hosting target is (ADR-0009) |
-| `iam.approve_role_grant` holder | **Deferred to deployment** (§7.3), not a design-time choice, on the same reasoning as §4.4. The permission is granted to no role by default and **must not be granted to a System Administrator** — doing so reduces the §7.3 control to detection. Withholding it does not raise the control above detection either while credential reset remains open: the holder must additionally be an account the System Administrator cannot authenticate as, which SRS §2.3.1 does not currently permit. Requires an operating organisation (TBD-001) |
+| `iam.approve_role_grant` holder | **Deferred to deployment** (§7.3), not a design-time choice, on the same reasoning as §4.4. The permission is granted to no role by default and **must not be granted to a System Administrator** — doing so reduces the §7.3 control to detection. It must additionally be held by an account within HRMS-NFR-024's scope, since a holder without a second factor is one the System Administrator can authenticate as, leaving the proxy route of §7.3 open. SRS v1.1 makes that condition satisfiable, where SRS v1.0 did not. Requires an operating organisation (TBD-001) |
+| Which roles HRMS-NFR-024 covers | **Open.** The requirement is a *shall* over "administrators and payroll users". System Administrator and Payroll Officer are within it; whether HR Administrator or Executive is, the SRS does not say. This is not academic: §7.3's remaining residual closes only if the designated `iam.approve_role_grant` holder is within scope, so the answer determines which roles may hold it. An SRS clarification |
+| Second-factor enrolment and recovery approver | **Deferred to deployment.** HRMS-NFR-024 requires that enrolment and recovery of a second factor be approved by a user who does not administer user accounts or credentials. Who that is, is an organisational designation of the same shape as §4.4 and the row above, and requires an operating organisation (TBD-001). Until designated, no recovery path exists for a lost second factor on a privileged account — which is the correct failure mode, but an operational one |
 | Break-glass account procedure | **Open.** §7.2 reserves `is_superuser` for break-glass but no operational procedure exists for credential custody, invocation, or review. Not writable without an operating organisation (TBD-001) |
-| Credential reset as a route to payroll data | **Open. Requires an SRS decision, not a design decision** (§7.3). SRS §2.3.1 places user accounts within the System Administrator's scope, so the role can reset a Payroll Officer's credentials and authenticate as them. It is also what bounds the §7.3 privileged-grant constraint, which requires a second identity and can only require a second party once this is closed. Closing it requires either MFA bound to payroll users — HRMS-NFR-024 asks only that it be *considered*, which does not bind — or narrowing §2.3.1. Both are SRS revisions. Referred to the project owner |
+| Credential reset as a route to payroll data | **Resolved by SRS v1.1** (§7.3). HRMS-NFR-024 is now a *shall*: administrators and payroll users authenticate with a second factor that no account-administering role may enrol, reset, disable, or bypass. A System Administrator can still reset a Payroll Officer's password — SRS §2.3.1 is unchanged — but can no longer authenticate as them. The §7.3 privileged-grant constraint now separates parties, not merely identities, for every account within HRMS-NFR-024's scope. What remains is not this item but the two rows above: which roles the requirement covers, and the deployment condition on the approver |
 | Delegation of manager authority | **Out of scope.** Not in the SRS. See §3.3 |
 | Role grant configuration at deployment | **Deferred to deployment**, by design. Which users hold which assigned roles, and who holds `payroll.approve_payroll_run`, are organisational decisions requiring an operating organisation (TBD-001) |
 
@@ -352,6 +359,7 @@ Log retention and review cadence depend on the operating organisation and remain
 | HRMS-NFR-017 (employees access own records) | §4.2, §5 |
 | HRMS-NFR-018 (managers access assigned team) | §4.2, §5 |
 | HRMS-NFR-019 (payroll data restricted) | §4.2, §4.3, §5, §7.1, §7.2, §7.3 |
+| HRMS-NFR-024 (MFA for administrators and payroll users) | §7.3 |
 | HRMS-NFR-022 (log permission changes) | §2.3, §6.1, §7.3 |
 | HRMS-NFR-013 (audit log) | §4.2, §7.3 |
 | HRMS-BR-005 (only authorised HR modify master records) | §4.2 |

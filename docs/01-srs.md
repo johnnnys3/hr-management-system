@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date Created | May 2026 |
@@ -14,6 +14,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | May 2026 | Initial SRS document for HRMS | 1.0 |
+| John Kessie | 2026-07-15 | HRMS-NFR-024 promoted from a recommendation to a *shall*: multi-factor authentication is mandatory for administrators and payroll users, and the second factor is placed outside the control of the roles that administer accounts and credentials, including at enrollment and recovery. This closes the gap against HRMS-NFR-019, a *shall*, which was unenforceable while a System Administrator could reset a payroll user's credentials under §2.3.1 and authenticate as them. HRMS-FR-051 deferred to later versions on the pattern of HRMS-FR-055, the training data its condition presupposed being excluded by §6.4; §2.2 and §4.5 reconciled. Equity mentions removed from §2.2 and §4.6, no functional requirement having covered them. HRMS-NFR-001 to HRMS-NFR-006 restated as measurable thresholds at the upper bound of each stated range, at the 95th percentile, over a stated measurement window, at a workload pinned to 200 concurrent users; the data volumes they are verified against are recorded as TBD-016 and HRMS-NFR-005's threshold as TBD-017, neither being stated in this document. §2.2 predictive attrition analytics marked deferred, aligning the summary with HRMS-FR-055. No requirement other than HRMS-NFR-024 changes modality, and no scope is added or removed | 1.1 |
 
 ---
 
@@ -189,16 +190,14 @@ The system will be developed in phases to reduce implementation risk and allow t
 
 - Provide headcount dashboards.
 - Provide turnover reports.
-- Provide training completion reports.
 - Provide payroll cost reports.
-- Support predictive analytics on attrition risk where data is available.
+- Support predictive analytics on attrition risk in later versions where enough historical data exists (deferred; see HRMS-FR-055).
 
 **Compensation and Benefits**
 
 - Manage salary structures.
 - Manage pay grades.
 - Manage bonus cycles.
-- Manage equity where applicable.
 - Manage benefits enrollment.
 
 **Leave Management**
@@ -550,7 +549,7 @@ HRMS-FR-048: The system shall maintain payroll history.
 
 #### 4.5 Description and Priority
 
-Reporting and Analytics provides dashboards on headcount, turnover, training completion, payroll costs, and predictive analytics on attrition risk.
+Reporting and Analytics provides dashboards on headcount, turnover, and payroll costs. Training completion reporting (HRMS-FR-051) and predictive analytics on attrition risk (HRMS-FR-055) are deferred to later versions and are not delivered by this module in the first version.
 
 Priority: Medium
 
@@ -564,7 +563,7 @@ HRMS-FR-049: The system shall provide headcount dashboards.
 
 HRMS-FR-050: The system shall provide turnover reports.
 
-HRMS-FR-051: The system shall provide training completion reports where training data exists.
+HRMS-FR-051: The system shall support training completion reports in later versions where a source of training data exists.
 
 HRMS-FR-052: The system shall provide payroll cost reports.
 
@@ -578,7 +577,7 @@ HRMS-FR-055: The system shall support predictive attrition analytics in later ve
 
 #### 4.6 Description and Priority
 
-Compensation and Benefits manages salary structures, pay grades, bonus cycles, equity, and benefits enrollment such as health insurance and allowances.
+Compensation and Benefits manages salary structures, pay grades, bonus cycles, and benefits enrollment such as health insurance and allowances.
 
 Priority: Medium
 
@@ -641,17 +640,21 @@ HRMS-FR-071: The system shall provide a leave calendar for HR and managers.
 
 ### 5.1 Performance Requirements
 
-HRMS-NFR-001: The system shall load common pages within 2 to 4 seconds under normal network conditions.
+HRMS-NFR-001 to HRMS-NFR-004 state response times at the 95th percentile of requests, measured at the application server boundary and therefore excluding client network transit, over a rolling 60-minute measurement window, at the concurrent load stated in HRMS-NFR-006. The data volumes against which they are verified are TBD-016.
 
-HRMS-NFR-002: The system shall return standard employee search results within 3 seconds for small to medium datasets.
+HRMS-NFR-005 is not a request response time and the preceding sentence does not govern it. It states the elapsed time of a single payroll run, a background operation whose duration is measured per run rather than as a percentile over a population of requests. It is verified against every run, at the concurrent load stated in HRMS-NFR-006 and the organization size stated in TBD-016.
 
-HRMS-NFR-003: Employee profile pages shall load within 3 seconds under normal conditions.
+HRMS-NFR-001: The system shall load common pages within 4 seconds at the 95th percentile.
 
-HRMS-NFR-004: Reports should load within 5 to 10 seconds depending on report size.
+HRMS-NFR-002: The system shall return standard employee search results within 3 seconds at the 95th percentile, over the employee record volume stated in TBD-016.
 
-HRMS-NFR-005: Payroll processing for small to medium organizations should complete within a few minutes.
+HRMS-NFR-003: Employee profile pages shall load within 3 seconds at the 95th percentile.
 
-HRMS-NFR-006: The system should support 50 to 200 concurrent users in the first version.
+HRMS-NFR-004: Reports should load within 10 seconds at the 95th percentile, over the data volume stated in TBD-016.
+
+HRMS-NFR-005: Payroll processing should complete within the elapsed time stated in TBD-017, measured from submission of a payroll run to availability of its payslips and bank transfer file, for the organization size stated in TBD-016.
+
+HRMS-NFR-006: The system should support 200 concurrent users in the first version, sustaining HRMS-NFR-001 to HRMS-NFR-005 at that load.
 
 HRMS-NFR-007: File uploads should support PDF, JPG, PNG, and DOCX formats.
 
@@ -691,7 +694,7 @@ HRMS-NFR-022: The system shall log login attempts, record changes, payroll actio
 
 HRMS-NFR-023: Sessions shall expire after a defined period of inactivity.
 
-HRMS-NFR-024: Multi-factor authentication should be considered for administrators and payroll users.
+HRMS-NFR-024: The system shall require multi-factor authentication for administrators and payroll users on every authentication. The second factor shall be bound to the individual account holder and shall not be enrolled, reset, disabled, or bypassed by any role that administers user accounts, credentials, roles, or permissions. Enrollment shall be performed by the account holder, and recovery of a lost or unavailable second factor shall require approval by a user who does not administer user accounts or credentials; resetting an account's password shall not by itself restore access to an account whose second factor is enrolled. Second-factor enrollment, recovery, disablement, and failed presentation shall be logged.
 
 ### 5.4 Software Quality Attributes
 
@@ -921,3 +924,5 @@ Executive -> Dashboards and High-Level Reports
 | TBD-013 | Whether biometric attendance integration will be added later |
 | TBD-014 | Reporting dashboard KPIs |
 | TBD-015 | Data migration approach |
+| TBD-016 | Organization size and data volumes against which HRMS-NFR-001 to HRMS-NFR-005 are verified: employee record count, payroll history volume, and document storage volume. Depends on TBD-001 |
+| TBD-017 | Payroll processing elapsed time threshold for HRMS-NFR-005. Depends on TBD-016 |
