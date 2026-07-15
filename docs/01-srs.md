@@ -640,7 +640,9 @@ HRMS-FR-071: The system shall provide a leave calendar for HR and managers.
 
 ### 5.1 Performance Requirements
 
-HRMS-NFR-001 to HRMS-NFR-005 state response times at the 95th percentile of requests, measured at the application server boundary and therefore excluding client network transit, over a rolling 60-minute measurement window, at the concurrent load stated in HRMS-NFR-006. The data volumes against which they are verified are TBD-016.
+HRMS-NFR-001 to HRMS-NFR-004 state response times at the 95th percentile of requests, measured at the application server boundary and therefore excluding client network transit, over a rolling 60-minute measurement window, at the concurrent load stated in HRMS-NFR-006. The data volumes against which they are verified are TBD-016.
+
+HRMS-NFR-005 is not a request response time and the preceding sentence does not govern it. It states the elapsed time of a single payroll run, a background operation whose duration is measured per run rather than as a percentile over a population of requests. It is verified against every run, at the concurrent load stated in HRMS-NFR-006 and the organization size stated in TBD-016.
 
 HRMS-NFR-001: The system shall load common pages within 4 seconds at the 95th percentile.
 
