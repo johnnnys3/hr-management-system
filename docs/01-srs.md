@@ -691,7 +691,7 @@ HRMS-NFR-022: The system shall log login attempts, record changes, payroll actio
 
 HRMS-NFR-023: Sessions shall expire after a defined period of inactivity.
 
-HRMS-NFR-024: Multi-factor authentication should be considered for administrators and payroll users.
+HRMS-NFR-024: The system shall require multi-factor authentication for administrators and payroll users on every authentication. The second factor shall be bound to the individual account holder and shall not be enrolled, reset, disabled, or bypassed by any role that administers user accounts, credentials, roles, or permissions. Enrolment shall be performed by the account holder, and recovery of a lost or unavailable second factor shall require approval by a user who does not administer user accounts or credentials; resetting an account's password shall not by itself restore access to an account whose second factor is enrolled. Second-factor enrolment, recovery, disablement, and failed presentation shall be logged.
 
 ### 5.4 Software Quality Attributes
 
