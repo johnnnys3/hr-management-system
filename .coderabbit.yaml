@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  auto_review:
+    enabled: true
+    # Feature branches merge into develop, not main. Without this, CodeRabbit
+    # skips every PR in the workflow: auto review only covers the default
+    # branch by default, and the default branch here is main.
+    base_branches:
+      - develop
