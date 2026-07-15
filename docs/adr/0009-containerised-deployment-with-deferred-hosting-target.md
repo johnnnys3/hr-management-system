@@ -10,7 +10,13 @@ Two constraints meet here.
 
 **Technical.** ADR-0004 selects session cookie authentication, which requires the SPA and the API to share an origin. Cross-origin cookie delivery depends on `SameSite=None; Secure` and is increasingly restricted by browser third-party cookie policy. Deployment topology must therefore place both behind one origin.
 
-**Legal, and unresolved.** The system holds personal data of Ghanaian employees. Ghana's Data Protection Act 2012 (Act 843) restricts transfer of personal data outside Ghana unless the destination provides an adequate level of protection. Ghana has published no adequacy list, so transfers require case-by-case assessment or reliance on a statutory exemption. Enforcement commenced in January 2026, with penalties reported up to GHS 3 million or 5% of annual turnover, whichever is higher. Section 27(1) requires data controllers to register with the Data Protection Commission. The Data Protection Bill 2025 proposes a more restrictive position, including a data localisation preference, transfer impact assessments, and Commission approval for high-risk transfers. Sources differ on how strictly the current Act is enforced in practice.
+**Legal, and unresolved.** The system holds personal data of Ghanaian employees. Ghana's Data Protection Act 2012 (Act 843) restricts transfer of personal data outside Ghana unless the destination provides an adequate level of protection. Ghana has published no adequacy list, so transfers require case-by-case assessment or reliance on a statutory exemption. Section 27(1) requires data controllers to register with the Data Protection Commission.
+
+Act 843 expresses its penalties in **penalty units**, valued under the Fines (Penalty Units) Act 2000 (Act 572) — not as a monetary ceiling and not as a proportion of turnover. An earlier version of this record stated exposure "up to GHS 3 million or 5% of annual turnover, whichever is higher". That is not the shape of Act 843's penalty provisions, and the figure is withdrawn as unsupported rather than restated at a different magnitude. Reports that the Commission opened an enforcement drive during 2026 are secondary and uncorroborated here; they are recorded as reported, not as established.
+
+**The magnitude of the penalty is not load-bearing.** This decision defers the hosting target because the residency question is unresolved and cannot be resolved by this project — not because any particular sanction was quantified. The deferral would stand unchanged if the penalty were larger or smaller, and the decision rule below turns on counsel's confirmation rather than on exposure. A specific figure would add apparent precision to a record whose whole point is that the position is unknown, and would invite the reader to weigh a number this project cannot source.
+
+The Data Protection Bill 2025 is reported to propose a more restrictive position, including a data localisation preference, transfer impact assessments, and Commission approval for high-risk transfers. Its status is not confirmed here. Sources differ on how strictly the current Act is enforced in practice.
 
 This is a legal question, not an engineering one. SRS §6.3 already provides the correct disposition: legal and regulatory requirements shall be confirmed with qualified HR, legal, payroll, and finance professionals before go-live.
 
@@ -52,7 +58,9 @@ Until all three are satisfied, no hosting commitment is made and none is implied
 
 **Rejected alternative**
 
-- *Platform-as-a-service.* Faster to stand up, but binds the deployment to a provider, complicates the single-origin requirement, and locates personal data outside Ghana — pre-empting precisely the question this decision keeps open.
+- *Platform-as-a-service.* Faster to stand up, but binds the deployment to a provider and complicates the single-origin requirement.
+
+  On residency, the objection is to the providers actually in view, not to the model. The mainstream PaaS offerings a project of this size would reach for operate no region in Ghana, so adopting one would in fact locate personal data outside Ghana and pre-empt precisely the question this decision keeps open. That is a fact about those providers and their regions, not a property of platform-as-a-service: a provider hosting in-country, or an in-country provider offering a comparable platform, would not be excluded on this ground. Whether one exists on acceptable terms is part of resolving TBD-003, and is a question for the point at which there is a controller to ask it. Region availability changes; a provider is therefore assessed against the decision rule above at the time of the decision, and not against this record's snapshot of the market.
 
 ## Standing caveat
 
