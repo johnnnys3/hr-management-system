@@ -81,9 +81,9 @@ Primary sources only. Every claim below is cited to the instrument that owns it,
 The obligation is stated three times, in three places, and is unconditional in all three.
 
 > **s.27(1)** "A data controller who intends to process personal data shall register with the Commission."
-
+>
 > **s.46(3)** "A data controller shall register with the Commission."
-
+>
 > **s.53** "A data controller who has not been registered under this Act shall not process personal data."
 
 A **data controller** is defined at s.96 as "a person who either alone, jointly with other persons or in common with other persons or as a statutory duty determines the purposes for and the manner in which personal data is processed or is to be processed". An organisation running this HRMS over its own employees' records would determine both the purposes and the manner, and so would fall within that definition on its face.
@@ -230,18 +230,18 @@ The Act imposes no condition *of the form* "you may host abroad if X". What it d
 
 ### 4.5 The Data Protection Bill, 2025 — and why it points the other way
 
-**Status:** the Bill is **not law** and, as at the access date, has **not been introduced in Parliament**. It was published for public consultation by the Ministry of Communication, Digital Technology and Innovations in October–November 2025 (S4). The Minister stated in March 2026 that the government is still *developing* it for introduction (S5 — secondary, used only for status). It would repeal and replace Act 843 in its entirety.
+**Status:** the Bill is **not law**. It was published for public consultation by the Ministry of Communication, Digital Technology and Innovations in October–November 2025 (S4). The Minister stated in March 2026 that the government is still *developing* it for introduction (S5 — secondary, used only for status). **Its parliamentary status as at the access date is unverified here.** S5 supports the government's position on 2026-03-02 and no later source was consulted, so this brief records introduction as unchecked rather than as not having occurred; an earlier draft asserted the latter on S5's authority, which S5 does not carry. It would repeal and replace Act 843 in its entirety.
 
 ADR-0009 records the Bill as "reported to propose a more restrictive position, including a data localisation preference, transfer impact assessments, and Commission approval for high-risk transfers", and marks its contents "as reported rather than as established". **The draft text is available from the DPC and confirms all three limbs of that report.** ADR-0009 was right to hedge, and this brief upgrades the source from report to draft text — while noting that a draft is not an enactment and its clauses may not survive.
 
 Quoting the draft (S4), and noting the drafting is rough in places:
 
 > **cl. 96(1)** "Notwithstanding the opportunity to under a cross-border transfer personal data under subsection (3), a data controller shall **make reasonable efforts to localise data provided that data localisation does not impair its business or operations**."
-
+>
 > **cl. 96(2)** "There shall be **no requirement for a data controller to localise personal data unless**: (a) the personal data is critical to national defence, security and intelligence of the country; or (b) the personal data concern national identity ID systems and civil registration systems including voter databases (c) the personal data concerns **children's data, biometric data, health records and genetic data**."
-
+>
 > **cl. 96(4)** "A data controller shall transfer personal data outside Ghana **only if** the following conditions are met: (a) **the data subject has provided written, free, explicit and informed consent** to the proposed transfer after being informed of the possible risks involved; and (b) \[the transfer is necessary for a contract, legal claims, or vital interests…\]; and (c) **the transfer is authorised by the Authority where it involves large-scale data**, and in all cases, following an assessment that adequate safeguards… are in place, including appropriate contractual clauses and binding corporate rules or other mechanisms approved by the Authority."
-
+>
 > **cl. 97(4)** "A data controller that processes large-scale data where a data processing activity is likely to pose real risk to the rights and freedoms of a data subject, shall conduct a **Transfer Impact Assessment** on all data transfers in or outside the jurisdiction subject to the approval of the Authority."
 
 **Three observations, each of which is a question rather than a conclusion:**
@@ -268,9 +268,9 @@ Provisions bearing directly on an HRMS:
 ### 5.2 What the Act says: security (s.28) — and its relation to HRMS-NFR-020
 
 > **s.28(1)** "A data controller shall take the necessary steps to secure the integrity of personal data in the possession or control of a person through the adoption of **appropriate, reasonable, technical and organisational measures** to prevent (a) loss of, damage to, or unauthorised destruction; and (b) unlawful access to or unauthorised processing of personal data."
-
+>
 > **s.28(2)** "To give effect to subsection (1), the data controller shall take reasonable measures to (a) identify reasonably foreseeable internal and external risks…; (b) establish and maintain appropriate safeguards against the identified risks; (c) **regularly verify that the safeguards are effectively implemented**; and (d) ensure that the safeguards are **continually updated** in response to new risks or deficiencies."
-
+>
 > **s.28(3)** "A data controller shall observe (a) **generally accepted information security practices and procedure**, and (b) **specific industry or professional rules and regulations**."
 
 **The standard is outcome-based and open-textured.** s.28 names no technology, no algorithm, no key length, and no protocol. It does not mention encryption, transport security, or HTTPS. **The Act therefore does not, on its own terms, mandate HRMS-NFR-020** (HTTPS in production) or any other specific control; what it does is make s.28(3)(a) — "generally accepted information security practices and procedure" — the route by which prevailing practice is incorporated by reference. Whether HRMS-NFR-020, HRMS-NFR-012, and the controls in `docs/07-iam-rbac.md` satisfy s.28 for this system is a judgement about what is "appropriate" and "reasonable" and about what is "generally accepted" — not a conformance check against a list, because the Act supplies no list.
@@ -301,11 +301,11 @@ Key features, all on the face of the section:
 **This is the part of the Act that bears on TBD-009, and it does not close it.**
 
 > **s.24(1)** "Subject to subsections (2) and (3), a data controller who records personal data **shall not retain the personal data for a period longer than is necessary to achieve the purpose for which the data was collected and processed** unless (a) the retention of the record is **required or authorised by law**, (b) the retention of the record is reasonably necessary for a lawful purpose related to a function or activity, (c) retention of the record is required by virtue of a **contract** between the parties to the contract, or (d) the **data subject consents** to the retention of the record."
-
+>
 > **s.24(4)** "A person who **uses a record of the personal data of a data subject to make a decision about the data subject** shall (a) retain the record for a period **required or prescribed by law or a code of conduct**, or (b) where there is no law or code of conduct that provides for the retention period, retain the record for a period which will **afford the data subject an opportunity to request access to the record**."
-
+>
 > **s.24(5)** "A data controller shall **destroy or delete** a record of personal data **or de-identify** the record at the expiry of the retention period."
-
+>
 > **s.24(6)** "The destruction or deletion of a record of personal data shall be done in a manner that **prevents its reconstruction in an intelligible form**."
 
 s.24(2)–(3) except records retained for historical, statistical, or research purposes, subject to adequate protection against unauthorised access or use.
@@ -353,7 +353,7 @@ which, read with s.37(2)(a) — a controller may process special personal data w
 **The Act answers this squarely, and the answer is no — with a short fuse once business begins.**
 
 > **s.97(1)** "A data controller **incorporated or established after the commencement of this Act** shall be required to register as a data controller **within twenty days of the commencement of business**."
-
+>
 > **s.97(2)** "A data controller **in existence at the commencement of this Act** shall be required to register as a data controller within three months after the commencement of this Act."
 
 s.97(1) is the applicable limb: any organisation that comes into existence for this HRMS would be incorporated or established long after Act 843's commencement. **The obligation is keyed to two events, and neither has occurred:**
@@ -361,11 +361,11 @@ s.97(1) is the applicable limb: any organisation that comes into existence for t
 1. **Being incorporated or established** — TBD-001 records that no organisation exists.
 2. **Commencement of business** — which cannot precede (1).
 
-The trigger at s.27(1) is likewise a **data controller** who "intends to process personal data". s.96 defines a data controller as a **person**. **There is no controller.** There is no person who determines the purposes and manner of processing anyone's personal data, because there is no organisation and there is no personal data.
+The trigger at s.27(1) is likewise a **data controller** who "intends to process personal data". s.96 defines a data controller as a **person**. **There is no controller — and it is worth being exact about why, because the obvious reason is the wrong one.** s.96's controller is a **person**, not an organisation. The author is a person, so the non-existence of the organisation excludes nothing; that limb does no work. What excludes him is that there is no personal data whose purposes and manner anyone determines. **The corollary is the one that bears on the next stage: the moment real employee data enters any environment, the author is a controller on this same definition, and no organisation need exist for that to happen.**
 
 The offence at s.56 requires that a person "**fails to register as a data controller but processes personal data**". Both limbs must be satisfied. **Neither is.** `docs/02-project-plan.md` §8.3 records that "No production personal data of any Ghanaian employee is placed in any environment while TBD-003 is open. There is none to place, and this is recorded so that convenience does not later supply some."
 
-**On the facts recorded in the TBD register — no organisation, no controller, no live data — no obligation under Act 843 has attached to anything this project has done or plans to do.** Development against synthetic or fabricated data, by a person who is not a controller, for an organisation that does not exist, does not engage s.27(1), s.53, or s.56 on the face of those sections.
+**On the facts recorded in the TBD register — no live data, and therefore no controller — no obligation under Act 843 has attached to anything this project has done or plans to do.** Development against synthetic or fabricated data does not engage s.27(1), s.53, or s.56 on the face of those sections. **The load-bearing fact is the data, not the missing organisation.** §8.3's undertaking that no production personal data is placed in any environment while TBD-003 is open is what holds this conclusion up — and it is an undertaking, which can be broken by a convenient CSV, not a fact about the world that holds itself.
 
 **ADR-0009's framing is confirmed.** That record states: "There is no controller to register, no counsel to advise, and no production personal data. Selecting a hosting provider today would be precision without basis." **s.97(1) is the statutory basis for that sentence**, and ADR-0009 arrives at the right position without having cited it. This brief supplies the citation.
 
