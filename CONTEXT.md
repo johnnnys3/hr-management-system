@@ -2,7 +2,7 @@
 
 The Human Resource Management System is a web-based platform for managing employee records, recruitment, onboarding, payroll, self-service, leave, compensation, benefits, and HR reporting for a Ghana-based organisation. It replaces manual HR processes: spreadsheets, paper files, email-based approvals, and disconnected payroll records.
 
-The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.md`), at v1.1. Where this document and the SRS disagree, the SRS governs and this document is wrong. `docs/01-srs.pdf` is a rendering of v1.0 retained for distribution; it predates the v1.1 revision. Where the two disagree, the Markdown governs and the PDF is stale.
+The authoritative requirements are in the Software Requirements Specification (`docs/01-srs.md`), at v1.1. Where this document and the SRS disagree, the SRS governs and this document is wrong.
 
 ## Glossary
 
@@ -44,7 +44,9 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **Job requisition** — an approved request to hire. Distinct from **job posting**, which is the published advertisement arising from it.
 
-**Audit log** — the record of sensitive actions (HRMS-NFR-013, HRMS-BR-015): login attempts, record changes, payroll actions, approvals, permission changes (HRMS-NFR-022).
+**Audit log** — the record of sensitive actions (HRMS-NFR-013, HRMS-BR-015): login attempts, record changes, payroll actions, approvals, permission changes (HRMS-NFR-022). One store, named once as a data entity by SRS §6.1.
+
+**Audit history** — not a second store. It is HRMS-FR-010's name for a filtered read of the **audit log** where the target is an employee record, and record changes are one of the five categories above. The two terms are used interchangeably by the SRS and are distinguished here because they read as siblings: a second store would put employee-record changes outside the single database grant on which audit immutability rests (`docs/07-iam-rbac.md` §7.3).
 
 ### Architecture
 
@@ -87,7 +89,6 @@ Mobile is web-first by decision (SRS §2.5, §6.4). This bears on ADR-0004: sess
 ## Related documents
 
 - `docs/01-srs.md` — Software Requirements Specification v1.1. Authoritative.
-- `docs/01-srs.pdf` — rendering of the SRS at v1.0, retained for distribution. Not authoritative, and stale against v1.1.
 - `docs/03-tech-stack.md` — technology selection.
 - `docs/adr/` — architecture decision records.
 - `docs/agents/` — issue tracker and domain documentation conventions.
