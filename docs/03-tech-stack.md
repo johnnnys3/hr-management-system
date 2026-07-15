@@ -211,7 +211,7 @@ Recorded in ADR-0004.
 
 Access control operates at two levels.
 
-**Action-level** access uses Django groups and permissions. Each role maps to a group, governing which operations a user may perform.
+**Action-level** access uses Django groups and permissions. Each **assigned** role maps to a group, governing which operations a user may perform. The two **derived** roles, Employee and Manager, attach from employment and reporting data rather than from a grant, and have no group. Recorded in ADR-0010.
 
 **Row-level** access uses queryset scoping: a visibility rule per module, expressed as a manager method deriving visibility from organisational data. This satisfies HRMS-NFR-017, HRMS-NFR-018, HRMS-NFR-019, HRMS-BR-006, and HRMS-BR-007.
 

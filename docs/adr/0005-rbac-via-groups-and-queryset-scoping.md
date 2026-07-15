@@ -21,7 +21,9 @@ Two approaches to the row-level gap were considered: object-level permission rec
 
 ## Decision
 
-**Action-level access** uses Django's built-in groups and permissions. Each of the seven roles maps to a group.
+**Action-level access** uses Django's built-in groups and permissions. Each **assigned** role maps to a group.
+
+Roles are not one-to-one with the seven user classes above. ADR-0010 reconciles the two and settles the role model: six assigned roles map to groups; the two **derived** roles — Employee and Manager — are computed from employment and reporting data, are never granted, and have no group. Their action-level checks read the same organisational data as their visibility rules, on the reasoning below: a fact already held in the data is not copied into an access-control record.
 
 **Row-level access** uses **queryset scoping**: a visibility rule per module, expressed as a manager method (`Employee.objects.visible_to(user)` and equivalents), deriving visibility from existing organisational data.
 
