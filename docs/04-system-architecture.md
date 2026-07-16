@@ -8,7 +8,7 @@
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
-| Status | Approved |
+| Status | Draft — pending owner acceptance at M2 |
 
 ## Revision History
 
@@ -51,7 +51,7 @@ Out of scope, per `CONTEXT.md` "Scope boundary" and SRS §6.4: biometric and fac
 
 ## 2. Architectural Style
 
-The system is a **modular monolith**: one Django/DRF deployable, divided into one Django application per module of the build order at §4, consumed by a separate React SPA under a single origin (ADR-0001; `docs/03-tech-stack.md` §3). This document's contribution is naming the modules, their boundaries, and the seams between them; the shape of the deployable is ADR-0001's decision, not this one's.
+The system is a **modular monolith**: one Django/DRF deployable, divided into one Django application per application module of the build order at §4 — modules 1 to 17; modules 18 to 20 are process, not application, modules, and own no Django app (see the note at the foot of §4) — consumed by a separate React SPA under a single origin (ADR-0001; `docs/03-tech-stack.md` §3). This document's contribution is naming the modules, their boundaries, and the seams between them; the shape of the deployable is ADR-0001's decision, not this one's.
 
 Two structural rules hold across every module, both inherited from ADR-0005 and applied here rather than chosen here:
 
@@ -103,7 +103,7 @@ The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6
 | # | Module | Consumes | Emits audit (§3.1) | Emits mail / notification (§3.2) | Visibility rule (§3.3) |
 |---|---|---|---|---|---|
 | 1 | Audit | — (see §3.1) | *is* the store | — | System Administrator only (read); no other role |
-| 2 | Mail dispatch | Module 6 (Celery/Redis per ADR-0006) | — | *is* the mail channel | — (no employee-scoped read surface) |
+| 2 | Mail dispatch | — (Celery/Redis broker per ADR-0006; infrastructure, not a module dependency) | — | *is* the mail channel | — (no employee-scoped read surface) |
 | 3 | Authentication | Module 1 (login events), Module 2 (password reset) | Login attempts, second-factor events (HRMS-NFR-024) | Sends via Module 2; consumes nothing from Module 11 | — (pre-identity; sessions are not employee-scoped data) |
 | 4 | RBAC / IAM | Module 1 (permission-change events), Module 3 (authenticated identity) | Role grants, refused self-grants, privileged-grant approvals, credential resets on privileged accounts | Approvers not notified in this release (§3.2) | — (governs the mechanism other modules' rules use) |
 | 5 | Dashboard | Modules 6, 14, 16, 17 (read-only, per role) | — | — | Delegates to the visibility rule of whichever module's data it renders |
@@ -117,7 +117,7 @@ The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6
 | 13 | Manager Self-Service | Module 8 (direct reports), Module 11 (approval tasks) | Approval/rejection decisions | Consumes Module 11 | Manager: direct reports only (HRMS-NFR-018, HRMS-BR-007) |
 | 14 | Leave Management | Module 6 (employee), Module 13 (manager approval) | Leave approval/rejection (HRMS-BR-010, HRMS-BR-011) | Consumes Module 11 for pending-approval and decision notices | Employee: own requests. Manager: direct reports'. HR: all |
 | 15 | Compensation and Benefits | Module 6 (employee identity) | Compensation history changes (HRMS-DR-010: never overwritten) | — | HR Administrator: create/read/update structures. HR Officer: assign, read. Payroll Officer: read |
-| 16 | Payroll | Module 15 (compensation records), Module 2 (payroll communication) | Payroll actions; finalisation approvals (HRMS-BR-008) | Sends via Module 2 | Payroll Officer: all payroll fields. Employee: own payslip only (HRMS-BR-006) |
+| 16 | Payroll | Module 15 (compensation records), Module 2 (payroll communication) | Payroll actions; finalisation approvals, including refused self-approvals — approver must not be the initiator (HRMS-BR-008; `docs/07-iam-rbac.md` §4.4) | Sends via Module 2 | Payroll Officer: all payroll fields. Employee: own payslip only (HRMS-BR-006) |
 | 17 | Reports | Modules 6, 14, 15, 16 (read-only aggregation) | Report exports where they touch payroll cost | — | Per source module's rule; Executive: aggregate only, never an individual record (`docs/07-iam-rbac.md` §4.3) |
 | 18 | Testing | All prior modules | — | — | n/a |
 | 19 | UAT | All prior modules | — | — | n/a |
@@ -129,7 +129,7 @@ Modules 18 to 20 are process, not application modules; they appear in the plan's
 
 ```
 1  Audit               <- (nothing; §3.1)
-2  Mail dispatch       <- 1 (Celery/Redis infra only, not audit data)
+2  Mail dispatch       <- (nothing; sequenced after Audit in build order only — Celery/Redis is ADR-0006 infrastructure, not a module)
 3  Authentication      <- 1, 2
 4  RBAC / IAM          <- 1, 3
 5  Dashboard           <- 6, 14, 16, 17
@@ -209,7 +209,8 @@ This document does not re-derive the non-functional requirements SRS §5 states 
 | HRMS-NFR-013, HRMS-NFR-022 (audit logging) | Module 1, §3.1 |
 | HRMS-NFR-016 to HRMS-NFR-019 (RBAC, row-level restriction) | Module 4 for action-level; §3.3's visibility-rule seam, applied per module in §4, for row-level |
 | HRMS-NFR-024 (second-factor authentication) | Modules 3 and 4, per `docs/07-iam-rbac.md` §7.3 |
-| HRMS-NFR-020 (HTTPS), HRMS-NFR-012 (backups), HRMS-NFR-035 (availability) | §6's composition satisfies these at the application layer; the hosting-dependent portion remains open under TBD-003 (ADR-0009), unchanged by this document |
+| HRMS-NFR-020 (HTTPS) | §6's composition — Caddy terminates TLS as part of the deployable itself, independent of hosting target |
+| HRMS-NFR-012 (backups), HRMS-NFR-035 (availability) | Explicitly deployment-dependent and open under TBD-003 (ADR-0009): "backup topology and availability measures... cannot be finalised until the target is known." Not satisfied by §6, and this document does not claim otherwise |
 | HRMS-NFR-029 (cross-module data consistency) | PostgreSQL transactional boundaries within the single deployable of §2 (ADR-0003); no distributed-transaction concern exists because there is one database |
 | HRMS-NFR-030, HRMS-NFR-032 (modular architecture, extensibility) | The module boundary itself — §2, §4 |
 
