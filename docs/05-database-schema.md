@@ -216,7 +216,7 @@ Two custom permissions this schema's constraints depend on being grantable — `
 |---|---|---|---|
 | requester_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT | |
 | subject_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT | The user the role would be granted to |
-| role_id | BIGINT | FK → auth_group, ON DELETE RESTRICT | A foreign key rather than the group name as text — `auth_group.id` is stable across a rename, and a plain-text role column could reference a typo or a since-deleted group and still pass every constraint this table states |
+| role_id | BIGINT | FK → auth_group, ON DELETE RESTRICT, NOT NULL | A foreign key rather than the group name as text — `auth_group.id` is stable across a rename, and a plain-text role column could reference a typo or a since-deleted group and still pass every constraint this table states. `NOT NULL` because a request with no role satisfies every other constraint here and still cannot be applied |
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','approved','refused') | |
 | approver_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT, NULL | |
 | requested_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
@@ -514,7 +514,7 @@ not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employm
 |---|---|---|---|---|
 | allowance_type | name | TEXT | NOT NULL, UNIQUE | |
 | allowance_type | calculation_method | TEXT | NOT NULL, CHECK IN ('fixed','percentage_of_salary') | |
-| allowance_type | amount_or_rate | NUMERIC(14,4) | NOT NULL, CHECK (amount_or_rate >= 0) | Higher precision than §2.5's default: a percentage rate (e.g. 0.0525) loses meaningful precision at two decimal places, where the resulting cedi amount, computed and stored on `payslip_line`, does not. Non-negative applies identically to both `calculation_method` values — a fixed amount and a rate are both magnitudes here, never a signed adjustment |
+| allowance_type | amount_or_rate | NUMERIC(14,4) | NOT NULL, CHECK (amount_or_rate >= 0 AND (calculation_method <> 'percentage_of_salary' OR amount_or_rate <= 1)) | Higher precision than §2.5's default: a percentage rate (e.g. 0.0525) loses meaningful precision at two decimal places, where the resulting cedi amount, computed and stored on `payslip_line`, does not. Stored as a fraction, not a 0–100 percentage — the upper bound of 1 only binds `percentage_of_salary` rows; a `fixed` amount has no natural ceiling and keeps only the non-negative check |
 | allowance_type | is_taxable | BOOLEAN | NOT NULL | Payroll (module 16) reads this when computing PAYE |
 | allowance_type | created_at, updated_at | — | — | §2.4 |
 | employee_allowance | employee_id | BIGINT | FK → employee, ON DELETE RESTRICT | |
@@ -608,7 +608,7 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 
 Every arrow below reads "references" and points from the dependent table to the table it depends on — the same direction as the foreign key itself (`employee.department_id → department`, not the reverse), so the diagram cannot be read against the column tables above it.
 
-```
+```text
 employee ──> department
 employee ──> job_title
 reporting_relationship ──> employee            (employee_id)
