@@ -1,2 +1,15 @@
 # gstack tooling state (browse session logs, local caches)
 .gstack/
+
+# environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+backend/staticfiles/
+backend/db.sqlite3
+
+# Node
+node_modules/
+frontend/dist/
