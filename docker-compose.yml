@@ -1,3 +1,9 @@
+x-backend-env: &backend-env
+  POSTGRES_HOST: postgres
+  CELERY_BROKER_URL: redis://redis-broker:6379/0
+  REDIS_CACHE_URL: redis://redis-cache:6379/0
+  MINIO_ENDPOINT_URL: http://minio:9000
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -69,10 +75,7 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      POSTGRES_HOST: postgres
-      CELERY_BROKER_URL: redis://redis-broker:6379/0
-      REDIS_CACHE_URL: redis://redis-cache:6379/0
-      MINIO_ENDPOINT_URL: http://minio:9000
+      <<: *backend-env
     volumes:
       - static_files:/app/staticfiles
     depends_on:
@@ -91,10 +94,7 @@ services:
     command: celery -A config worker --loglevel info
     env_file: .env
     environment:
-      POSTGRES_HOST: postgres
-      CELERY_BROKER_URL: redis://redis-broker:6379/0
-      REDIS_CACHE_URL: redis://redis-cache:6379/0
-      MINIO_ENDPOINT_URL: http://minio:9000
+      <<: *backend-env
     depends_on:
       django:
         condition: service_started
@@ -105,10 +105,7 @@ services:
     command: celery -A config beat --loglevel info
     env_file: .env
     environment:
-      POSTGRES_HOST: postgres
-      CELERY_BROKER_URL: redis://redis-broker:6379/0
-      REDIS_CACHE_URL: redis://redis-cache:6379/0
-      MINIO_ENDPOINT_URL: http://minio:9000
+      <<: *backend-env
     depends_on:
       django:
         condition: service_started
