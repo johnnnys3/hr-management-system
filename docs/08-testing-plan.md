@@ -201,6 +201,32 @@ Each row below is one SRS §4 stimulus/response sequence, named as the SRS names
 | §4.7 | Submit Leave Request | Employee selects a leave type and dates; the system validates balance and routes the request to the manager |
 | §4.7 | Approve Leave Request | Manager reviews and approves or rejects; leave status and balance update per HRMS-BR-010/HRMS-BR-011, exercised end to end through the actual approval screen |
 
+### 6.1 Module Coverage Matrix
+
+Every application module (`docs/04-system-architecture.md` §4, modules 1 to 17) appears below exactly once, against either the SRS §4 sequence that exercises it in Playwright or the reason it has none and the mechanism that instead gives it end-to-end coverage per §6's scoping note above. This is the coverage tech-stack §9's "for every module" is checked against; a module missing from this table is a gap in this document, not an assumed exclusion.
+
+| # | Module | SRS §4 sequence(s) driving Playwright | If none: end-to-end coverage |
+|---|---|---|---|
+| 1 | Audit | — | No SRS §4 sequence names the audit read surface. Covered by `docs/06-api-contracts.md` §4.1's endpoints exercised as full request/response cycles in §4's module-1 permission and functional tests above, including the eight-role denied-path sweep |
+| 2 | Mail dispatch | Consumed within Process Payroll (§4.4), Employee Updates Personal Details' password-reset path is Authentication's, not this module's own sequence | No SRS §4 sequence names mail dispatch directly — it is infrastructure a sequence consumes, not a user-facing flow of its own (`docs/04-system-architecture.md` §3.2: "it knows nothing about why a message is sent"). Covered by the Celery task, retry, and delivery-failure-logging tests of §4's module-2 row |
+| 3 | Authentication | Login is the precondition of every sequence above, not a named sequence itself | Login, logout, session expiry, and HRMS-NFR-024 second-factor presentation/enrolment/recovery have no SRS §4 stimulus/response sequence of their own — SRS §4 begins after authentication. Covered by §4's module-3 row (functional tests for presentation, enrolment, recovery, and the denied paths on each) |
+| 4 | RBAC / IAM | — | No SRS §4 sequence names role granting or the `is_superuser` prohibition. Covered by §4's module-4 row: the self-grant refusal and privileged-grant approval are exercised as full API request/response cycles, including the database-constraint bypass test of §3.4 |
+| 5 | Dashboard | Implicit precondition of every sequence above (each actor's landing page), not itself a named sequence | No SRS §4 sequence names the dashboard as its own stimulus/response pair. Covered by §4's module-5 row, asserting the Executive aggregate-only rule specifically |
+| 6 | Employee Management | §4.1 Create Employee Record; §4.1 Update Employee Record | — |
+| 7 | Departments | — | SRS §4 has no requisition-independent departments sequence; department assignment is folded into Create Employee Record's field set, not its own stimulus/response pair. Covered by §4's module-7 row (HRMS-BR-002, retire-not-delete) |
+| 8 | Reporting Structure | — | No SRS §4 sequence names a manager change as its own flow. Covered by §4's module-8 row, including the skip-level negative-visibility test |
+| 9 | Recruitment | §4.2 Create Job Requisition; §4.2 Move Candidate to Offer Stage | — |
+| 10 | Onboarding | Implicit in Move Candidate to Offer Stage's downstream conversion, not itself named as a stimulus/response pair — HRMS-BR-013's conversion point has no SRS §4 sequence of its own | Covered by §4's module-10 row: the atomic employee/checklist creation test stands in for the missing SRS-named sequence, since it is the one assertion with a real functional consequence if it fails |
+| 11 | Notification | Consumed within Manager Approves Request (§4.3) and Approve Leave Request (§4.7); no sequence exercises the notification feed itself (mark-read, own-record scoping) | Own-record scoping and mark-read are covered by §4's module-11 row |
+| 12 | Employee Self-Service | §4.3 Employee Updates Personal Details | — |
+| 13 | Manager Self-Service | §4.3 Manager Approves Request | — |
+| 14 | Leave Management | §4.7 Submit Leave Request; §4.7 Approve Leave Request | — |
+| 15 | Compensation and Benefits | §4.6 Assign Employee to Pay Grade | Pay-grade assignment is the only SRS §4 sequence for this module; salary structures, bonus cycles, allowances, and benefits enrolment have none. Covered by §4's module-15 row, including the append-only column-comparison test |
+| 16 | Payroll | §4.4 Process Payroll | — |
+| 17 | Reports | §4.5 Generate Headcount Report | Leave-utilization and payroll-cost reports have no SRS §4 sequence of their own — only headcount does. Covered by §4's module-17 row, including the Executive aggregate-only disclosure test |
+
+Modules 18 to 20 (Testing, UAT, Deployment) own no endpoint and no visibility rule (`docs/06-api-contracts.md` §4) and are process modules this table does not apply to, on the same reasoning `docs/05-database-schema.md` §4 gives them no table.
+
 **What this level does not attempt.** Some sequences above are multi-actor: Process Payroll names a distinct approver besides the Payroll Officer who initiates, and Manager Approves Request and Approve Leave Request each presuppose an earlier submission by the employee the manager did not perform. Where the SRS states the hand-off as part of one sequence, the Playwright test drives both actors within that one run — logging in as each in turn, as the sequence itself requires — and that hand-off is in scope. **What is out of scope is elapsed time, not a second actor.** None of the eleven sequences the SRS states spans real calendar time (a payroll cycle spanning a full pay period, an onboarding checklist completed over several days); those are exercised as unit and integration tests against the underlying state machine (§4 above), not as a single Playwright run, since a browser-driven test that spans real elapsed time is not a practical CI artifact and the SRS does not state the sequences that way.
 
 ---
