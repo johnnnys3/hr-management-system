@@ -58,6 +58,8 @@ Table and column names are `snake_case`, singular table names (`employee`, not `
 
 Primary keys are surrogate `BIGINT` identity columns (Django's `BigAutoField`, the project default under Django 3.2+), listed as `id` and omitted from the column tables below unless a table's primary key is not the default surrogate. Natural keys required by the SRS (HRMS-BR-001's employee ID, HRMS-DR-002's email) are separate `UNIQUE` constraints on their own columns, not the primary key — a surrogate key does not change when a business identifier is corrected, which an exposed natural key forces on every referencing row.
 
+Two columns (`user_account.email`, `candidate.email`, §4.2, §4.7) use `CITEXT` for case-insensitive comparison, so that `HRMS-DR-002`'s uniqueness rule and ordinary lookups do not depend on stored case. `CITEXT` is a contrib extension, not a built-in type: the first migration in the sequence must run `CREATE EXTENSION IF NOT EXISTS citext;` before any table using it is created. This is a migration-ordering requirement this document states rather than a deployment detail it defers, because a schema that names a type without naming its prerequisite is not fully specified.
+
 ### 2.2 Foreign Keys and Referential Action
 
 Every foreign key specifies its `ON DELETE` behaviour explicitly; none is left to the database default. Two patterns cover this schema:
@@ -73,7 +75,9 @@ Employee, payroll, compensation, leave, and recruitment rows are never deleted b
 
 ### 2.4 Timestamps
 
-Every table carries `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`. Tables whose rows are mutated after creation additionally carry `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`, maintained by the application. Append-only tables (§3.4) and the audit log (§3.1) do not carry `updated_at`, because a column that invites an update on a row this schema forbids updating is a defect in the design, not a convenience.
+Every table carries `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`, either under that name or as a domain-specific event timestamp that already marks the row's creation — a second, generic column beside one would duplicate rather than add information. `enrolled_at` (`second_factor`, `benefit_enrollment`), `requested_at` (`second_factor_recovery_request`, `role_grant_request`), `issued_at` (`offer_letter`), `started_at` (`onboarding_checklist`), `applied_at` (`candidate_application`), `awarded_at` (`bonus_award`), `generated_at` (`payslip`, `bank_transfer_file`), and `effective_from` (`reporting_relationship`) each serve this purpose on the one table where they are that table's defining event. Every table not named above states `created_at` explicitly in its column list.
+
+Tables whose rows are mutated after creation additionally carry `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`, maintained by the application, unless a specific mutation timestamp already names the one transition the table permits (`disabled_at`, `decided_at`, `cancelled_at`, `completed_at`, and equivalents) — a generic `updated_at` beside a column that already states what changed says the same thing twice. Append-only tables (§3.4) and the audit log (§3.1) carry neither, because a column that invites an update on a row this schema forbids updating is a defect in the design, not a convenience.
 
 ### 2.5 Money
 
@@ -135,7 +139,7 @@ Visibility is `recipient_user_id = current user`, per `docs/04-system-architectu
 
 **Employee derivation** reads `employee.employment_status` (§4.4). The column is `NOT NULL` (HRMS-BR-003, "every employee must have one employment status") and constrained to a fixed value set (§6, HRMS-DR rule table). Application code, not a database column, decides which values "permit access" — `docs/07-iam-rbac.md` §3.1 ties this to HRMS-BR-012 (terminated, resigned, and retired lose access "unless policy permits otherwise"), and "unless policy permits" is an organisational exception this schema does not attempt to encode as a second column; it is a derivation-time decision over the same enum, not a second source of truth to keep synchronised with it.
 
-**Manager derivation** reads `reporting_relationship.manager_employee_id` (§4.6): an employee is a Manager if and only if at least one active row in that table names them as manager. The table is owned by module 8, not embedded as a column on `employee`, because `docs/04-system-architecture.md` §4 gives Reporting Structure its own row, its own audit emission, and no dependency Employee Management has reason to carry; a `manager_id` column on `employee` would make Employee Management's table double as Reporting Structure's, which the module boundary does not do anywhere else in this schema.
+**Manager derivation** reads `reporting_relationship.manager_employee_id` (§4.6): an employee is a Manager if and only if at least one row in that table names them as manager **and their own `employee.employment_status` permits access** — the same permitting-status test §3.3 applies to the Employee derivation, applied here to the manager rather than the subject, so that a manager whose own access has ended does not go on deriving a role from a row that has not yet been reassigned. The query is given in full at §4.6. The table is owned by module 8, not embedded as a column on `employee`, because `docs/04-system-architecture.md` §4 gives Reporting Structure its own row, its own audit emission, and no dependency Employee Management has reason to carry; a `manager_id` column on `employee` would make Employee Management's table double as Reporting Structure's, which the module boundary does not do anywhere else in this schema.
 
 Both tables are designed in §4.4 and §4.6 respectively; this section states the dependency the two designs jointly discharge, on the reasoning ADR-0005 already gives for derived scoping generally: a fact the organisational data already states is not copied into a second record that can drift from it.
 
@@ -178,6 +182,7 @@ Tables are grouped by the module that owns them, in `docs/04-system-architecture
 | employee_id | BIGINT | FK → employee, ON DELETE SET NULL, UNIQUE, NULL | Nullable and unique: at most one user account per employee, and a user with no employee record is valid (`CONTEXT.md`) |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true | Deactivation, not deletion (§2.3) |
 | last_login | TIMESTAMPTZ | NULL | |
+| created_at, updated_at | — | — | §2.4 |
 
 **`second_factor`.** HRMS-NFR-024's second factor. This document schemas the record of enrolment and its state; the cryptographic mechanism (TOTP, WebAuthn, or otherwise) is an implementation choice `docs/06-api-contracts.md` or a later ADR settles, not a decision this schema makes by naming a column `secret_ref`.
 
@@ -211,7 +216,7 @@ Two custom permissions this schema's constraints depend on being grantable — `
 |---|---|---|---|
 | requester_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT | |
 | subject_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT | The user the role would be granted to |
-| role | TEXT | NOT NULL | `auth_group` name |
+| role_id | BIGINT | FK → auth_group, ON DELETE RESTRICT | A foreign key rather than the group name as text — `auth_group.id` is stable across a rename, and a plain-text role column could reference a typo or a since-deleted group and still pass every constraint this table states |
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','approved','refused') | |
 | approver_user_id | BIGINT | FK → user_account, ON DELETE RESTRICT, NULL | |
 | requested_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
@@ -272,6 +277,7 @@ Neither check constraint can express the further condition `docs/07-iam-rbac.md`
 | phone | TEXT | NOT NULL | |
 | email | TEXT | NULL | |
 | is_primary | BOOLEAN | NOT NULL, DEFAULT false | |
+| created_at, updated_at | — | — | §2.4 |
 
 ### 4.5 Module 7 — Departments
 
@@ -281,6 +287,7 @@ Neither check constraint can express the further condition `docs/07-iam-rbac.md`
 |---|---|---|---|
 | name | TEXT | NOT NULL, UNIQUE | |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true | §2.3 |
+| created_at, updated_at | — | — | §2.4 |
 
 **`job_title`.** HRMS-FR-003; grouped with Department under module 7 rather than Employee Management, on `docs/07-iam-rbac.md` §4.2's own grouping of "departments, job titles, leave types, approval workflows" as one HR-configuration permission row, and on plan §6.1's description of module 7's principal requirement as "SRS §2.7 HR configuration" rather than department alone.
 
@@ -288,6 +295,7 @@ Neither check constraint can express the further condition `docs/07-iam-rbac.md`
 |---|---|---|---|
 | name | TEXT | NOT NULL, UNIQUE | |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true | |
+| created_at, updated_at | — | — | §2.4 |
 
 ### 4.6 Module 8 — Reporting Structure
 
@@ -300,7 +308,20 @@ Neither check constraint can express the further condition `docs/07-iam-rbac.md`
 | effective_from | DATE | NOT NULL | |
 | | | CHECK (employee_id <> manager_employee_id) | An employee is not their own manager |
 
-The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM reporting_relationship`. `docs/07-iam-rbac.md` §5 fixes manager visibility as direct reports only, not transitive — this table's shape (no chain, no self-referencing depth) is what makes that the only query it can express, which is the correct ceiling per that section rather than a limitation this schema works around.
+The Manager derivation (§3.3) is:
+
+```sql
+SELECT DISTINCT rr.manager_employee_id
+FROM reporting_relationship rr
+JOIN employee mgr ON mgr.id = rr.manager_employee_id
+WHERE mgr.employment_status IN ('active', 'on_leave')
+```
+
+not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employment status no longer permits access must not continue deriving the role from a row that merely has not yet been reassigned. The join costs one line and reads a fact `employee` already states; a denormalised "is this manager row still valid" flag on `reporting_relationship` was rejected for the same reason ADR-0005 rejects duplicating any organisational fact into an access-control record — it would need to be kept synchronised with `employee.employment_status` by hand, and the synchronisation is exactly the step HRMS-BR-012 exists to make unnecessary.
+
+**What this does not automate.** A terminated manager's direct reports keep their `reporting_relationship` row — pointing at a manager who can no longer act as one — until HR reassigns them; this table's own uniqueness constraint (one current row per employee) does not trigger that reassignment on its own. That is an operational gap in workflow automation, not in access control: the query above is what keeps the terminated manager from deriving the Manager role regardless, and the affected employees are left with a stale reporting line rather than a false grant of visibility to someone no longer entitled to it.
+
+`docs/07-iam-rbac.md` §5 fixes manager visibility as direct reports only, not transitive — this table's shape (no chain, no self-referencing depth) is what makes that the only query it can express, which is the correct ceiling per that section rather than a limitation this schema works around.
 
 ### 4.7 Module 9 — Recruitment
 
@@ -323,8 +344,9 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | title | TEXT | NOT NULL | |
 | description | TEXT | NOT NULL | |
 | channel | TEXT | NOT NULL, CHECK IN ('internal','external') | |
-| published_at | TIMESTAMPTZ | NULL | |
+| published_at | TIMESTAMPTZ | NULL | Set on publication; distinct from `created_at`, since a posting may be drafted before it is published |
 | closed_at | TIMESTAMPTZ | NULL | |
+| created_at, updated_at | — | — | §2.4 |
 
 **`candidate`.** HRMS-FR-016. `CONTEXT.md`: "a candidate is not an employee." No foreign key to `employee` exists on this table; conversion (below) creates a new, independent `employee` row rather than mutating this one into it, which is what keeps the two entities from becoming the same row wearing two names.
 
@@ -356,6 +378,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | scheduled_at | TIMESTAMPTZ | NOT NULL | |
 | status | TEXT | NOT NULL, DEFAULT 'scheduled', CHECK IN ('scheduled','completed','cancelled') | |
 | feedback | TEXT | NULL | |
+| created_at, updated_at | — | — | §2.4 |
 
 **`offer_letter`.** HRMS-FR-020, HRMS-FR-021.
 
@@ -390,6 +413,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','in_progress','completed','skipped') | |
 | completed_by | BIGINT | FK → user_account, ON DELETE SET NULL, NULL | |
 | completed_at | TIMESTAMPTZ | NULL | |
+| created_at | — | — | §2.4; no separate `updated_at` — `completed_at` is the one mutation this table's status enum permits |
 
 ### 4.9 Module 11 — Notification
 
@@ -404,6 +428,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | name | TEXT | NOT NULL, UNIQUE | |
 | requires_approval | BOOLEAN | NOT NULL, DEFAULT true | |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true | |
+| created_at, updated_at | — | — | §2.4 |
 
 **`leave_balance`.** HRMS-FR-065.
 
@@ -415,6 +440,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | period_end | DATE | NOT NULL | |
 | entitled_days | NUMERIC(6,2) | NOT NULL, CHECK (entitled_days >= 0) | |
 | used_days | NUMERIC(6,2) | NOT NULL, DEFAULT 0, CHECK (used_days >= 0) | Decremented — correctly, increased in the sense of consumed — only on approval (HRMS-BR-010), never on request or rejection (HRMS-BR-011) |
+| created_at, updated_at | — | — | §2.4 |
 | | | UNIQUE (employee_id, leave_type_id, period_start) | |
 
 **`leave_request`.** HRMS-FR-063, HRMS-FR-064, HRMS-BR-009 to HRMS-BR-011, HRMS-DR-006.
@@ -441,6 +467,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | name | TEXT | NOT NULL, UNIQUE | |
 | description | TEXT | NULL | |
 | effective_from | DATE | NOT NULL | |
+| created_at, updated_at | — | — | §2.4; `effective_from` is a business-effective date, not a row-creation timestamp, and does not substitute for it here the way it does on `reporting_relationship` |
 
 **`pay_grade`.** HRMS-FR-057.
 
@@ -450,6 +477,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | name | TEXT | NOT NULL | |
 | min_salary | NUMERIC(14,2) | NOT NULL, CHECK (min_salary >= 0) | HRMS-DR-005 |
 | max_salary | NUMERIC(14,2) | NOT NULL, CHECK (max_salary >= min_salary) | |
+| created_at, updated_at | — | — | §2.4 |
 | | | UNIQUE (salary_structure_id, name) | |
 
 **`compensation_record`.** HRMS-FR-005, HRMS-FR-058, HRMS-DR-010. Append-only per §3.4.
@@ -474,6 +502,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | bonus_cycle | period_start | DATE | NOT NULL | |
 | bonus_cycle | period_end | DATE | NOT NULL | |
 | bonus_cycle | status | TEXT | NOT NULL, DEFAULT 'open', CHECK IN ('open','closed') | |
+| bonus_cycle | created_at, updated_at | — | — | §2.4 |
 | bonus_award | bonus_cycle_id | BIGINT | FK → bonus_cycle, ON DELETE RESTRICT | |
 | bonus_award | employee_id | BIGINT | FK → employee, ON DELETE RESTRICT | |
 | bonus_award | amount | NUMERIC(14,2) | NOT NULL, CHECK (amount >= 0) | |
@@ -485,13 +514,15 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 |---|---|---|---|---|
 | allowance_type | name | TEXT | NOT NULL, UNIQUE | |
 | allowance_type | calculation_method | TEXT | NOT NULL, CHECK IN ('fixed','percentage_of_salary') | |
-| allowance_type | amount_or_rate | NUMERIC(14,4) | NOT NULL | Higher precision than §2.5's default: a percentage rate (e.g. 0.0525) loses meaningful precision at two decimal places, where the resulting cedi amount, computed and stored on `payslip_line`, does not |
+| allowance_type | amount_or_rate | NUMERIC(14,4) | NOT NULL, CHECK (amount_or_rate >= 0) | Higher precision than §2.5's default: a percentage rate (e.g. 0.0525) loses meaningful precision at two decimal places, where the resulting cedi amount, computed and stored on `payslip_line`, does not. Non-negative applies identically to both `calculation_method` values — a fixed amount and a rate are both magnitudes here, never a signed adjustment |
 | allowance_type | is_taxable | BOOLEAN | NOT NULL | Payroll (module 16) reads this when computing PAYE |
+| allowance_type | created_at, updated_at | — | — | §2.4 |
 | employee_allowance | employee_id | BIGINT | FK → employee, ON DELETE RESTRICT | |
 | employee_allowance | allowance_type_id | BIGINT | FK → allowance_type, ON DELETE RESTRICT | |
-| employee_allowance | amount_override | NUMERIC(14,2) | NULL | |
+| employee_allowance | amount_override | NUMERIC(14,2) | NULL, CHECK (amount_override IS NULL OR amount_override >= 0) | |
 | employee_allowance | effective_from | DATE | NOT NULL | |
 | employee_allowance | effective_to | DATE | NULL | |
+| employee_allowance | created_at, updated_at | — | — | §2.4 |
 
 **`benefit`** and **`benefit_enrollment`.** HRMS-FR-061.
 
@@ -500,6 +531,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | benefit | name | TEXT | NOT NULL, UNIQUE | |
 | benefit | provider | TEXT | NULL | |
 | benefit | cost | NUMERIC(14,2) | NULL, CHECK (cost IS NULL OR cost >= 0) | |
+| benefit | created_at, updated_at | — | — | §2.4 |
 | benefit_enrollment | employee_id | BIGINT | FK → employee, ON DELETE RESTRICT | |
 | benefit_enrollment | benefit_id | BIGINT | FK → benefit, ON DELETE RESTRICT | |
 | benefit_enrollment | status | TEXT | NOT NULL, DEFAULT 'active', CHECK IN ('active','cancelled') | |
@@ -516,6 +548,7 @@ The Manager derivation (§3.3) is `SELECT DISTINCT manager_employee_id FROM repo
 | effective_from | DATE | NOT NULL | |
 | effective_to | DATE | NULL | |
 | rates | JSONB | NOT NULL | Bracket/threshold structure, shaped per rate type; deliberately not normalised into columns, since the bracket count and shape differ by `rate_type` and change independently of this schema (TBD-005) |
+| created_at | — | — | §2.4; no `updated_at` — a rate change is a new row with a new `effective_from`, the same append-only convention §3.4 gives `compensation_record` |
 | | | UNIQUE (rate_type, effective_from) | |
 
 Payroll history must remain reproducible against the rates in force when it ran (`CONTEXT.md`); `payslip_line` (below) stores the computed amount, not a reference back to this table alone, so a later rate change cannot retroactively alter a finalised payslip's stated deduction.
@@ -558,7 +591,8 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 | source_type | TEXT | NULL | e.g. `allowance_type`, `statutory_rate_table`; not a foreign key, same reasoning as `audit_log.target_type` — a finalised payslip must remain readable even if the source configuration row is later retired |
 | source_id | BIGINT | NULL | |
 | description | TEXT | NOT NULL | |
-| amount | NUMERIC(14,2) | NOT NULL | §2.5; a deduction is stored as a positive magnitude with its `line_type` stating direction, not as a signed value, so that `SUM(amount)` grouped by `line_type` is never accidentally net against itself |
+| amount | NUMERIC(14,2) | NOT NULL, CHECK (amount >= 0) | §2.5; a deduction is stored as a positive magnitude with its `line_type` stating direction, not as a signed value, so that `SUM(amount)` grouped by `line_type` is never accidentally net against itself — the constraint is what actually holds that convention, not only the prose describing it |
+| created_at | — | — | §2.4; no `updated_at` — a finalised payslip's line items are not mutated |
 
 **`bank_transfer_file`.** HRMS-FR-046.
 
@@ -572,35 +606,49 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 
 ## 5. Entity-Relationship Overview
 
+Every arrow below reads "references" and points from the dependent table to the table it depends on — the same direction as the foreign key itself (`employee.department_id → department`, not the reverse), so the diagram cannot be read against the column tables above it.
+
 ```
-department ──┐
-             ├──> employee <──────── reporting_relationship (self-referencing via employee)
-job_title ───┘        │  │
-                       │  └──> employment_history
-                       │  └──> employee_document
-                       │  └──> emergency_contact
-                       │  └──> onboarding_checklist ──> onboarding_task
-                       │  └──> compensation_record ──> pay_grade ──> salary_structure
-                       │  └──> employee_allowance ──> allowance_type
-                       │  └──> benefit_enrollment ──> benefit
-                       │  └──> leave_balance ──┐
-                       │  └──> leave_request ──┴──> leave_type
-                       │  └──> bonus_award ──> bonus_cycle
-                       │  └──> payslip ──> payroll_run
-                       │                └──> payslip_line
+employee ──> department
+employee ──> job_title
+reporting_relationship ──> employee            (employee_id)
+reporting_relationship ──> employee            (manager_employee_id)
+employment_history ──> employee
+employee_document ──> employee
+emergency_contact ──> employee
+onboarding_checklist ──> employee
+onboarding_task ──> onboarding_checklist
+compensation_record ──> employee
+compensation_record ──> pay_grade ──> salary_structure
+employee_allowance ──> employee
+employee_allowance ──> allowance_type
+benefit_enrollment ──> employee
+benefit_enrollment ──> benefit
+leave_balance ──> employee
+leave_balance ──> leave_type
+leave_request ──> employee
+leave_request ──> leave_type
+bonus_award ──> employee
+bonus_award ──> bonus_cycle
+payslip ──> employee
+payslip ──> payroll_run
+payslip_line ──> payslip
 
-candidate ──> candidate_application ──> job_posting ──> job_requisition ──> department, job_title
-                       │
-                       ├──> interview
-                       └──> offer_letter ──> pay_grade
+candidate_application ──> candidate
+candidate_application ──> job_posting ──> job_requisition ──> department
+job_requisition ──> job_title
+interview ──> candidate_application
+offer_letter ──> candidate_application
+offer_letter ──> pay_grade
 
-user_account ──> second_factor
-             ──> second_factor_recovery_request
-             ──> role_grant_request
-             ──> notification
-             ──> audit_log (actor)
+second_factor ──> user_account
+second_factor_recovery_request ──> user_account
+role_grant_request ──> user_account            (requester, subject, approver)
+role_grant_request ──> auth_group              (role_id)
+notification ──> user_account
+audit_log ──> user_account                     (actor, nullable)
 
-payroll_run ──> bank_transfer_file
+bank_transfer_file ──> payroll_run
 statutory_rate_table (independent; read, not referenced, by payslip_line)
 ```
 
@@ -618,7 +666,7 @@ SRS §6.2's ten rules, and where this schema enforces each.
 | HRMS-DR-002 — Email address must be unique | `user_account.email UNIQUE` (§4.2). Not applied to `candidate.email` — a candidate may apply more than once (§4.7) — nor to `employee`, which has no email column of its own; an employee's login identity is their `user_account` row, per `CONTEXT.md`'s User/Employee distinction |
 | HRMS-DR-003 — Date of birth must be a valid past date | `employee.date_of_birth CHECK (< CURRENT_DATE)` (§4.4) |
 | HRMS-DR-004 — Employment start date must be valid | `employee.hire_date NOT NULL`; further validity (not future-dated) is an application-layer check, since the SRS does not define "valid" beyond existence and correct ordering |
-| HRMS-DR-005 — Salary values must not be negative | `CHECK (>= 0)` on `compensation_record.base_salary`, `offer_letter.offered_salary`, `pay_grade.min_salary`, `bonus_award.amount`, `benefit.cost` (§4.7, §4.11) |
+| HRMS-DR-005 — Salary values must not be negative | `CHECK (>= 0)` on `compensation_record.base_salary`, `offer_letter.offered_salary`, `pay_grade.min_salary`, `bonus_award.amount`, `benefit.cost`, `allowance_type.amount_or_rate`, `employee_allowance.amount_override`, `payslip_line.amount` (§4.7, §4.11, §4.12) — the rule is stated against "salary" but applied to every stored monetary magnitude in this schema, on the reading that HRMS-DR-005's intent is monetary values generally, not the one column literally named "salary" |
 | HRMS-DR-006 — Leave end date cannot be earlier than leave start date | `leave_request CHECK (end_date >= start_date)` (§4.10) |
 | HRMS-DR-007 — Required fields must be completed before submission | `NOT NULL` throughout §4; this rule is not one constraint but the aggregate of every `NOT NULL` this document states, so no single row of this table names one |
 | HRMS-DR-008 — Uploaded files must match allowed file formats | `employee_document.content_type`, validated server-side by content inspection at upload time (ADR-0007) — a check this schema records the column for but does not itself enforce, since the allowed-format list is application configuration, not a storage-layer constant |
