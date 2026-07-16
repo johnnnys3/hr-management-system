@@ -163,22 +163,45 @@ def check_module_refs(text):
     question 6, and §2.4. Nothing else was checking.
 
     Passages naming a version state the number as it was then -- "M15 Payroll
-    here is M14 Payroll at v1.2" is the point being made, not a stale ref --
-    so anything scoped to v1.0 to v1.2 is left alone.
+    here is M14 Payroll at v1.2" is the point being made, not a stale ref -- so
+    a ref scoped to a *superseded* version is left alone.
+
+    "Scoped" is per *clause*, not per paragraph. The earlier version exempted a
+    whole fragment if a superseded version appeared anywhere in it, so a live
+    sentence like "M14 Compensation and Benefits, new at v1.1, ..." excused its
+    own stale current number because "v1.1" sat elsewhere in it. A version now
+    only shields refs in its own clause; "new at v1.1" no longer covers a number
+    a comma away. Revision-history rows are exempt wholesale -- they recount old
+    numbers by the row -- and are matched by their leading "| John Kessie |".
+
+    Superseded is read off the header rather than hardcoded: v1.3 spelled the
+    exemption "v1.0 to v1.2", which silently became wrong the moment v1.4
+    issued. A boundary that has to be edited every revision will be missed in
+    some revision.
+
+    Bare "M<n>" with no name following (e.g. "M16 under TBD-014") is invisible
+    here -- there is no name to check against -- so this guards the "M<n> Name"
+    form only. The bare form is checked by eye.
     """
     names = module_names(text)
     norm = {k: re.sub(r"\s*/\s*", "/", v) for k, v in names.items()}
+    header = re.search(r"^\| Version \| \d+\.(\d+) \|", text, re.M)
+    current = int(header.group(1)) if header else 0
+    ref = re.compile(r"\bM(\d+) ([A-Z][A-Za-z/-]*(?: [A-Z][A-Za-z/-]*)?)")
     bad = []
-    for para in re.split(r"\n|(?<=\.) ", text):
-        if re.search(r"v1\.[0-2]", para):
-            continue  # a version-scoped claim states the old number on purpose
-        para = re.sub(r"\s*/\s*", "/", para)  # "RBAC / IAM" and "RBAC/IAM" are one name
-        for n, said in set(re.findall(r"\bM(\d+) ([A-Z][A-Za-z/-]*(?: [A-Z][A-Za-z/-]*)?)", para)):
-            real = names.get(int(n))
-            if real is None or not names_agree(said, norm[int(n)]):
-                hit = next((k for k, v in norm.items() if names_agree(said, v)), None)
-                bad.append(f"  M{n} {said}: §6.1 has M{n} as {real or 'nothing'}"
-                           + (f"; {said} is M{hit}" if hit else ""))
+    for line in text.split("\n"):
+        if line.startswith("| John Kessie |"):
+            continue  # a revision-history row recounts the numbering of its own version
+        line = re.sub(r"\s*/\s*", "/", line)  # "RBAC / IAM" and "RBAC/IAM" are one name
+        for clause in re.split(r"[;:,]|(?<=\.) ", line):
+            if any(int(v) < current for v in re.findall(r"\bv1\.(\d+)", clause)):
+                continue  # this clause is scoped to a superseded version's numbers
+            for n, said in set(ref.findall(clause)):
+                real = names.get(int(n))
+                if real is None or not names_agree(said, norm[int(n)]):
+                    hit = next((k for k, v in norm.items() if names_agree(said, v)), None)
+                    bad.append(f"  M{n} {said}: §6.1 has M{n} as {real or 'nothing'}"
+                               + (f"; {said} is M{hit}" if hit else ""))
     return sorted(set(bad)) or None
 
 
@@ -204,6 +227,20 @@ def selfcheck():
     assert workday(85) == date(2026, 11, 10), "the end date is working day 85"
     assert workday(81) == date(2026, 11, 4), "81 days of estimate land here"
     assert word("carries seventeen TBD items", r"carries (\w+) TBD items") == 17
+
+    # check_module_refs: a superseded version scopes only its own clause, not the
+    # whole sentence. Regression for the v1.4 gap where "M14 Compensation, new at
+    # v1.1, ..." excused its own stale current number.
+    doc = ("| Version | 1.9 |\n### 6.1 Build Order\n"
+           "| 1 | Audit | x |\n| 2 | Authentication | x |\n### 7 End\n")
+    assert check_module_refs(doc + "Foo, new at v1.1, is M2 Audit today.\n"), \
+        "stale current ref must be caught despite a superseded version elsewhere in the sentence"
+    assert check_module_refs(doc + "| John Kessie | applies to M2 Audit | 1.1 |\n") is None, \
+        "revision-history rows recount old numbers and are exempt"
+    assert check_module_refs(doc + "At v1.1 this module was M2 Audit.\n") is None, \
+        "a ref scoped to a superseded version in its own clause is exempt"
+    assert check_module_refs(doc + "M2 Authentication ships first.\n") is None, \
+        "a ref that matches the current table is fine"
 
 
 if __name__ == "__main__":

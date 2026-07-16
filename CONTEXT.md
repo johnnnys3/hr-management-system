@@ -44,6 +44,8 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 
 **Job requisition** — an approved request to hire. Distinct from **job posting**, which is the published advertisement arising from it.
 
+**Notification** — a message telling a user that something happened which concerns them. Owns the in-app feed of pending tasks and request updates (SRS §3.4) and the notification entity behind it; HRMS-FR-033 and HRMS-FR-034 are its requirements, and they belong to SRS §4.3, self-service, not to Recruitment. A notification may be delivered in-app, by email through **mail dispatch**, or both. *Avoid* using "notification" for **any email the system sends** — a password reset email is not a notification, because nobody is being informed of an event; they asked for a link. SRS §3.3 draws that distinction and SRS §3.4's channel list obscures it. Conflating the two is what placed the provider six modules after its first consumer. See ADR-0011.
+
 **Audit log** — the record of sensitive actions (HRMS-NFR-013, HRMS-BR-015): login attempts, record changes, payroll actions, approvals, permission changes (HRMS-NFR-022). One store, named once as a data entity by SRS §6.1.
 
 **Audit history** — not a second store. It is HRMS-FR-010's name for a filtered read of the **audit log** where the target is an employee record, and record changes are one of the five categories above. The two terms are used interchangeably by the SRS and are distinguished here because they read as siblings: a second store would put employee-record changes outside the single database grant on which audit immutability rests (`docs/07-iam-rbac.md` §7.3).
@@ -51,6 +53,10 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 ### Architecture
 
 **Module** — one functional area, implemented as one Django application. Domain logic lives in service code within the module, kept apart from HTTP and persistence concerns so it can be lifted into another project. See ADR-0001.
+
+**Mail dispatch** — the capability of sending email reliably off the request cycle: the background task, template rendering, bounded retry, and delivery-failure logging. **It knows nothing about why a message is sent.** Its consumers are password reset in Authentication, onboarding, **Notification**, and payroll communication (SRS §3.4). Distinct from **Notification**, which is one of its consumers rather than its identity — Authentication consumes mail dispatch directly and does not depend on Notification at all. Delivery is best-effort: the domain action commits whether or not the send succeeds, and failures go to application logs, **never to the audit log**, whose categories are fixed by HRMS-NFR-022 and do not include them. See ADR-0011.
+
+**Emission** — a module deciding which of its own events writes to a shared store or raises a **Notification**. Cross-cutting and absorbed by each consumer, for both audit and notification: a module knows what its own events mean, and no provider can know it for them. Distinct from the *owned* half of either provider — the store, the writer, the read surface — which does not build itself and is costed as a module. Treating a provider as wholly cross-cutting is what left audit unbuilt through two re-baselines.
 
 **Visibility rule** — the row-level access predicate for a module, expressed as a queryset scoping method (`visible_to(user)`). Derives visibility from organisational data rather than from stored permission records. Every endpoint returning employee-scoped data obtains its queryset through one. Omitting it is a disclosure defect. See ADR-0005.
 
@@ -77,6 +83,18 @@ Use these terms as defined. Where the glossary marks a term as avoided, do not u
 **Data residency is unresolved and consequential.** Ghana's Data Protection Act 2012 (Act 843) requires a controller to register with the Data Protection Commission and to disclose the countries it transfers personal data to. Whether it further restricts *where* employee personal data may reside — and on what test — is an open question of legal interpretation for counsel, not a settled constraint; the Act sets out no adequacy regime of the GDPR's kind. Do not restate it as one. The architecture defers the hosting decision rather than pre-empting it in either direction. See ADR-0009.
 
 **Statutory rates change.** Rate tables are versioned configuration. Payroll history must remain reproducible against the rates in force at the time it ran.
+
+## Deployment conditions
+
+Properties this system depends on that it cannot itself enforce. They are conditions on *operating* it, not decisions with alternatives, and each is load-bearing for a control stated elsewhere in this document. An organisation that does not meet one has lost the control, without any code change and without any warning the system can usefully issue.
+
+**`iam.approve_role_grant` is not held by anyone outside HRMS-NFR-024's scope.** The privileged-grant constraint distinguishes *identities*, and acquires the force of distinct *parties* only where the approver holds a second factor the administering role cannot reset. An approver outside that scope can be reset and impersonated, and the constraint separates nothing. See the **System Administrator** entry and ADR-0010.
+
+**The second-factor recovery approver is reachable out-of-band.** HRMS-NFR-024 makes the second factor unresettable by any administering role — the property that closed the HRMS-NFR-019 gap. Recovery therefore requires an approver who does not administer credentials, and **the system does not notify them**: notifying approvers is required by no requirement and was left out of the release (ADR-0011). A payroll user who loses their second factor is locked out until a human notices, and **payroll cannot run** meanwhile, against an HRMS-NFR-005 elapsed-time bound. The mechanism is built; the procedure is the organisation's, and this is where the security property bought against HRMS-NFR-019 shows its availability cost.
+
+**Role-grant approvers are likewise not notified**, and a grant stalls until someone looks. Unlike the recovery case this is benign: the failure direction is that privilege is *not* granted.
+
+**A password reset that fails to send fails silently.** The response is uniform whether or not the address exists and whether or not the mail sent, because a varying response tells an unauthenticated caller which accounts exist. The user therefore has no route back through the system, and recovery is a support path. There is no support desk — TBD-001 leaves no organisation — so this path is exactly as real as this system's users. See ADR-0011.
 
 ## Scope boundary
 
