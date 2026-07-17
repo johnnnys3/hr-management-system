@@ -20,10 +20,23 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 60
 
 
+def _masked(recipient):
+    """Local-part masked, domain intact — enough to spot a stuck mailbox
+    without writing a full address to a log with no access control."""
+    local, _, domain = recipient.partition('@')
+    if not domain:
+        return '***'
+    return f'{local[:1]}***@{domain}'
+
+
 @shared_task(bind=True, max_retries=MAX_RETRIES)
 def send_mail_task(self, *, template, recipient, context):
+    # Rendering is a template bug, not a delivery failure: TemplateDoesNotExist
+    # or a syntax error should fail loudly, not retry three times and then
+    # get logged as if the mailbox were unreachable.
+    subject, text_body, html_body = render(template, context)
+
     try:
-        subject, text_body, html_body = render(template, context)
         message = EmailMultiAlternatives(
             subject=subject,
             body=text_body,
@@ -37,7 +50,7 @@ def send_mail_task(self, *, template, recipient, context):
         if self.request.retries >= MAX_RETRIES:
             logger.error(
                 'mail dispatch: giving up on %s to %s after %s retries: %s',
-                template, recipient, self.request.retries, exc,
+                template, _masked(recipient), self.request.retries, exc,
             )
             return
         raise self.retry(exc=exc, countdown=RETRY_BACKOFF_SECONDS * (2 ** self.request.retries))

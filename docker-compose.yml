@@ -18,13 +18,18 @@ x-backend-env: &backend-env
   MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
   MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
   MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-  EMAIL_BACKEND: ${EMAIL_BACKEND}
-  EMAIL_HOST: ${EMAIL_HOST}
-  EMAIL_PORT: ${EMAIL_PORT}
-  EMAIL_HOST_USER: ${EMAIL_HOST_USER}
-  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
-  EMAIL_USE_TLS: ${EMAIL_USE_TLS}
-  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
+  # Defaulted rather than left to fall through empty: an unset Compose
+  # variable becomes an empty string, not "absent" — that would override
+  # config/settings.py's own defaults with values that fail outright
+  # (`int('')` on EMAIL_PORT) instead of falling back to them.
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+  EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+  EMAIL_PORT: ${EMAIL_PORT:-1025}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+  EMAIL_TIMEOUT: ${EMAIL_TIMEOUT:-10}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-hrms@localhost}
 
 services:
   postgres:
@@ -75,7 +80,7 @@ services:
   # mail rather than delivering it; a real deployment points EMAIL_HOST at
   # an actual SMTP provider instead, and this service is unused.
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.20.0
     ports:
       - "8025:8025"
     healthcheck:
