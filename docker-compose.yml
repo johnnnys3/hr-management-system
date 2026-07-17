@@ -1,0 +1,128 @@
+x-backend-env: &backend-env
+  POSTGRES_HOST: postgres
+  CELERY_BROKER_URL: redis://redis-broker:6379/0
+  REDIS_CACHE_URL: redis://redis-cache:6379/0
+  MINIO_ENDPOINT_URL: http://minio:9000
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ADR-0006: two Redis instances, never one. Broker keeps queued tasks safe
+  # from eviction (noeviction + AOF); cache is free to evict under pressure
+  # (allkeys-lru). Sharing one instance between these roles is what this
+  # split exists to prevent.
+  redis-broker:
+    image: redis:7-alpine
+    command: redis-server --maxmemory-policy noeviction --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_broker_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-cache:
+    image: redis:7-alpine
+    command: redis-server --maxmemory-policy allkeys-lru --maxmemory 256mb
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the private bucket and exits. MinIO does not do this
+  # itself; the bucket must exist before Django's storage backend can use it.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb -p local/${MINIO_BUCKET_NAME} &&
+      mc anonymous set none local/${MINIO_BUCKET_NAME}
+      "
+
+  django:
+    build: ./backend
+    env_file: .env
+    environment:
+      <<: *backend-env
+    volumes:
+      - static_files:/app/staticfiles
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-broker:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  celery-worker:
+    build: ./backend
+    entrypoint: []
+    command: celery -A config worker --loglevel info
+    env_file: .env
+    environment:
+      <<: *backend-env
+    depends_on:
+      django:
+        condition: service_started
+
+  celery-beat:
+    build: ./backend
+    entrypoint: []
+    command: celery -A config beat --loglevel info
+    env_file: .env
+    environment:
+      <<: *backend-env
+    depends_on:
+      django:
+        condition: service_started
+
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - static_files:/srv/static:ro
+    depends_on:
+      - django
+
+volumes:
+  postgres_data:
+  redis_broker_data:
+  minio_data:
+  static_files:
