@@ -1,3 +1,4 @@
+import smtplib
 from unittest.mock import patch
 
 from django.core import mail
@@ -52,6 +53,23 @@ class SendMailTaskTests(TestCase):
         self.assertTrue(any('giving up' in message for message in logs.output))
         self.assertTrue(any('s***@example.com' in message for message in logs.output))
         self.assertFalse(any('someone@example.com' in message for message in logs.output))
+
+    def test_giving_up_log_does_not_leak_the_address_via_the_exception_text(self):
+        """SMTPRecipientsRefused embeds the rejected address in str(exc);
+        logging the exception itself would defeat _masked(recipient)."""
+        refused = smtplib.SMTPRecipientsRefused(
+            {'someone@example.com': (550, b'5.1.1 User unknown')}
+        )
+        with patch(
+            'mail.tasks.EmailMultiAlternatives.send', side_effect=refused
+        ), patch('mail.tasks.RETRY_BACKOFF_SECONDS', 0):
+            with self.assertLogs('mail', level='ERROR') as logs:
+                send_mail_task.delay(
+                    template='test_email', recipient='someone@example.com', context={}
+                )
+
+        self.assertFalse(any('someone@example.com' in message for message in logs.output))
+        self.assertTrue(any('SMTPRecipientsRefused' in message for message in logs.output))
 
     @override_settings(CELERY_TASK_EAGER_PROPAGATES=True)
     def test_a_broken_template_fails_fast_without_retrying(self):

@@ -49,9 +49,13 @@ def send_mail_task(self, *, template, recipient, context):
         message.send()
     except Exception as exc:
         if self.request.retries >= MAX_ATTEMPTS - 1:
+            # Exception type only, never str(exc): SMTPRecipientsRefused (and
+            # others) embed the rejected address in their message text, which
+            # would leak the very recipient _masked() exists to hide.
             logger.error(
                 'mail dispatch: giving up on %s to %s after %s attempts: %s',
-                template, _masked(recipient), self.request.retries + 1, exc,
+                template, _masked(recipient), self.request.retries + 1,
+                type(exc).__name__,
             )
             return
         raise self.retry(exc=exc, countdown=RETRY_BACKOFF_SECONDS * (2 ** self.request.retries))
