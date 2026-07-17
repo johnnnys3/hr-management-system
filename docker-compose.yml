@@ -1,5 +1,13 @@
 x-backend-env: &backend-env
   POSTGRES_HOST: postgres
+  # docs/07-iam-rbac.md §7.3 / docs/02-project-plan.md §7.3: the application
+  # connects as the restricted role (INSERT/SELECT only on audit_log); the
+  # migration role is separate and is used only by docker-entrypoint.sh's
+  # `migrate` step, which does not run in these containers otherwise.
+  POSTGRES_USER: ${POSTGRES_APP_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD}
+  POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER}
+  POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD}
   CELERY_BROKER_URL: redis://redis-broker:6379/0
   REDIS_CACHE_URL: redis://redis-cache:6379/0
   MINIO_ENDPOINT_URL: http://minio:9000
@@ -9,12 +17,18 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # The image's bootstrap superuser is the migration role, not the
+      # application's runtime role — see db/init/01-create-app-role.sh,
+      # which creates the restricted role this same bootstrap user owns.
+      POSTGRES_USER: ${POSTGRES_MIGRATION_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_MIGRATION_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
