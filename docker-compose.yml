@@ -18,6 +18,13 @@ x-backend-env: &backend-env
   MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
   MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
   MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+  EMAIL_BACKEND: ${EMAIL_BACKEND}
+  EMAIL_HOST: ${EMAIL_HOST}
+  EMAIL_PORT: ${EMAIL_PORT}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+  EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
 
 services:
   postgres:
@@ -60,6 +67,19 @@ services:
     command: redis-server --maxmemory-policy allkeys-lru --maxmemory 256mb
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Dev/verification-only SMTP catcher for mail dispatch (ADR-0011). Catches
+  # mail rather than delivering it; a real deployment points EMAIL_HOST at
+  # an actual SMTP provider instead, and this service is unused.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/api/v1/info"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -145,6 +165,8 @@ services:
     depends_on:
       django-migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
 
   celery-beat:
     build: ./backend

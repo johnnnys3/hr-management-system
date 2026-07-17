@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | July 2026 | Initial technology stack selection for HRMS | 1.0 |
+| John Kessie | July 2026 | Add §4.3 Mail Dispatch: SMTP backend, provider deferred per TBD-001, ADR-0011 | 1.1 |
 
 ---
 
@@ -109,6 +110,14 @@ Background processing is required rather than optional. Payroll processing is ex
 Payroll tasks must be idempotent. A retried task must not produce duplicate payroll records. Given HRMS-BR-008 and the monetary consequences of error, task semantics are a first-order concern of the Payroll module design.
 
 Recorded in ADR-0006.
+
+### 4.3 Mail Dispatch
+
+Email is sent through Django's SMTP email backend, configured entirely from the environment (host, port, credentials, TLS, sender address) rather than against a named provider. No transactional email provider (e.g. SES, SendGrid) is selected at this time.
+
+This mirrors the deferral already made for hosting (Section 7.2) and document storage (Section 5.2): TBD-001 leaves the deploying organisation undetermined, and a provider choice made now would have no basis. The SMTP backend is a portable interface in the same sense the S3 API is for storage — pointing `EMAIL_HOST` at a different provider is a configuration change, not a code change. Local development and end-to-end verification use Mailpit, a disposable SMTP catcher, so mail can be confirmed as sent without a real provider or a real mailbox.
+
+Mail dispatch runs as a Celery task off the request cycle, with bounded retry and delivery-failure logging to the application log rather than `audit_log`. Recorded in ADR-0011.
 
 ## 5. Data
 
