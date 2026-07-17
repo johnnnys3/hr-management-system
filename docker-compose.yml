@@ -1,20 +1,41 @@
 x-backend-env: &backend-env
+  # Listed explicitly rather than via `env_file: .env` on the service:
+  # env_file passes every variable in the file through regardless of an
+  # `environment:` override of the same key, so it would put the migration
+  # role's credentials (docs/07-iam-rbac.md §7.3) into these containers'
+  # environment even though nothing here uses them. Explicit listing is
+  # what actually keeps them out, not the override.
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+  DJANGO_DEBUG: ${DJANGO_DEBUG}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
   POSTGRES_HOST: postgres
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_APP_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD}
   CELERY_BROKER_URL: redis://redis-broker:6379/0
   REDIS_CACHE_URL: redis://redis-cache:6379/0
   MINIO_ENDPOINT_URL: http://minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+  MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
 
 services:
   postgres:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # The image's bootstrap superuser is the migration role, not the
+      # application's runtime role — see db/init/01-create-app-role.sh,
+      # which creates the restricted role this same bootstrap user owns.
+      POSTGRES_USER: ${POSTGRES_MIGRATION_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_MIGRATION_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -71,16 +92,43 @@ services:
       mc anonymous set none local/${MINIO_BUCKET_NAME}
       "
 
-  django:
+  # One-shot: runs schema migrations and collectstatic under the migration
+  # role, then exits. The only place the migration role's credentials are
+  # ever present — django, celery-worker, and celery-beat never see them.
+  django-migrate:
     build: ./backend
-    env_file: .env
+    command: ["true"]
     environment:
-      <<: *backend-env
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_MIGRATION_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD}
+      CELERY_BROKER_URL: redis://redis-broker:6379/0
+      REDIS_CACHE_URL: redis://redis-cache:6379/0
+      MINIO_ENDPOINT_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
     volumes:
       - static_files:/app/staticfiles
     depends_on:
       postgres:
         condition: service_healthy
+
+  django:
+    build: ./backend
+    entrypoint: []
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    environment:
+      <<: *backend-env
+    volumes:
+      - static_files:/app/staticfiles
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
       redis-broker:
         condition: service_healthy
       redis-cache:
@@ -92,23 +140,21 @@ services:
     build: ./backend
     entrypoint: []
     command: celery -A config worker --loglevel info
-    env_file: .env
     environment:
       <<: *backend-env
     depends_on:
-      django:
-        condition: service_started
+      django-migrate:
+        condition: service_completed_successfully
 
   celery-beat:
     build: ./backend
     entrypoint: []
     command: celery -A config beat --loglevel info
-    env_file: .env
     environment:
       <<: *backend-env
     depends_on:
-      django:
-        condition: service_started
+      django-migrate:
+        condition: service_completed_successfully
 
   caddy:
     build:
