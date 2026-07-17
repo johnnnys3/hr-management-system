@@ -48,7 +48,8 @@ class AuditLogReadSurfaceTests(APITestCase):
         response = self.client.get(AUDIT_LOG_URL)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(AUDIT_LOG_URL)
