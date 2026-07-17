@@ -9,7 +9,7 @@ User = get_user_model()
 
 class AuditLogWriterTests(TestCase):
     def test_record_writes_an_entry(self):
-        user = User.objects.create_user(username='alice', password='irrelevant')
+        user = User.objects.create_user(email='alice@example.com', password='irrelevant')
 
         entry = services.record(
             category=AuditLog.CATEGORY_LOGIN_ATTEMPT,
@@ -32,7 +32,7 @@ class AuditLogWriterTests(TestCase):
         self.assertIsNone(entry.actor)
 
     def test_actor_deletion_nulls_the_reference_rather_than_removing_the_entry(self):
-        user = User.objects.create_user(username='bob', password='irrelevant')
+        user = User.objects.create_user(email='bob@example.com', password='irrelevant')
         entry = services.record(category=AuditLog.CATEGORY_PERMISSION_CHANGE, action='role_granted', actor=user)
 
         user.delete()

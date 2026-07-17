@@ -40,7 +40,10 @@ INSTALLED_APPS = [
     'health.apps.HealthConfig',
     'audit.apps.AuditConfig',
     'mail.apps.MailConfig',
+    'accounts.apps.AccountsConfig',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -123,6 +126,12 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# HRMS-NFR-023: sessions expire after a defined period of inactivity.
+# SESSION_SAVE_EVERY_REQUEST refreshes the expiry on each request, so the
+# clock measures inactivity rather than time since login.
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', str(30 * 60)))
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # Celery (ADR-0006)
@@ -208,7 +217,7 @@ STORAGES = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'accounts.authentication.Session401Authentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

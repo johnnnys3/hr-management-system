@@ -35,14 +35,14 @@ class AuditLogReadSurfaceTests(APITestCase):
     def setUp(self):
         AuditLog.objects.create(category=AuditLog.CATEGORY_LOGIN_ATTEMPT, action='login_success')
 
-    def _user_in_group(self, username, group_name):
-        user = User.objects.create_user(username=username, password='irrelevant')
+    def _user_in_group(self, email, group_name):
+        user = User.objects.create_user(email=email, password='irrelevant')
         group, _ = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
         return user
 
     def test_system_administrator_can_read(self):
-        user = self._user_in_group('sysadmin', SYSTEM_ADMINISTRATOR_GROUP)
+        user = self._user_in_group('sysadmin@example.com', SYSTEM_ADMINISTRATOR_GROUP)
         self.client.force_authenticate(user)
 
         response = self.client.get(AUDIT_LOG_URL)
@@ -58,7 +58,7 @@ class AuditLogReadSurfaceTests(APITestCase):
 
     def test_authenticated_user_with_no_group_is_denied(self):
         """Proxy for the derived Employee/Manager roles until module 6 exists."""
-        user = User.objects.create_user(username='no_group', password='irrelevant')
+        user = User.objects.create_user(email='no_group@example.com', password='irrelevant')
         self.client.force_authenticate(user)
 
         response = self.client.get(AUDIT_LOG_URL)
@@ -68,7 +68,7 @@ class AuditLogReadSurfaceTests(APITestCase):
     def test_other_assigned_roles_are_denied(self):
         for role in ASSIGNED_ROLES_OTHER_THAN_SYSTEM_ADMINISTRATOR:
             with self.subTest(role=role):
-                user = self._user_in_group(f'user_{role.replace(" ", "_").lower()}', role)
+                user = self._user_in_group(f'user_{role.replace(" ", "_").lower()}@example.com', role)
                 self.client.force_authenticate(user)
 
                 response = self.client.get(AUDIT_LOG_URL)
@@ -76,7 +76,7 @@ class AuditLogReadSurfaceTests(APITestCase):
                 self.assertEqual(response.status_code, 403)
 
     def test_read_surface_exposes_no_write_methods(self):
-        user = self._user_in_group('sysadmin2', SYSTEM_ADMINISTRATOR_GROUP)
+        user = self._user_in_group('sysadmin2@example.com', SYSTEM_ADMINISTRATOR_GROUP)
         self.client.force_authenticate(user)
 
         self.assertEqual(self.client.post(AUDIT_LOG_URL, {}).status_code, 405)
