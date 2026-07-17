@@ -4,7 +4,7 @@ from django.core import mail
 from django.template import TemplateDoesNotExist
 from django.test import TestCase, override_settings
 
-from mail.tasks import MAX_RETRIES, send_mail_task
+from mail.tasks import MAX_ATTEMPTS, send_mail_task
 
 
 @override_settings(
@@ -35,11 +35,11 @@ class SendMailTaskTests(TestCase):
                     template='test_email', recipient='x@example.com', context={}
                 )
 
-        self.assertEqual(send.call_count, MAX_RETRIES + 1)
+        self.assertEqual(send.call_count, MAX_ATTEMPTS)
         self.assertTrue(result.successful())
         self.assertTrue(any('giving up' in message for message in logs.output))
 
-    def test_giving_up_log_does_not_contain_the_full_recipient_address(self):
+    def test_giving_up_log_masks_the_recipient_address(self):
         with patch(
             'mail.tasks.EmailMultiAlternatives.send',
             side_effect=ConnectionError('smtp unreachable'),
@@ -49,12 +49,18 @@ class SendMailTaskTests(TestCase):
                     template='test_email', recipient='someone@example.com', context={}
                 )
 
+        self.assertTrue(any('giving up' in message for message in logs.output))
+        self.assertTrue(any('s***@example.com' in message for message in logs.output))
         self.assertFalse(any('someone@example.com' in message for message in logs.output))
 
     @override_settings(CELERY_TASK_EAGER_PROPAGATES=True)
     def test_a_broken_template_fails_fast_without_retrying(self):
-        with patch('mail.tasks.render', side_effect=TemplateDoesNotExist('mail/nope')):
+        with patch(
+            'mail.tasks.render', side_effect=TemplateDoesNotExist('mail/nope')
+        ) as render:
             with self.assertRaises(TemplateDoesNotExist):
                 send_mail_task.delay(
                     template='nope', recipient='x@example.com', context={}
                 )
+
+        render.assert_called_once_with('nope', {})

@@ -16,7 +16,7 @@ from .rendering import render
 
 logger = logging.getLogger('mail')
 
-MAX_RETRIES = 3
+MAX_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 60
 
 
@@ -29,28 +29,29 @@ def _masked(recipient):
     return f'{local[:1]}***@{domain}'
 
 
-@shared_task(bind=True, max_retries=MAX_RETRIES)
+@shared_task(bind=True, max_retries=MAX_ATTEMPTS - 1)
 def send_mail_task(self, *, template, recipient, context):
     # Rendering is a template bug, not a delivery failure: TemplateDoesNotExist
     # or a syntax error should fail loudly, not retry three times and then
     # get logged as if the mailbox were unreachable.
     subject, text_body, html_body = render(template, context)
 
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[recipient],
+    )
+    if html_body is not None:
+        message.attach_alternative(html_body, 'text/html')
+
     try:
-        message = EmailMultiAlternatives(
-            subject=subject,
-            body=text_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[recipient],
-        )
-        if html_body is not None:
-            message.attach_alternative(html_body, 'text/html')
         message.send()
     except Exception as exc:
-        if self.request.retries >= MAX_RETRIES:
+        if self.request.retries >= MAX_ATTEMPTS - 1:
             logger.error(
-                'mail dispatch: giving up on %s to %s after %s retries: %s',
-                template, _masked(recipient), self.request.retries, exc,
+                'mail dispatch: giving up on %s to %s after %s attempts: %s',
+                template, _masked(recipient), self.request.retries + 1, exc,
             )
             return
         raise self.retry(exc=exc, countdown=RETRY_BACKOFF_SECONDS * (2 ** self.request.retries))
