@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'health.apps.HealthConfig',
     'audit.apps.AuditConfig',
+    'mail.apps.MailConfig',
 ]
 
 MIDDLEWARE = [
@@ -139,6 +140,45 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': os.environ['REDIS_CACHE_URL'],
     }
+}
+
+
+# Mail dispatch (ADR-0011)
+# Django's SMTP backend against env-driven settings; no provider is pinned
+# (SES, SendGrid, ...), matching the deferred-hosting posture ADR-0009 and
+# ADR-0007 already take — a provider choice is a configuration change, not
+# a code change. EMAIL_BACKEND defaults to the console backend so tests and
+# an unconfigured environment don't attempt a real SMTP connection.
+
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '25'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', False)
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'hrms@localhost')
+
+
+# Delivery-failure logging (ADR-0011): application logs, never audit_log —
+# HRMS-NFR-022 fixes audit_log's five categories and delivery failure is in
+# none of them.
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'loggers': {
+        'mail': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }
 
 

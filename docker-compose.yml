@@ -18,6 +18,18 @@ x-backend-env: &backend-env
   MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
   MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
   MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+  # Defaulted rather than left to fall through empty: an unset Compose
+  # variable becomes an empty string, not "absent" — that would override
+  # config/settings.py's own defaults with values that fail outright
+  # (`int('')` on EMAIL_PORT) instead of falling back to them.
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+  EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+  EMAIL_PORT: ${EMAIL_PORT:-1025}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+  EMAIL_TIMEOUT: ${EMAIL_TIMEOUT:-10}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-hrms@localhost}
 
 services:
   postgres:
@@ -60,6 +72,19 @@ services:
     command: redis-server --maxmemory-policy allkeys-lru --maxmemory 256mb
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Dev/verification-only SMTP catcher for mail dispatch (ADR-0011). Catches
+  # mail rather than delivering it; a real deployment points EMAIL_HOST at
+  # an actual SMTP provider instead, and this service is unused.
+  mailpit:
+    image: axllent/mailpit:v1.20.0
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/api/v1/info"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -145,6 +170,8 @@ services:
     depends_on:
       django-migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
 
   celery-beat:
     build: ./backend
