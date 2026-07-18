@@ -1,8 +1,9 @@
 from django.contrib.auth import authenticate, login, logout
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -13,7 +14,11 @@ from audit.models import AuditLog
 
 from . import services, totp
 from .models import SecondFactor, SecondFactorRecoveryRequest, User
-from .permissions import CanDecideSecondFactorRecovery
+from .permissions import (
+    SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY,
+    CanDecideSecondFactorRecovery,
+    IsFullyAuthenticated,
+)
 from .serializers import (
     LoginSerializer,
     MeSerializer,
@@ -61,7 +66,14 @@ class LoginView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(csrf_protect)
     def post(self, request):
+        # DRF's SessionAuthentication only enforces CSRF against a request
+        # that already carries an authenticated session — an anonymous
+        # login POST is invisible to it, which would otherwise leave this
+        # endpoint open to a login-CSRF (forcing a victim's browser to
+        # authenticate as an attacker's account). csrf_protect runs
+        # Django's check explicitly, independent of DRF's exemption.
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
@@ -89,8 +101,11 @@ class LoginView(APIView):
                 # holder can reach that endpoint, on the same reasoning any
                 # mandatory-2FA product uses for first-time setup. No factor
                 # exists yet, so nothing is bypassed that HRMS-NFR-024 asks
-                # to be presented.
+                # to be presented. The session is marked pending: only
+                # enrolment and logout are reachable until it clears
+                # (`IsFullyAuthenticated`), so this isn't a full grant.
                 login(request, user)
+                request.session[SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY] = True
                 audit.services.record(
                     category=AuditLog.CATEGORY_LOGIN_ATTEMPT,
                     action='login_success',
@@ -98,16 +113,13 @@ class LoginView(APIView):
                     detail={'second_factor_enrollment_required': True},
                 )
                 return Response({**MeSerializer(user).data, 'second_factor_enrollment_required': True})
-            if not totp_code or not totp.verify_code(second_factor.secret_ref, totp_code):
+            if not totp.verify_and_consume(second_factor, totp_code):
                 audit.services.record(
                     category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
                     action='second_factor_presentation_failed',
                     actor=user,
                 )
                 return Response({'second_factor_required': True}, status=status.HTTP_200_OK)
-
-            second_factor.last_verified_at = timezone.now()
-            second_factor.save(update_fields=['last_verified_at'])
 
         login(request, user)
         audit.services.record(
@@ -127,10 +139,19 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
+    """Reachable in the pending, not-fully-authenticated state too (unlike
+    most endpoints, which require `IsFullyAuthenticated`) — the SPA's one
+    "who am I" call needs to see `second_factor_enrollment_pending` to know
+    to route to the enrolment screen after a page reload."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(MeSerializer(request.user).data)
+        data = MeSerializer(request.user).data
+        data['second_factor_enrollment_pending'] = bool(
+            request.session.get(SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY, False)
+        )
+        return Response(data)
 
 
 class PasswordResetRequestView(APIView):
@@ -173,17 +194,36 @@ class PasswordResetConfirmView(APIView):
 
 
 class SecondFactorEnrollView(APIView):
-    """`POST /api/auth/second-factor/`. Self-enrolment only (HRMS-NFR-024)."""
+    """`POST /api/auth/second-factor/`. Self-enrolment only (HRMS-NFR-024).
+
+    Reachable in the pending, not-fully-authenticated state (unlike most
+    endpoints) — it's the one thing a session in that state exists to reach.
+    """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if SecondFactor.objects.filter(user=request.user, disabled_at__isnull=True).exists():
+        existing = SecondFactor.objects.filter(user=request.user).first()
+        if existing is not None and existing.disabled_at is None:
             return Response({'error': {'code': 'conflict', 'message': 'A second factor is already enrolled.'}},
                              status=status.HTTP_409_CONFLICT)
 
         secret = totp.generate_secret()
-        SecondFactor.objects.create(user=request.user, secret_ref=secret)
+        encrypted = totp.encrypt_secret(secret)
+        if existing is not None:
+            # A previously disabled factor (approved recovery) re-enrols
+            # onto the same row rather than a second one — `user` is
+            # OneToOneField, so a bare create() here would fail on the
+            # unique constraint instead of ever reaching this point cleanly.
+            existing.secret_ref = encrypted
+            existing.disabled_at = None
+            existing.last_verified_at = None
+            existing.last_verified_step = None
+            existing.save(update_fields=['secret_ref', 'disabled_at', 'last_verified_at', 'last_verified_step'])
+        else:
+            SecondFactor.objects.create(user=request.user, secret_ref=encrypted)
+
+        request.session.pop(SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY, None)
         audit.services.record(
             category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
             action='second_factor_enrolled',
@@ -197,7 +237,7 @@ class SecondFactorEnrollView(APIView):
 class SecondFactorRecoveryRequestCreateView(APIView):
     """`POST /api/auth/second-factor/recovery-requests/`. Self only."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsFullyAuthenticated]
 
     def post(self, request):
         recovery_request = SecondFactorRecoveryRequest.objects.create(user=request.user)
@@ -213,23 +253,32 @@ class SecondFactorRecoveryRequestCreateView(APIView):
 class SecondFactorRecoveryRequestDecideView(APIView):
     """`POST /api/auth/second-factor/recovery-requests/{id}/decide/`."""
 
-    permission_classes = [IsAuthenticated, CanDecideSecondFactorRecovery]
+    permission_classes = [IsFullyAuthenticated, CanDecideSecondFactorRecovery]
 
     def post(self, request, pk):
-        recovery_request = get_object_or_404(SecondFactorRecoveryRequest, pk=pk)
-        self.check_object_permissions(request, recovery_request)
-
         serializer = SecondFactorRecoveryDecisionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         decision = serializer.validated_data['decision']
 
-        recovery_request.status = decision
-        recovery_request.decided_at = timezone.now()
-        recovery_request.approver = request.user
-        recovery_request.save(update_fields=['status', 'decided_at', 'approver'])
+        with transaction.atomic():
+            recovery_request = get_object_or_404(
+                SecondFactorRecoveryRequest.objects.select_for_update(), pk=pk
+            )
+            self.check_object_permissions(request, recovery_request)
 
-        if decision == 'approved':
-            SecondFactor.objects.filter(user=recovery_request.user).update(disabled_at=timezone.now())
+            if recovery_request.status != SecondFactorRecoveryRequest.STATUS_PENDING:
+                return Response(
+                    {'error': {'code': 'conflict', 'message': 'This request has already been decided.'}},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            recovery_request.status = decision
+            recovery_request.decided_at = timezone.now()
+            recovery_request.approver = request.user
+            recovery_request.save(update_fields=['status', 'decided_at', 'approver'])
+
+            if decision == 'approved':
+                SecondFactor.objects.filter(user=recovery_request.user).update(disabled_at=timezone.now())
 
         audit.services.record(
             category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,

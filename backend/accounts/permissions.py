@@ -1,4 +1,20 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAuthenticated
+
+SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY = 'second_factor_enrollment_pending'
+
+
+class IsFullyAuthenticated(IsAuthenticated):
+    """A session established for an account required to enrol a second
+    factor but which hasn't yet (`LoginView`'s
+    `second_factor_enrollment_required` path) is authenticated but not
+    fully so: it may reach enrolment and logout, nothing else. This is the
+    permission everything but those two endpoints uses.
+    """
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        return not request.session.get(SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY, False)
 
 
 class CanDecideSecondFactorRecovery(BasePermission):

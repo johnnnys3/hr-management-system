@@ -1,7 +1,7 @@
 """ADR-0004: session-cookie login/logout/me. HRMS-NFR-023: inactivity expiry."""
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 User = get_user_model()
 
@@ -22,6 +22,7 @@ class LoginTests(APITestCase):
         cookie = response.cookies[settings.SESSION_COOKIE_NAME]
         self.assertEqual(cookie['httponly'], True)
         self.assertEqual(cookie['samesite'], 'Lax')
+        self.assertEqual(bool(cookie['secure']), settings.SESSION_COOKIE_SECURE)
 
     def test_valid_credentials_are_case_insensitive_on_email(self):
         response = self.client.post(LOGIN_URL, {'email': 'ALICE@EXAMPLE.COM', 'password': 'correct-password'})
@@ -46,6 +47,27 @@ class LoginTests(APITestCase):
         response = self.client.post(LOGIN_URL, {'email': 'alice@example.com', 'password': 'correct-password'})
 
         self.assertEqual(response.status_code, 401)
+
+    def test_login_without_a_csrf_token_is_rejected(self):
+        """Login-CSRF: without this, a page under attacker control could
+        force a victim's browser to authenticate as the attacker's account."""
+        strict_client = APIClient(enforce_csrf_checks=True)
+
+        response = strict_client.post(LOGIN_URL, {'email': 'alice@example.com', 'password': 'correct-password'})
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_login_with_a_valid_csrf_token_succeeds(self):
+        strict_client = APIClient(enforce_csrf_checks=True)
+        strict_client.get('/api/auth/csrf/')
+        csrf_token = strict_client.cookies[settings.CSRF_COOKIE_NAME].value
+
+        response = strict_client.post(
+            LOGIN_URL, {'email': 'alice@example.com', 'password': 'correct-password'},
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 200)
 
 
 class LogoutTests(APITestCase):

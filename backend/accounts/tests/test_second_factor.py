@@ -57,6 +57,33 @@ class EnrollmentTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(SecondFactor.objects.get().user, user)
 
+    def test_secret_is_encrypted_at_rest(self):
+        user = User.objects.create_user(email='alice@example.com', password='x')
+        self.client.force_authenticate(user)
+
+        response = self.client.post(SECOND_FACTOR_URL)
+
+        stored = SecondFactor.objects.get(user=user).secret_ref
+        provisioning_uri = response.data['provisioning_uri']
+        self.assertNotIn(stored, provisioning_uri)
+
+    def test_re_enrolling_a_disabled_factor_reactivates_the_same_row_not_a_duplicate(self):
+        """A OneToOneField: a bare create() on top of an existing disabled
+        row would raise IntegrityError rather than ever reach a 201."""
+        from django.utils import timezone
+        user = User.objects.create_user(email='alice@example.com', password='x')
+        SecondFactor.objects.create(
+            user=user, secret_ref=totp.encrypt_secret(totp.generate_secret()), disabled_at=timezone.now(),
+        )
+        self.client.force_authenticate(user)
+
+        response = self.client.post(SECOND_FACTOR_URL)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(SecondFactor.objects.filter(user=user).count(), 1)
+        second_factor = SecondFactor.objects.get(user=user)
+        self.assertIsNone(second_factor.disabled_at)
+
 
 class LoginWithSecondFactorTests(APITestCase):
     def test_privileged_role_without_enrollment_logs_in_and_is_told_to_enroll(self):
@@ -73,7 +100,7 @@ class LoginWithSecondFactorTests(APITestCase):
 
     def test_privileged_role_with_correct_password_but_no_code_is_told_a_factor_is_required(self):
         user = _in_group('payroll@example.com', 'Payroll Officer')
-        SecondFactor.objects.create(user=user, secret_ref=totp.generate_secret())
+        SecondFactor.objects.create(user=user, secret_ref=totp.encrypt_secret(totp.generate_secret()))
 
         response = self.client.post(LOGIN_URL, {'email': 'payroll@example.com', 'password': 'correct-password'})
 
@@ -84,7 +111,7 @@ class LoginWithSecondFactorTests(APITestCase):
     def test_privileged_role_with_valid_code_logs_in(self):
         user = _in_group('payroll@example.com', 'Payroll Officer')
         secret = totp.generate_secret()
-        SecondFactor.objects.create(user=user, secret_ref=secret)
+        SecondFactor.objects.create(user=user, secret_ref=totp.encrypt_secret(secret))
         code = pyotp.TOTP(secret).now()
 
         response = self.client.post(LOGIN_URL, {
@@ -96,7 +123,7 @@ class LoginWithSecondFactorTests(APITestCase):
 
     def test_privileged_role_with_wrong_code_is_rejected(self):
         user = _in_group('payroll@example.com', 'Payroll Officer')
-        SecondFactor.objects.create(user=user, secret_ref=totp.generate_secret())
+        SecondFactor.objects.create(user=user, secret_ref=totp.encrypt_secret(totp.generate_secret()))
 
         response = self.client.post(LOGIN_URL, {
             'email': 'payroll@example.com', 'password': 'correct-password', 'totp_code': '000000',
@@ -111,12 +138,33 @@ class LoginWithSecondFactorTests(APITestCase):
         account holder must be let in to re-enrol."""
         from django.utils import timezone
         user = _in_group('payroll@example.com', 'Payroll Officer')
-        SecondFactor.objects.create(user=user, secret_ref=totp.generate_secret(), disabled_at=timezone.now())
+        SecondFactor.objects.create(
+            user=user, secret_ref=totp.encrypt_secret(totp.generate_secret()), disabled_at=timezone.now()
+        )
 
         response = self.client.post(LOGIN_URL, {'email': 'payroll@example.com', 'password': 'correct-password'})
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data.get('second_factor_enrollment_required'))
+
+    def test_a_code_cannot_be_replayed(self):
+        user = _in_group('payroll@example.com', 'Payroll Officer')
+        secret = totp.generate_secret()
+        SecondFactor.objects.create(user=user, secret_ref=totp.encrypt_secret(secret))
+        code = pyotp.TOTP(secret).now()
+
+        first = self.client.post(LOGIN_URL, {
+            'email': 'payroll@example.com', 'password': 'correct-password', 'totp_code': code,
+        })
+        self.client.post('/api/auth/logout/')
+        second = self.client.post(LOGIN_URL, {
+            'email': 'payroll@example.com', 'password': 'correct-password', 'totp_code': code,
+        })
+
+        self.assertEqual(first.status_code, 200)
+        self.assertIn('sessionid', first.cookies)
+        self.assertEqual(second.status_code, 200)
+        self.assertTrue(second.data.get('second_factor_required'))
 
     def test_ordinary_role_logs_in_without_a_factor(self):
         User.objects.create_user(email='employee@example.com', password='correct-password')

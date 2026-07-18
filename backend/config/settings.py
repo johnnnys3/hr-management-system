@@ -133,6 +133,10 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', str(30 * 60)))
 SESSION_SAVE_EVERY_REQUEST = True
 
+# ADR-0012: the TOTP shared secret (`second_factor.secret_ref`) is encrypted
+# at rest with this Fernet key, held outside the database like SECRET_KEY.
+TOTP_ENCRYPTION_KEY = os.environ['TOTP_ENCRYPTION_KEY']
+
 
 # Celery (ADR-0006)
 # Two Redis instances: broker (noeviction, AOF) and cache (allkeys-lru).
@@ -183,6 +187,11 @@ LOGGING = {
     },
     'loggers': {
         'mail': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'accounts': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,

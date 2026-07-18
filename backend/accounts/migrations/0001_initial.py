@@ -19,7 +19,11 @@ class Migration(migrations.Migration):
         # non-deterministic ICU collation (fields.E906); this creates it.
         migrations.RunSQL(
             sql="CREATE COLLATION IF NOT EXISTS case_insensitive (provider = icu, locale = 'und-u-ks-level2', deterministic = false);",
-            reverse_sql="DROP COLLATION IF EXISTS case_insensitive;",
+            # Irreversible: a collation is a cluster-wide object, not owned by
+            # this migration. Dropping it on reverse could take down another
+            # app's column sharing it, and this migration has no way to know
+            # whether it's still in use elsewhere.
+            reverse_sql=migrations.RunSQL.noop,
         ),
         migrations.CreateModel(
             name='User',

@@ -3,13 +3,14 @@ does not administer accounts or credentials. `docs/07-iam-rbac.md` §7.3/§8
 defers the approver-holder designation to deployment; this module builds
 the mechanism the deployment condition plugs into."""
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from rest_framework.test import APITestCase
 
 from accounts.models import SecondFactor, SecondFactorRecoveryRequest
 
 User = get_user_model()
 
+LOGIN_URL = '/api/auth/login/'
 RECOVERY_URL = '/api/auth/second-factor/recovery-requests/'
 
 
@@ -32,6 +33,20 @@ class CreateRecoveryRequestTests(APITestCase):
         response = self.client.post(RECOVERY_URL)
 
         self.assertEqual(response.status_code, 401)
+
+    def test_pending_enrollment_session_cannot_request_recovery(self):
+        """A session established for first-time enrolment (`IsFullyAuthenticated`)
+        can only reach enrolment and logout — nothing else, including a
+        recovery request for a factor that, by definition, isn't enrolled yet."""
+        user = User.objects.create_user(email='admin@example.com', password='correct-password')
+        group, _ = Group.objects.get_or_create(name='System Administrator')
+        user.groups.add(group)
+        login_response = self.client.post(LOGIN_URL, {'email': 'admin@example.com', 'password': 'correct-password'})
+        assert login_response.data.get('second_factor_enrollment_required')
+
+        response = self.client.post(RECOVERY_URL)
+
+        self.assertEqual(response.status_code, 403)
 
 
 class DecideRecoveryRequestTests(APITestCase):
@@ -98,3 +113,14 @@ class DecideRecoveryRequestTests(APITestCase):
         response = self.client.post(_decide_url(self.recovery_request.pk), {'decision': 'approved'})
 
         self.assertEqual(response.status_code, 401)
+
+    def test_an_already_decided_request_cannot_be_decided_again(self):
+        approver = self._approver_with_permission()
+        self.client.force_authenticate(approver)
+        self.client.post(_decide_url(self.recovery_request.pk), {'decision': 'denied'})
+
+        response = self.client.post(_decide_url(self.recovery_request.pk), {'decision': 'approved'})
+
+        self.assertEqual(response.status_code, 409)
+        self.recovery_request.refresh_from_db()
+        self.assertEqual(self.recovery_request.status, 'denied')

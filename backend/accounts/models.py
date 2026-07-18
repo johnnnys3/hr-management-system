@@ -18,6 +18,10 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
         return self.create_user(email, password, **extra_fields)
 
 
@@ -58,8 +62,10 @@ SECOND_FACTOR_REQUIRED_GROUPS = ['System Administrator', 'Payroll Officer']
 class SecondFactor(models.Model):
     """`second_factor`, `docs/05-database-schema.md` §4.2. TOTP per ADR-0012.
 
-    `secret_ref` holds the TOTP shared secret. It is never logged and never
-    returned by any endpoint after enrolment.
+    `secret_ref` holds the TOTP shared secret, Fernet-encrypted
+    (`accounts.totp.encrypt_secret`/`decrypt_secret`) — never the plaintext
+    secret, per ADR-0012's "encrypted at rest, never the raw value in
+    application logs." It is never returned by any endpoint after enrolment.
     """
 
     user = models.OneToOneField(
@@ -71,6 +77,10 @@ class SecondFactor(models.Model):
     enrolled_at = models.DateTimeField(auto_now_add=True)
     disabled_at = models.DateTimeField(null=True, blank=True)
     last_verified_at = models.DateTimeField(null=True, blank=True)
+    last_verified_step = models.BigIntegerField(
+        null=True, blank=True,
+        help_text='The TOTP time-step last accepted, so the same code cannot be replayed.',
+    )
 
     class Meta:
         db_table = 'second_factor'
