@@ -12,7 +12,7 @@ class ReportingRelationshipSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ReportingRelationship
-        fields = ['id', 'employee', 'manager_employee', 'effective_from']
+        fields = ('id', 'employee', 'manager_employee', 'effective_from')
         read_only_fields = fields
 
 
