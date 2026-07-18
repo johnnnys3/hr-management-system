@@ -90,7 +90,13 @@ class Candidate(models.Model):
 class CandidateApplication(models.Model):
     """`candidate_application`, `docs/05-database-schema.md` §4.7. HRMS-FR-017.
     Separates the candidate's identity from a specific application, since a
-    candidate is not confined to one posting."""
+    candidate is not confined to one posting.
+
+    `(candidate, posting)` is unique: a candidate applying twice to the same
+    posting is a duplicate submission, not a second application — distinct
+    from `candidate.email` not being unique, which allows the same person to
+    apply to *different* postings over time.
+    """
 
     STAGE_APPLIED = 'applied'
     STAGE_SCREENING = 'screening'

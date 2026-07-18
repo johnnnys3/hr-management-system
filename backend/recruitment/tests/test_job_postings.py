@@ -97,7 +97,12 @@ class JobPostingTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    def test_patch_cannot_reassign_a_posting_to_an_unapproved_requisition(self):
+    def test_patch_cannot_reassign_a_posting_to_a_different_requisition(self):
+        """`requisition` is read-only once a posting exists — a posting's
+        requisition is fixed at creation, not just restricted to approved
+        ones, since a posting is meant to represent one requisition's
+        opening, not a mutable pointer that could later name a different
+        (even approved) one."""
         posting = JobPosting.objects.create(
             requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
             channel=JobPosting.CHANNEL_INTERNAL,
@@ -106,7 +111,7 @@ class JobPostingTests(APITestCase):
 
         response = self.client.patch(_detail_url(posting.pk), {'requisition': self.draft_requisition.pk})
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
         posting.refresh_from_db()
         self.assertEqual(posting.requisition_id, self.approved_requisition.pk)
 

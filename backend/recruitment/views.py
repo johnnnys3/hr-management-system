@@ -179,12 +179,6 @@ class JobPostingDetailView(APIView):
         posting = get_object_or_404(JobPosting, pk=pk)
         serializer = JobPostingSerializer(posting, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        new_requisition = serializer.validated_data.get('requisition')
-        if new_requisition is not None and new_requisition.status != JobRequisition.STATUS_APPROVED:
-            return Response(
-                {'detail': 'requisition must be approved before a posting can reference it.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         with transaction.atomic():
             posting = serializer.save()
             audit.services.record(
@@ -313,6 +307,14 @@ class CandidateApplicationListCreateView(APIView):
         candidate = get_object_or_404(Candidate, pk=pk)
         serializer = CandidateApplicationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # `candidate` is not a serializer field (it's set here from the URL,
+        # not the request body), so DRF's automatic UniqueTogetherValidator
+        # never sees it — the `(candidate, posting)` uniqueness the model's
+        # `UniqueConstraint` enforces has to be checked explicitly here too.
+        if CandidateApplication.objects.filter(candidate=candidate, posting=serializer.validated_data['posting']).exists():
+            return Response(
+                {'detail': 'this candidate has already applied to this posting.'}, status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             application = serializer.save(candidate=candidate)
             audit.services.record(

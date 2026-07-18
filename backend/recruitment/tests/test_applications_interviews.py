@@ -40,6 +40,14 @@ class ApplicationTests(APITestCase):
         self.assertEqual(application.candidate_id, self.candidate.pk)
         self.assertEqual(application.stage, CandidateApplication.STAGE_APPLIED)
 
+    def test_duplicate_application_to_the_same_posting_is_rejected(self):
+        self.client.force_authenticate(self.recruiter)
+        self.client.post(f'/api/candidates/{self.candidate.pk}/applications/', {'posting': self.posting.pk})
+
+        response = self.client.post(f'/api/candidates/{self.candidate.pk}/applications/', {'posting': self.posting.pk})
+
+        self.assertEqual(response.status_code, 400)
+
     def test_anonymous_is_denied(self):
         response = self.client.get(f'/api/candidates/{self.candidate.pk}/applications/')
 
