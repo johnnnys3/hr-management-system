@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | 2026-07-16 | Initial system architecture document, closing milestone M2 | 1.0 |
+| John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** The plan moved Dashboard from module 5 to module 14 (provider-precedes-consumer: Dashboard reads modules 10 and 13, not the reverse) and modules 6–14 below renumber to 5–13 accordingly. This document still uses the v1.4 numbering throughout §4 and elsewhere. Reconcile at M2 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 
 ---
 
