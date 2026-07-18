@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'mail.apps.MailConfig',
     'accounts.apps.AccountsConfig',
     'iam.apps.IamConfig',
+    'departments.apps.DepartmentsConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
