@@ -251,8 +251,12 @@ class EmployeeDocumentListCreateView(APIView):
         if content_type is None:
             return Response({'detail': 'unrecognised file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        object_key = storage.generate_object_key(employee.pk, content_type)
-        storage.save_document(object_key, uploaded_file)
+        requested_key = storage.generate_object_key(employee.pk, content_type)
+        # `save_document` (Django's `default_storage.save()`) returns the key
+        # it actually stored under, which may differ from what was requested
+        # on a name collision — the DB row must record that key, not the
+        # one asked for.
+        object_key = storage.save_document(requested_key, uploaded_file)
 
         try:
             with transaction.atomic():
