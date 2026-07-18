@@ -103,7 +103,7 @@ Two roles are wholly derived from this seam rather than granted through it (`doc
 
 ## 4. Module Catalog
 
-The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6.1 (v1.6 numbering, reconciled here per DOC-007), its principal requirements (restated from the plan, not re-derived), what it depends on within the build order, and how it participates in the two cross-cutting concerns of §3. "Consumes" lists modules whose data or capability this module reads or calls; it is not the build sequence, which plan §6.1 already fixes and this document does not reopen.
+The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6.1 (v1.7 numbering, reconciled per DOC-007, with the requirement-assignment corrections of DOC-009), its principal requirements (restated from the plan, not re-derived), what it depends on within the build order, and how it participates in the two cross-cutting concerns of §3. "Consumes" lists modules whose data or capability this module reads or calls; it is not the build sequence, which plan §6.1 already fixes and this document does not reopen.
 
 | # | Module | Consumes | Emits audit (§3.1) | Emits mail / notification (§3.2) | Visibility rule (§3.3) |
 |---|---|---|---|---|---|
