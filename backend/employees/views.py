@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -29,6 +30,15 @@ from .serializers import (
 )
 
 MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024  # HRMS-NFR-008's configurable upper bound
+
+# `docs/06-api-contracts.md` §2.4's `?ordering=field`/`-field` over the
+# fields this endpoint's table names as filterable — an allowlist, not a
+# passthrough to `queryset.order_by()`, so an unrecognised field yields a
+# clean `400` instead of an uncaught `FieldError`.
+ALLOWED_ORDERING_FIELDS = {
+    'employee_number', 'first_name', 'last_name', 'department_id', 'job_title_id',
+    'employment_status', 'hire_date',
+}
 
 
 def _record_history(*, employee, event_type, previous_value, new_value, actor):
@@ -78,27 +88,30 @@ class EmployeeListCreateView(APIView):
             )
         ordering = request.query_params.get('ordering')
         if ordering:
+            if ordering.lstrip('-') not in ALLOWED_ORDERING_FIELDS:
+                return Response({'detail': 'unsupported ordering field.'}, status=status.HTTP_400_BAD_REQUEST)
             queryset = queryset.order_by(ordering)
         return Response(EmployeeSerializer(queryset, many=True).data)
 
     def post(self, request):
         serializer = EmployeeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        employee = serializer.save(employment_status=Employee.STATUS_ACTIVE)
-        _record_history(
-            employee=employee,
-            event_type=EmploymentHistory.EVENT_HIRED,
-            previous_value=None,
-            new_value={'employment_status': employee.employment_status, 'hire_date': str(employee.hire_date)},
-            actor=request.user,
-        )
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='employee_created',
-            actor=request.user,
-            target_type='employee',
-            target_id=employee.pk,
-        )
+        with transaction.atomic():
+            employee = serializer.save(employment_status=Employee.STATUS_ACTIVE)
+            _record_history(
+                employee=employee,
+                event_type=EmploymentHistory.EVENT_HIRED,
+                previous_value=None,
+                new_value={'employment_status': employee.employment_status, 'hire_date': str(employee.hire_date)},
+                actor=request.user,
+            )
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='employee_created',
+                actor=request.user,
+                target_type='employee',
+                target_id=employee.pk,
+            )
         return Response(EmployeeSerializer(employee).data, status=status.HTTP_201_CREATED)
 
 
@@ -135,40 +148,41 @@ class EmployeeDetailView(APIView):
         }
         serializer = serializer_class(employee, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        employee = serializer.save()
+        with transaction.atomic():
+            employee = serializer.save()
 
-        if 'employment_status' in request.data and previous['employment_status'] != employee.employment_status:
-            _record_history(
-                employee=employee,
-                event_type=EmploymentHistory.EVENT_STATUS_CHANGE,
-                previous_value={'employment_status': previous['employment_status']},
-                new_value={'employment_status': employee.employment_status},
-                actor=request.user,
-            )
-        if 'department' in request.data and previous['department_id'] != employee.department_id:
-            _record_history(
-                employee=employee,
-                event_type=EmploymentHistory.EVENT_DEPARTMENT_CHANGE,
-                previous_value={'department_id': previous['department_id']},
-                new_value={'department_id': employee.department_id},
-                actor=request.user,
-            )
-        if 'job_title' in request.data and previous['job_title_id'] != employee.job_title_id:
-            _record_history(
-                employee=employee,
-                event_type=EmploymentHistory.EVENT_JOB_TITLE_CHANGE,
-                previous_value={'job_title_id': previous['job_title_id']},
-                new_value={'job_title_id': employee.job_title_id},
-                actor=request.user,
-            )
+            if 'employment_status' in request.data and previous['employment_status'] != employee.employment_status:
+                _record_history(
+                    employee=employee,
+                    event_type=EmploymentHistory.EVENT_STATUS_CHANGE,
+                    previous_value={'employment_status': previous['employment_status']},
+                    new_value={'employment_status': employee.employment_status},
+                    actor=request.user,
+                )
+            if 'department' in request.data and previous['department_id'] != employee.department_id:
+                _record_history(
+                    employee=employee,
+                    event_type=EmploymentHistory.EVENT_DEPARTMENT_CHANGE,
+                    previous_value={'department_id': previous['department_id']},
+                    new_value={'department_id': employee.department_id},
+                    actor=request.user,
+                )
+            if 'job_title' in request.data and previous['job_title_id'] != employee.job_title_id:
+                _record_history(
+                    employee=employee,
+                    event_type=EmploymentHistory.EVENT_JOB_TITLE_CHANGE,
+                    previous_value={'job_title_id': previous['job_title_id']},
+                    new_value={'job_title_id': employee.job_title_id},
+                    actor=request.user,
+                )
 
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='employee_updated',
-            actor=request.user,
-            target_type='employee',
-            target_id=employee.pk,
-        )
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='employee_updated',
+                actor=request.user,
+                target_type='employee',
+                target_id=employee.pk,
+            )
         return Response(EmployeeSerializer(employee).data)
 
 
@@ -184,14 +198,15 @@ class EmployeeMeView(APIView):
         employee = request.user.employee
         serializer = EmployeeSelfServiceSerializer(employee, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        employee = serializer.save()
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='employee_self_service_updated',
-            actor=request.user,
-            target_type='employee',
-            target_id=employee.pk,
-        )
+        with transaction.atomic():
+            employee = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='employee_self_service_updated',
+                actor=request.user,
+                target_type='employee',
+                target_id=employee.pk,
+            )
         return Response(EmployeeSelfServiceSerializer(employee).data)
 
 
@@ -236,25 +251,33 @@ class EmployeeDocumentListCreateView(APIView):
         if content_type is None:
             return Response({'detail': 'unrecognised file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        object_key = storage.generate_object_key(employee.pk, uploaded_file.name)
+        object_key = storage.generate_object_key(employee.pk, content_type)
         storage.save_document(object_key, uploaded_file)
 
-        document = EmployeeDocument.objects.create(
-            employee=employee,
-            document_type=document_type,
-            object_key=object_key,
-            file_name=uploaded_file.name,
-            content_type=content_type,
-            size_bytes=uploaded_file.size,
-            uploaded_by=request.user,
-        )
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='employee_document_uploaded',
-            actor=request.user,
-            target_type='employee_document',
-            target_id=document.pk,
-        )
+        try:
+            with transaction.atomic():
+                document = EmployeeDocument.objects.create(
+                    employee=employee,
+                    document_type=document_type,
+                    object_key=object_key,
+                    file_name=uploaded_file.name,
+                    content_type=content_type,
+                    size_bytes=uploaded_file.size,
+                    uploaded_by=request.user,
+                )
+                audit.services.record(
+                    category=AuditLog.CATEGORY_RECORD_CHANGE,
+                    action='employee_document_uploaded',
+                    actor=request.user,
+                    target_type='employee_document',
+                    target_id=document.pk,
+                )
+        except Exception:
+            # The object was already written to storage before this block;
+            # a failed metadata write must not leave it orphaned there with
+            # no `employee_document` row pointing to it.
+            storage.delete_document(object_key)
+            raise
         return Response(EmployeeDocumentSerializer(document).data, status=status.HTTP_201_CREATED)
 
 
@@ -286,14 +309,15 @@ class EmergencyContactListCreateView(APIView):
         employee = get_object_or_404(Employee, pk=pk)
         serializer = EmergencyContactSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        contact = serializer.save(employee=employee)
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='emergency_contact_created',
-            actor=request.user,
-            target_type='emergency_contact',
-            target_id=contact.pk,
-        )
+        with transaction.atomic():
+            contact = serializer.save(employee=employee)
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='emergency_contact_created',
+                actor=request.user,
+                target_type='emergency_contact',
+                target_id=contact.pk,
+            )
         return Response(EmergencyContactSerializer(contact).data, status=status.HTTP_201_CREATED)
 
 
@@ -310,12 +334,13 @@ class EmergencyContactDetailView(APIView):
         contact = get_object_or_404(EmergencyContact, pk=contact_id, employee=employee)
         serializer = EmergencyContactSerializer(contact, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        contact = serializer.save()
-        audit.services.record(
-            category=AuditLog.CATEGORY_RECORD_CHANGE,
-            action='emergency_contact_updated',
-            actor=request.user,
-            target_type='emergency_contact',
-            target_id=contact.pk,
-        )
+        with transaction.atomic():
+            contact = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='emergency_contact_updated',
+                actor=request.user,
+                target_type='emergency_contact',
+                target_id=contact.pk,
+            )
         return Response(EmergencyContactSerializer(contact).data)

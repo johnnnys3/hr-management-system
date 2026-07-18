@@ -1,5 +1,7 @@
 """`/api/employees/{id}/documents/`, `/api/employees/{id}/emergency-contacts/`,
 `docs/06-api-contracts.md` §4.3."""
+import io
+import zipfile
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -14,6 +16,14 @@ from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 User = get_user_model()
 
 PDF_BYTES = b'%PDF-1.4 fake pdf content'
+
+
+def _zip_bytes(*member_names):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        for name in member_names:
+            archive.writestr(name, 'content')
+    return buffer.getvalue()
 
 
 def _user_with_role(email, role_name):
@@ -71,6 +81,28 @@ class EmployeeDocumentTests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['content_type'], 'application/pdf')
+
+    def test_docx_upload_is_recognised_by_its_ooxml_markers(self):
+        self.client.force_authenticate(self.hr_officer)
+        upload = SimpleUploadedFile(
+            'resume.docx', _zip_bytes('word/document.xml'),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        )
+
+        response = self.client.post(self.url, {'file': upload, 'document_type': 'resume'}, format='multipart')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data['content_type'], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
+    def test_a_zip_that_is_not_an_office_document_is_rejected(self):
+        self.client.force_authenticate(self.hr_officer)
+        upload = SimpleUploadedFile('archive.zip', _zip_bytes('readme.txt'), content_type='application/zip')
+
+        response = self.client.post(self.url, {'file': upload, 'document_type': 'contract'}, format='multipart')
+
+        self.assertEqual(response.status_code, 400)
 
     def test_employee_can_read_own_documents(self):
         EmployeeDocument.objects.create(
