@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'recruitment.apps.RecruitmentConfig',
     'onboarding.apps.OnboardingConfig',
     'notifications.apps.NotificationsConfig',
+    'leave.apps.LeaveConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
