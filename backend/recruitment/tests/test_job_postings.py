@@ -32,6 +32,10 @@ class JobPostingTests(APITestCase):
         self.draft_requisition = JobRequisition.objects.create(
             department=department, job_title=job_title, requested_by=self.recruiter,
         )
+        self.other_approved_requisition = JobRequisition.objects.create(
+            department=department, job_title=job_title, requested_by=self.recruiter,
+            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin,
+        )
 
     def test_recruiter_can_create_a_posting_for_an_approved_requisition(self):
         self.client.force_authenticate(self.recruiter)
@@ -109,7 +113,9 @@ class JobPostingTests(APITestCase):
         )
         self.client.force_authenticate(self.recruiter)
 
-        response = self.client.patch(_detail_url(posting.pk), {'requisition': self.draft_requisition.pk})
+        response = self.client.patch(
+            _detail_url(posting.pk), {'requisition': self.other_approved_requisition.pk},
+        )
 
         self.assertEqual(response.status_code, 200)
         posting.refresh_from_db()
