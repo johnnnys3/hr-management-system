@@ -40,7 +40,7 @@ Developers building each module, and the project owner reviewing the module boun
 This document is downstream of four documents it does not revise:
 
 - **`docs/01-srs.md`** (v1.2) — the requirement set. Authoritative; where this document and the SRS disagree, the SRS governs.
-- **`docs/02-project-plan.md`** (v1.6) — the twenty-module build order at §6.1, with its requirement assignment. This document is what §5.2 calls "records the assignment at M2" for module 1 (Audit) and module 10 (Notification), and what plan §11 questions 1 to 3 call the same for modules 15 and 1. **None of the three placements is reopened here.**
+- **`docs/02-project-plan.md`** (v1.7) — the twenty-module build order at §6.1, with its requirement assignment. This document is what §5.2 calls "records the assignment at M2" for module 1 (Audit) and module 10 (Notification), and what plan §11 questions 1 to 3 call the same for modules 15 and 1. **None of the three placements is reopened here.**
 - **`docs/03-tech-stack.md`** (v1.0) and **ADR-0001 to ADR-0009** — the technology and architecture decisions this document builds against: modular monolith with a separate SPA (ADR-0001), Django/DRF (ADR-0002), PostgreSQL (ADR-0003), session-cookie authentication (ADR-0004), groups plus queryset scoping (ADR-0005), Celery/Redis (ADR-0006), S3-compatible storage (ADR-0007), Ant Design (ADR-0008), containerised deployment with hosting deferred (ADR-0009).
 - **`docs/07-iam-rbac.md`** (v1.6) and **ADR-0010, ADR-0011** — produced out of order (plan §5.3). The role model, the permission matrix, the visibility-rule table, and the mail-dispatch/notification split are fixed inputs here, not choices this document makes.
 
