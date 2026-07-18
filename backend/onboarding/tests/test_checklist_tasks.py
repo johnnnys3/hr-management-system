@@ -88,3 +88,33 @@ class OnboardingTaskTests(APITestCase):
         self.assertEqual(task.status, OnboardingTask.STATUS_COMPLETED)
         self.assertEqual(task.completed_by, self.hr_officer)
         self.assertIsNotNone(task.completed_at)
+
+    def test_transitioning_away_from_completed_clears_completion_metadata(self):
+        task = OnboardingTask.objects.create(checklist=self.checklist, name='IT provisioning')
+        self.client.force_authenticate(self.hr_officer)
+        self.client.patch(
+            f'/api/onboarding-checklists/{self.checklist.pk}/tasks/{task.pk}/', {'status': 'completed'},
+        )
+
+        response = self.client.patch(
+            f'/api/onboarding-checklists/{self.checklist.pk}/tasks/{task.pk}/', {'status': 'in_progress'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.status, OnboardingTask.STATUS_IN_PROGRESS)
+        self.assertIsNone(task.completed_by)
+        self.assertIsNone(task.completed_at)
+
+    def test_creating_a_task_ignores_a_client_supplied_status(self):
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.post(
+            f'/api/onboarding-checklists/{self.checklist.pk}/tasks/',
+            {'name': 'IT provisioning', 'status': 'completed'},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        task = OnboardingTask.objects.get(pk=response.data['id'])
+        self.assertEqual(task.status, OnboardingTask.STATUS_PENDING)
+        self.assertIsNone(task.completed_by)

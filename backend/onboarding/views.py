@@ -159,10 +159,14 @@ class OnboardingTaskDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             new_status = serializer.validated_data.get('status', task.status)
+            was_completed = task.status == OnboardingTask.STATUS_COMPLETED
             task.status = new_status
-            if new_status == OnboardingTask.STATUS_COMPLETED:
+            if new_status == OnboardingTask.STATUS_COMPLETED and not was_completed:
                 task.completed_by = request.user
                 task.completed_at = timezone.now()
+            elif new_status != OnboardingTask.STATUS_COMPLETED:
+                task.completed_by = None
+                task.completed_at = None
             task.save(update_fields=['status', 'completed_by', 'completed_at'])
             audit.services.record(
                 category=AuditLog.CATEGORY_RECORD_CHANGE,

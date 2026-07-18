@@ -11,7 +11,7 @@ class OnboardingTaskSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'checklist', 'name', 'is_required', 'status', 'completed_by', 'completed_at', 'created_at',
         ]
-        read_only_fields = ['id', 'checklist', 'completed_by', 'completed_at', 'created_at']
+        read_only_fields = ['id', 'checklist', 'status', 'completed_by', 'completed_at', 'created_at']
 
 
 class OnboardingTaskStatusUpdateSerializer(serializers.ModelSerializer):
