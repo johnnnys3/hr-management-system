@@ -8,13 +8,12 @@ references a group by `auth_group.id`, per `docs/05-database-schema.md`
 Derived roles (§3) are not groups. `Employee` and `Manager` are computed
 from the `employee` and `reporting_relationship` tables respectively.
 Module 6 (Employee Management) built `employee`, so `is_employee` below
-now derives from it. `is_manager` stays stubbed `False` — its data,
-`reporting_relationship`, belongs to Module 8 (Reporting Structure),
-not yet built. A user derives no role from a table that does not exist
-yet, which is a true statement, not a placeholder.
+derives from it. Module 8 (Reporting Structure) built
+`reporting_relationship`, so `is_manager` now derives from it too.
 """
 
 from employees.models import Employee
+from reporting_structure.models import ReportingRelationship
 
 SYSTEM_ADMINISTRATOR = 'System Administrator'
 HR_ADMINISTRATOR = 'HR Administrator'
@@ -61,6 +60,15 @@ def is_employee(user):
 
 
 def is_manager(user):
-    """§3.2: has one or more direct reports. Always `False` until Module 6
-    supplies the reporting-relationship data."""
-    return False
+    """§3.2: has one or more direct reports, and their own employment status
+    permits access — `docs/05-database-schema.md` §4.6's derivation query,
+    applying the same permitting-status test §3.1 applies to the subject,
+    here to the manager, so a manager whose own access has ended does not
+    go on deriving the role from a `reporting_relationship` row that has
+    not yet been reassigned."""
+    if not (user and user.is_authenticated):
+        return False
+    employee = getattr(user, 'employee', None)
+    if employee is None or employee.employment_status not in EMPLOYEE_ACCESS_PERMITTED_STATUSES:
+        return False
+    return ReportingRelationship.objects.filter(manager_employee_id=employee.pk).exists()
