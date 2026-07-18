@@ -90,10 +90,12 @@ class CreateRoleGrantRequestTests(APITestCase):
     def test_privileged_role_grant_does_not_take_effect_until_approved(self):
         self.client.force_authenticate(self.requester)
 
-        self.client.post(REQUESTS_URL, {
+        response = self.client.post(REQUESTS_URL, {
             'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
         })
 
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['status'], 'pending')
         self.assertFalse(self.subject.groups.filter(name=PAYROLL_OFFICER).exists())
 
 
@@ -134,8 +136,9 @@ class DecideRoleGrantRequestTests(APITestCase):
         approver = self._approver_with_permission()
         self.client.force_authenticate(approver)
 
-        self.client.post(_decide_url(self.grant_request.pk), {'decision': 'refused'})
+        response = self.client.post(_decide_url(self.grant_request.pk), {'decision': 'refused'})
 
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(self.subject.groups.filter(name=PAYROLL_OFFICER).exists())
 
     def test_requester_cannot_decide_their_own_request(self):
@@ -187,6 +190,10 @@ class DecideRoleGrantRequestTests(APITestCase):
         response = self.client.post(_decide_url(self.grant_request.pk), {'decision': 'approved'})
 
         self.assertEqual(response.status_code, 403)
+        self.grant_request.refresh_from_db()
+        self.assertEqual(self.grant_request.status, RoleGrantRequest.STATUS_PENDING)
+        self.assertIsNone(self.grant_request.approver)
+        self.assertFalse(self.subject.groups.filter(name=PAYROLL_OFFICER).exists())
 
     def test_approve_role_grant_is_not_granted_to_system_administrator_by_default(self):
         """`docs/07-iam-rbac.md` §7.3/§8: granting this to System
