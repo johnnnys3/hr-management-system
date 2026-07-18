@@ -100,10 +100,15 @@ class LeaveRequestDetailView(APIView):
     permission_classes = [CanCorrectLeaveRequest]
 
     def patch(self, request, pk):
-        leave_request = get_object_or_404(LeaveRequest, pk=pk)
-        serializer = LeaveRequestCorrectionSerializer(leave_request, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
+            leave_request = get_object_or_404(LeaveRequest.objects.select_for_update(), pk=pk)
+            if leave_request.status != LeaveRequest.STATUS_PENDING:
+                return Response(
+                    {'detail': f'leave request cannot be corrected from status {leave_request.status!r}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            serializer = LeaveRequestCorrectionSerializer(leave_request, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
             leave_request = serializer.save()
             audit.services.record(
                 category=AuditLog.CATEGORY_RECORD_CHANGE,

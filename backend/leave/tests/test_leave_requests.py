@@ -225,6 +225,8 @@ class LeaveRequestRejectTests(APITestCase):
     def setUp(self):
         self.manager, self.report = make_manager_and_report()
         self.manager_user = User.objects.create_user(email='ada@example.com', password='x', employee=self.manager)
+        self.other_manager = make_employee('M-2', 'Alan', 'Turing')
+        self.other_manager_user = User.objects.create_user(email='alan@example.com', password='x', employee=self.other_manager)
         self.balance = LeaveBalance.objects.create(
             employee=self.report, leave_type=annual_leave_type(),
             period_start=date(2026, 1, 1), period_end=date(2026, 12, 31), entitled_days=15,
@@ -245,6 +247,33 @@ class LeaveRequestRejectTests(APITestCase):
         self.assertEqual(self.leave_request.status, LeaveRequest.STATUS_REJECTED)
         self.balance.refresh_from_db()
         self.assertEqual(self.balance.used_days, 0)
+
+    def test_non_direct_manager_cannot_reject(self):
+        self.client.force_authenticate(self.other_manager_user)
+
+        response = self.client.post(reject_url(self.leave_request.pk))
+
+        self.assertEqual(response.status_code, 403)
+        self.leave_request.refresh_from_db()
+        self.assertEqual(self.leave_request.status, LeaveRequest.STATUS_PENDING)
+
+    def test_hr_officer_cannot_reject(self):
+        """`docs/07-iam-rbac.md` §4.3: leave approval/rejection is Manager-only at action level."""
+        self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
+
+        response = self.client.post(reject_url(self.leave_request.pk))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_hr_officer_cannot_reject_via_correction_endpoint(self):
+        """The `status` field is never reachable by two permission paths — see `validate_status`."""
+        self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
+
+        response = self.client.patch(detail_url(self.leave_request.pk), {'status': LeaveRequest.STATUS_REJECTED})
+
+        self.assertEqual(response.status_code, 400)
+        self.leave_request.refresh_from_db()
+        self.assertEqual(self.leave_request.status, LeaveRequest.STATUS_PENDING)
 
 
 class LeaveRequestCancelTests(APITestCase):
@@ -329,6 +358,20 @@ class LeaveRequestCorrectionTests(APITestCase):
         response = self.client.patch(detail_url(self.leave_request.pk), {'reason': 'x'})
 
         self.assertEqual(response.status_code, 403)
+
+    def test_cannot_correct_an_already_approved_request(self):
+        """An approved request's dates/leave_type must not change without
+        reconciling the balance decrement already applied at approval —
+        the correction endpoint only ever acts on a pending request."""
+        self.leave_request.status = LeaveRequest.STATUS_APPROVED
+        self.leave_request.save(update_fields=['status'])
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.patch(detail_url(self.leave_request.pk), {'end_date': '2026-08-20'})
+
+        self.assertEqual(response.status_code, 400)
+        self.leave_request.refresh_from_db()
+        self.assertEqual(str(self.leave_request.end_date), '2026-08-14')
 
     def test_employee_cannot_correct_own_request(self):
         employee_user = User.objects.create_user(email='grace@example.com', password='x', employee=self.employee)

@@ -48,9 +48,9 @@ class LeaveRequestCreateSerializer(serializers.ModelSerializer):
 class LeaveRequestCorrectionSerializer(serializers.ModelSerializer):
     """`PATCH /api/leave-requests/{id}/`, `docs/06-api-contracts.md` §4.12.
     HR Officer correction/cancellation only — `status` cannot be set to
-    `'approved'` here; that transition is the `approve/` action, held by
-    Manager only, so the same field is never reachable by two permission
-    paths."""
+    `'approved'` or `'rejected'` here; both transitions are Manager-only
+    actions (`approve/`, `reject/`), so the same field is never reachable
+    by two permission paths."""
 
     class Meta:
         model = LeaveRequest
@@ -58,8 +58,10 @@ class LeaveRequestCorrectionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def validate_status(self, value):
-        if value == LeaveRequest.STATUS_APPROVED:
-            raise serializers.ValidationError('HR Officer cannot approve a leave request through this endpoint.')
+        if value in (LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_REJECTED):
+            raise serializers.ValidationError(
+                'HR Officer cannot approve or reject a leave request through this endpoint.'
+            )
         return value
 
     def validate(self, attrs):
