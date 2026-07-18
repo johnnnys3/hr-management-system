@@ -166,6 +166,33 @@ class LoginWithSecondFactorTests(APITestCase):
         self.assertEqual(second.status_code, 200)
         self.assertTrue(second.data.get('second_factor_required'))
 
+    def test_an_older_code_within_the_window_is_rejected_after_a_newer_one_is_consumed(self):
+        """Monotonic, not just not-equal: accepting step N must also close
+        off step N-1, even though it's a different code — otherwise the ±1
+        window lets an out-of-order older code through after a later one
+        has already been used."""
+        import time as time_module
+        user = _in_group('payroll@example.com', 'Payroll Officer')
+        secret = totp.generate_secret()
+        SecondFactor.objects.create(user=user, secret_ref=totp.encrypt_secret(secret))
+        pyotp_totp = pyotp.TOTP(secret)
+        current_step = int(time_module.time() // pyotp_totp.interval)
+        newer_code = pyotp_totp.at((current_step + 1) * pyotp_totp.interval)
+        older_code = pyotp_totp.at(current_step * pyotp_totp.interval)
+
+        newer_login = self.client.post(LOGIN_URL, {
+            'email': 'payroll@example.com', 'password': 'correct-password', 'totp_code': newer_code,
+        })
+        self.client.post('/api/auth/logout/')
+        older_login = self.client.post(LOGIN_URL, {
+            'email': 'payroll@example.com', 'password': 'correct-password', 'totp_code': older_code,
+        })
+
+        self.assertEqual(newer_login.status_code, 200)
+        self.assertIn('sessionid', newer_login.cookies)
+        self.assertEqual(older_login.status_code, 200)
+        self.assertTrue(older_login.data.get('second_factor_required'))
+
     def test_ordinary_role_logs_in_without_a_factor(self):
         User.objects.create_user(email='employee@example.com', password='correct-password')
 

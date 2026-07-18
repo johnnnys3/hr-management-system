@@ -47,9 +47,14 @@ def verify_and_consume(second_factor, code):
 
     totp = pyotp.TOTP(secret)
     current_step = int(time.time() // totp.interval)
+    last_verified_step = second_factor.last_verified_step
 
     for step in (current_step, current_step - 1, current_step + 1):
-        if step == second_factor.last_verified_step:
+        # Monotonic, not just not-equal: a step at or before the last one
+        # accepted is rejected even if it isn't an exact repeat, since the
+        # ±1 window can otherwise let an out-of-order older code through
+        # after a later one has already been consumed.
+        if last_verified_step is not None and step <= last_verified_step:
             continue
         # TOTP.at() takes a Unix timestamp, not a step count.
         if hmac.compare_digest(totp.at(step * totp.interval), code):

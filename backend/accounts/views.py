@@ -91,35 +91,40 @@ class LoginView(APIView):
                              status=status.HTTP_401_UNAUTHORIZED)
 
         if user.requires_second_factor():
-            second_factor = getattr(user, 'second_factor', None)
-            if second_factor is None or second_factor.disabled_at is not None:
-                # No factor to present yet (never enrolled, or disabled by an
-                # approved recovery). HRMS-NFR-024 requires presentation "on
-                # every authentication," but enrolment is self-service
-                # (`/api/auth/second-factor/`) and itself requires a session
-                # — credentials alone establish one here so the account
-                # holder can reach that endpoint, on the same reasoning any
-                # mandatory-2FA product uses for first-time setup. No factor
-                # exists yet, so nothing is bypassed that HRMS-NFR-024 asks
-                # to be presented. The session is marked pending: only
-                # enrolment and logout are reachable until it clears
-                # (`IsFullyAuthenticated`), so this isn't a full grant.
-                login(request, user)
-                request.session[SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY] = True
-                audit.services.record(
-                    category=AuditLog.CATEGORY_LOGIN_ATTEMPT,
-                    action='login_success',
-                    actor=user,
-                    detail={'second_factor_enrollment_required': True},
-                )
-                return Response({**MeSerializer(user).data, 'second_factor_enrollment_required': True})
-            if not totp.verify_and_consume(second_factor, totp_code):
-                audit.services.record(
-                    category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
-                    action='second_factor_presentation_failed',
-                    actor=user,
-                )
-                return Response({'second_factor_required': True}, status=status.HTTP_200_OK)
+            # Locked for the duration of the check-and-consume: without this,
+            # two concurrent requests carrying the same code could both read
+            # last_verified_step before either write lands, and both succeed.
+            with transaction.atomic():
+                second_factor = SecondFactor.objects.select_for_update().filter(user=user).first()
+                if second_factor is None or second_factor.disabled_at is not None:
+                    # No factor to present yet (never enrolled, or disabled by
+                    # an approved recovery). HRMS-NFR-024 requires
+                    # presentation "on every authentication," but enrolment
+                    # is self-service (`/api/auth/second-factor/`) and itself
+                    # requires a session — credentials alone establish one
+                    # here so the account holder can reach that endpoint, on
+                    # the same reasoning any mandatory-2FA product uses for
+                    # first-time setup. No factor exists yet, so nothing is
+                    # bypassed that HRMS-NFR-024 asks to be presented. The
+                    # session is marked pending: only enrolment and logout
+                    # are reachable until it clears (`IsFullyAuthenticated`),
+                    # so this isn't a full grant.
+                    login(request, user)
+                    request.session[SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY] = True
+                    audit.services.record(
+                        category=AuditLog.CATEGORY_LOGIN_ATTEMPT,
+                        action='login_success',
+                        actor=user,
+                        detail={'second_factor_enrollment_required': True},
+                    )
+                    return Response({**MeSerializer(user).data, 'second_factor_enrollment_required': True})
+                if not totp.verify_and_consume(second_factor, totp_code):
+                    audit.services.record(
+                        category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
+                        action='second_factor_presentation_failed',
+                        actor=user,
+                    )
+                    return Response({'second_factor_required': True}, status=status.HTTP_200_OK)
 
         login(request, user)
         audit.services.record(
@@ -203,25 +208,31 @@ class SecondFactorEnrollView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        existing = SecondFactor.objects.filter(user=request.user).first()
-        if existing is not None and existing.disabled_at is None:
-            return Response({'error': {'code': 'conflict', 'message': 'A second factor is already enrolled.'}},
-                             status=status.HTTP_409_CONFLICT)
+        # Locks the user row for the duration of the read-then-write below —
+        # without it, two concurrent enrolment requests could both see no
+        # active factor and both proceed, one of them hitting the
+        # OneToOneField's unique constraint only after doing real work.
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=request.user.pk)
+            existing = SecondFactor.objects.select_for_update().filter(user=request.user).first()
+            if existing is not None and existing.disabled_at is None:
+                return Response({'error': {'code': 'conflict', 'message': 'A second factor is already enrolled.'}},
+                                 status=status.HTTP_409_CONFLICT)
 
-        secret = totp.generate_secret()
-        encrypted = totp.encrypt_secret(secret)
-        if existing is not None:
-            # A previously disabled factor (approved recovery) re-enrols
-            # onto the same row rather than a second one — `user` is
-            # OneToOneField, so a bare create() here would fail on the
-            # unique constraint instead of ever reaching this point cleanly.
-            existing.secret_ref = encrypted
-            existing.disabled_at = None
-            existing.last_verified_at = None
-            existing.last_verified_step = None
-            existing.save(update_fields=['secret_ref', 'disabled_at', 'last_verified_at', 'last_verified_step'])
-        else:
-            SecondFactor.objects.create(user=request.user, secret_ref=encrypted)
+            secret = totp.generate_secret()
+            encrypted = totp.encrypt_secret(secret)
+            if existing is not None:
+                # A previously disabled factor (approved recovery) re-enrols
+                # onto the same row rather than a second one — `user` is
+                # OneToOneField, so a bare create() here would fail on the
+                # unique constraint instead of ever reaching this point cleanly.
+                existing.secret_ref = encrypted
+                existing.disabled_at = None
+                existing.last_verified_at = None
+                existing.last_verified_step = None
+                existing.save(update_fields=['secret_ref', 'disabled_at', 'last_verified_at', 'last_verified_step'])
+            else:
+                SecondFactor.objects.create(user=request.user, secret_ref=encrypted)
 
         request.session.pop(SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY, None)
         audit.services.record(
@@ -280,11 +291,11 @@ class SecondFactorRecoveryRequestDecideView(APIView):
             if decision == 'approved':
                 SecondFactor.objects.filter(user=recovery_request.user).update(disabled_at=timezone.now())
 
-        audit.services.record(
-            category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
-            action=f'second_factor_recovery_{decision}',
-            actor=request.user,
-            target_type='user_account',
-            target_id=recovery_request.user_id,
-        )
+            audit.services.record(
+                category=AuditLog.CATEGORY_SECOND_FACTOR_EVENT,
+                action=f'second_factor_recovery_{decision}',
+                actor=request.user,
+                target_type='user_account',
+                target_id=recovery_request.user_id,
+            )
         return Response(SecondFactorRecoveryRequestSerializer(recovery_request).data)
