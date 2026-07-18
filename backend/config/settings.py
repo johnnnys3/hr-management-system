@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'iam.apps.IamConfig',
     'departments.apps.DepartmentsConfig',
+    'employees.apps.EmployeesConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
