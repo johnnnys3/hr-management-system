@@ -150,6 +150,37 @@ class EmployeeListCreateTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_manager_sees_own_record_and_direct_reports_only(self):
+        """Module 8 (Reporting Structure)'s `_visible_employees` Manager
+        branch: not the same as Employee's "own record only" — a Manager
+        additionally sees their direct reports, and nothing beyond that."""
+        from reporting_structure.models import ReportingRelationship
+
+        department = Department.objects.create(name='Engineering')
+        job_title = JobTitle.objects.create(name='Engineer')
+        manager = Employee.objects.create(
+            employee_number='E-1', first_name='Ada', last_name='Lovelace',
+            date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
+        )
+        report = Employee.objects.create(
+            employee_number='E-2', first_name='Grace', last_name='Hopper',
+            date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
+        )
+        unrelated = Employee.objects.create(
+            employee_number='E-3', first_name='Alan', last_name='Turing',
+            date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
+        )
+        ReportingRelationship.objects.create(employee=report, manager_employee=manager, effective_from=date.today())
+        user = User.objects.create_user(email='ada@example.com', password='x', employee=manager)
+        self.client.force_authenticate(user)
+
+        response = self.client.get(EMPLOYEES_URL)
+
+        self.assertEqual(response.status_code, 200)
+        seen = {row['employee_number'] for row in response.data}
+        self.assertEqual(seen, {'E-1', 'E-2'})
+        self.assertNotIn(unrelated.employee_number, seen)
+
     def test_terminated_employee_loses_access(self):
         department = Department.objects.create(name='Engineering')
         job_title = JobTitle.objects.create(name='Engineer')

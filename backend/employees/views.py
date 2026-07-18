@@ -10,7 +10,8 @@ from rest_framework.views import APIView
 
 import audit.services
 from audit.models import AuditLog
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, is_employee
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, is_employee, is_manager
+from reporting_structure.models import ReportingRelationship
 
 from . import storage
 from .models import EmergencyContact, Employee, EmployeeDocument, EmploymentHistory
@@ -53,13 +54,17 @@ def _record_history(*, employee, event_type, previous_value, new_value, actor):
 
 
 def _visible_employees(user):
-    """`docs/07-iam-rbac.md` §5's Employee records row. Manager's "direct
-    reports" cell is not implemented — `reporting_relationship` is Module 8;
-    `is_manager` stays stubbed `False`, so a Manager with no other role
-    resolves to the Employee branch below and, holding no `employee`
-    record naming them, sees nothing either."""
+    """`docs/07-iam-rbac.md` §5's Employee records row: HR sees every
+    record; Manager sees their own direct reports (Module 8's
+    `reporting_relationship`) plus their own record — checked before the
+    plain Employee branch, since every Manager is also an Employee and
+    would otherwise be scoped down to just their own row; Employee sees
+    only their own record."""
     if user.groups.filter(name__in=[HR_OFFICER, HR_ADMINISTRATOR]).exists():
         return Employee.objects.all()
+    if is_manager(user):
+        report_ids = ReportingRelationship.objects.filter(manager_employee_id=user.employee_id).values('employee_id')
+        return Employee.objects.filter(Q(pk=user.employee_id) | Q(pk__in=report_ids))
     if is_employee(user):
         return Employee.objects.filter(pk=user.employee_id)
     return Employee.objects.none()
