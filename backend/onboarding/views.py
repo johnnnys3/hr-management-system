@@ -6,9 +6,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import audit.services
+import notifications.services
 from audit.models import AuditLog
 from departments.models import Department, JobTitle
 from employees.models import Employee
+from notifications.models import Notification
 from recruitment.models import CandidateApplication, OfferLetter
 
 from .models import OnboardingChecklist, OnboardingTask
@@ -143,6 +145,17 @@ class OnboardingTaskListCreateView(APIView):
                 target_type='onboarding_task',
                 target_id=task.pk,
             )
+            recipient = getattr(checklist.employee, 'user_account', None)
+            if recipient is not None:
+                notifications.services.send(
+                    recipient=recipient,
+                    category=Notification.CATEGORY_PENDING_TASK,
+                    channel=Notification.CHANNEL_IN_APP,
+                    subject='New onboarding task',
+                    body=f'You have a new onboarding task: {task.name}.',
+                    related_type='onboarding_task',
+                    related_id=task.pk,
+                )
         return Response(OnboardingTaskSerializer(task).data, status=status.HTTP_201_CREATED)
 
 
