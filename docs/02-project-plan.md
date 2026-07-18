@@ -247,7 +247,7 @@ The risk of out-of-order authorship is that the earlier document assumed somethi
 | 14 | **Dashboard** | **SRS §3.1 role-specific dashboards. Reads modules 10 and 13 in this table's v1.5 numbering — cited as modules 11 and 14 at `docs/06-api-contracts.md` §4.10, which is unreconciled v1.4 numbering; both name Notification and Leave Management. Moved from 5 at v1.5 on the provider-precedes-consumer rule this plan has applied since v1.1. Its Executive aggregate view still precedes module 17 Reports, and that residual is recorded below rather than resolved by a further move** |
 | 15 | Compensation and Benefits | HRMS-FR-056 to HRMS-FR-062, HRMS-DR-010; `docs/07-iam-rbac.md` §4.2 |
 | 16 | Payroll | HRMS-FR-035 to HRMS-FR-048, HRMS-BR-008, HRMS-DR-005, HRMS-DR-009, HRMS-NFR-005, HRMS-NFR-009, HRMS-NFR-010 |
-| 17 | Reports | HRMS-FR-049 to HRMS-FR-054 |
+| 17 | **Reports** | **HRMS-FR-049 to HRMS-FR-054, HRMS-FR-032 (manager team-level reports, own team-level residual since module 12; see module 12's row and revision history v1.8)** |
 | 18 | Testing | HRMS-NFR-028, HRMS-NFR-029; `docs/08-testing-plan.md` |
 | 19 | UAT | SRS §4 acceptance against stimulus/response sequences |
 | 20 | Deployment | HRMS-NFR-012, HRMS-NFR-020, HRMS-NFR-035; ADR-0009 |
