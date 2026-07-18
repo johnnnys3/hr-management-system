@@ -60,11 +60,12 @@ class ManagerChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         new_manager = serializer.validated_data['manager_employee_id']
 
-        previous_manager_id = getattr(
-            ReportingRelationship.objects.filter(employee=employee).first(), 'manager_employee_id', None
-        )
-
         with transaction.atomic():
+            previous_manager_id = getattr(
+                ReportingRelationship.objects.select_for_update().filter(employee=employee).first(),
+                'manager_employee_id',
+                None,
+            )
             relationship, _ = ReportingRelationship.objects.update_or_create(
                 employee=employee,
                 defaults={'manager_employee': new_manager, 'effective_from': date.today()},

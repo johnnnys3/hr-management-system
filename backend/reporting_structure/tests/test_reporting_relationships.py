@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import HR_OFFICER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 from reporting_structure.models import ReportingRelationship
 
 User = get_user_model()
@@ -45,6 +45,14 @@ class ReportingRelationshipListTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
+
+    def test_hr_administrator_can_read_reporting_relationships(self):
+        hr_admin = _user_with_role('hradmin@example.com', HR_ADMINISTRATOR)
+        self.client.force_authenticate(hr_admin)
+
+        response = self.client.get(RELATIONSHIPS_URL)
+
+        self.assertEqual(response.status_code, 200)
 
     def test_filterable_by_manager_employee_id(self):
         self.client.force_authenticate(self.hr_officer)

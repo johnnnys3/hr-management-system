@@ -67,6 +67,12 @@ class ManagerChangeTests(APITestCase):
         relationship = ReportingRelationship.objects.get(employee=self.employee)
         self.assertEqual(relationship.manager_employee_id, self.manager_two.pk)
 
+        history = EmploymentHistory.objects.filter(
+            employee=self.employee, event_type=EmploymentHistory.EVENT_MANAGER_CHANGE,
+        ).order_by('id').last()
+        self.assertEqual(history.previous_value, {'manager_employee_id': self.manager_one.pk})
+        self.assertEqual(history.new_value, {'manager_employee_id': self.manager_two.pk})
+
     def test_an_employee_cannot_be_set_as_their_own_manager(self):
         self.client.force_authenticate(self.hr_officer)
 

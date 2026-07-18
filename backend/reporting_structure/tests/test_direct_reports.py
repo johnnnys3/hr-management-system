@@ -39,8 +39,15 @@ class DirectReportsTests(APITestCase):
             employee_number='E-3', first_name='Alan', last_name='Turing',
             date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
         )
+        self.other_report = Employee.objects.create(
+            employee_number='E-4', first_name='Katherine', last_name='Johnson',
+            date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
+        )
         ReportingRelationship.objects.create(
             employee=self.report, manager_employee=self.manager, effective_from=date.today(),
+        )
+        ReportingRelationship.objects.create(
+            employee=self.other_report, manager_employee=self.other_manager, effective_from=date.today(),
         )
         self.manager_user = User.objects.create_user(email='ada@example.com', password='x', employee=self.manager)
         self.other_manager_user = User.objects.create_user(
@@ -58,7 +65,10 @@ class DirectReportsTests(APITestCase):
 
     def test_manager_cannot_read_another_managers_direct_reports(self):
         """The endpoint's visibility is `manager_employee_id = caller's
-        employee id`, not any `{id}` a Manager happens to request."""
+        employee id`, not any `{id}` a Manager happens to request.
+        `other_manager` has their own direct report (`self.other_report`),
+        so `is_manager` is `True` and this 403 comes from
+        `has_object_permission`, not `has_permission`."""
         self.client.force_authenticate(self.other_manager_user)
 
         response = self.client.get(_direct_reports_url(self.manager.pk))

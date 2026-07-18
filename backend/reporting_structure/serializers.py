@@ -6,17 +6,14 @@ from .models import ReportingRelationship
 
 
 class ReportingRelationshipSerializer(serializers.ModelSerializer):
+    """Read-only: every write to `reporting_relationship` goes through
+    `ManagerChangeSerializer` and `ManagerChangeView`'s `update_or_create`,
+    not this serializer."""
+
     class Meta:
         model = ReportingRelationship
         fields = ['id', 'employee', 'manager_employee', 'effective_from']
-        read_only_fields = ['id']
-
-    def validate(self, attrs):
-        employee = attrs.get('employee', getattr(self.instance, 'employee', None))
-        manager_employee = attrs.get('manager_employee', getattr(self.instance, 'manager_employee', None))
-        if employee is not None and manager_employee is not None and employee.pk == manager_employee.pk:
-            raise serializers.ValidationError('an employee cannot be their own manager.')
-        return attrs
+        read_only_fields = fields
 
 
 class ManagerChangeSerializer(serializers.Serializer):
