@@ -77,7 +77,21 @@ class InterviewTests(APITestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_interviewer_need_not_be_a_recruiter(self):
-        """HRMS-FR-018 does not restrict who may interview, only who may schedule."""
+        """HRMS-FR-018 does not restrict who may be scheduled as interviewer,
+        only who may schedule/update — `self.interviewer` holds no group at
+        all and is still accepted as `interviewer_employee`. Recording the
+        outcome (status, feedback) remains Recruiter-only, per
+        `IsRecruiter` on this endpoint."""
+        self.client.force_authenticate(self.recruiter)
+        scheduled_at = timezone.now() + timedelta(days=3)
+        response = self.client.post(f'/api/applications/{self.application.pk}/interviews/', {
+            'interviewer_employee': self.interviewer.pk, 'scheduled_at': scheduled_at.isoformat(),
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['interviewer_employee'], self.interviewer.pk)
+
+    def test_recruiter_can_record_interview_outcome(self):
         self.client.force_authenticate(self.recruiter)
         scheduled_at = timezone.now() + timedelta(days=3)
         response = self.client.post(f'/api/applications/{self.application.pk}/interviews/', {

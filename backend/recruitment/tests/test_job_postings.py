@@ -86,6 +86,30 @@ class JobPostingTests(APITestCase):
         self.assertIsNotNone(posting.published_at)
         self.assertLessEqual(posting.published_at, timezone.now())
 
+    def test_publishing_an_already_published_posting_is_rejected(self):
+        posting = JobPosting.objects.create(
+            requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
+            channel=JobPosting.CHANNEL_INTERNAL, published_at=timezone.now(),
+        )
+        self.client.force_authenticate(self.recruiter)
+
+        response = self.client.post(_publish_url(posting.pk))
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_patch_cannot_reassign_a_posting_to_an_unapproved_requisition(self):
+        posting = JobPosting.objects.create(
+            requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
+            channel=JobPosting.CHANNEL_INTERNAL,
+        )
+        self.client.force_authenticate(self.recruiter)
+
+        response = self.client.patch(_detail_url(posting.pk), {'requisition': self.draft_requisition.pk})
+
+        self.assertEqual(response.status_code, 400)
+        posting.refresh_from_db()
+        self.assertEqual(posting.requisition_id, self.approved_requisition.pk)
+
     def test_hr_administrator_cannot_access_postings(self):
         self.client.force_authenticate(self.hr_admin)
 

@@ -86,8 +86,13 @@ class JobRequisitionApproveView(APIView):
     permission_classes = [CanDecideRequisition]
 
     def post(self, request, pk):
-        requisition = get_object_or_404(JobRequisition, pk=pk)
         with transaction.atomic():
+            requisition = get_object_or_404(JobRequisition.objects.select_for_update(), pk=pk)
+            if requisition.status not in (JobRequisition.STATUS_DRAFT, JobRequisition.STATUS_PENDING_APPROVAL):
+                return Response(
+                    {'detail': f'requisition cannot be approved from status {requisition.status!r}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             requisition.status = JobRequisition.STATUS_APPROVED
             requisition.approved_by = request.user
             requisition.save(update_fields=['status', 'approved_by', 'updated_at'])
@@ -107,8 +112,13 @@ class JobRequisitionRejectView(APIView):
     permission_classes = [CanDecideRequisition]
 
     def post(self, request, pk):
-        requisition = get_object_or_404(JobRequisition, pk=pk)
         with transaction.atomic():
+            requisition = get_object_or_404(JobRequisition.objects.select_for_update(), pk=pk)
+            if requisition.status not in (JobRequisition.STATUS_DRAFT, JobRequisition.STATUS_PENDING_APPROVAL):
+                return Response(
+                    {'detail': f'requisition cannot be rejected from status {requisition.status!r}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             requisition.status = JobRequisition.STATUS_REJECTED
             requisition.save(update_fields=['status', 'updated_at'])
             audit.services.record(
@@ -169,6 +179,12 @@ class JobPostingDetailView(APIView):
         posting = get_object_or_404(JobPosting, pk=pk)
         serializer = JobPostingSerializer(posting, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        new_requisition = serializer.validated_data.get('requisition')
+        if new_requisition is not None and new_requisition.status != JobRequisition.STATUS_APPROVED:
+            return Response(
+                {'detail': 'requisition must be approved before a posting can reference it.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             posting = serializer.save()
             audit.services.record(
@@ -187,8 +203,10 @@ class JobPostingPublishView(APIView):
     permission_classes = [IsRecruiter]
 
     def post(self, request, pk):
-        posting = get_object_or_404(JobPosting, pk=pk)
         with transaction.atomic():
+            posting = get_object_or_404(JobPosting.objects.select_for_update(), pk=pk)
+            if posting.published_at is not None:
+                return Response({'detail': 'posting is already published.'}, status=status.HTTP_400_BAD_REQUEST)
             posting.published_at = timezone.now()
             posting.save(update_fields=['published_at', 'updated_at'])
             audit.services.record(
@@ -230,20 +248,28 @@ class CandidateListCreateView(APIView):
             if content_type is None:
                 return Response({'detail': 'unrecognised file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        with transaction.atomic():
-            candidate = serializer.save()
-            if resume_file:
-                requested_key = storage.generate_resume_object_key(candidate.pk, content_type)
-                object_key = storage.save_document(requested_key, resume_file)
-                candidate.resume_object_key = object_key
-                candidate.save(update_fields=['resume_object_key'])
-            audit.services.record(
-                category=AuditLog.CATEGORY_RECORD_CHANGE,
-                action='candidate_created',
-                actor=request.user,
-                target_type='candidate',
-                target_id=candidate.pk,
-            )
+        try:
+            with transaction.atomic():
+                candidate = serializer.save()
+                if resume_file:
+                    requested_key = storage.generate_resume_object_key(candidate.pk, content_type)
+                    object_key = storage.save_document(requested_key, resume_file)
+                    candidate.resume_object_key = object_key
+                    candidate.save(update_fields=['resume_object_key'])
+                audit.services.record(
+                    category=AuditLog.CATEGORY_RECORD_CHANGE,
+                    action='candidate_created',
+                    actor=request.user,
+                    target_type='candidate',
+                    target_id=candidate.pk,
+                )
+        except Exception:
+            # The resume, if any, was already written to storage before this
+            # block; a failed metadata write must not leave it orphaned there
+            # with no `candidate` row pointing to it.
+            if object_key:
+                storage.delete_document(object_key)
+            raise
         return Response(CandidateSerializer(candidate).data, status=status.HTTP_201_CREATED)
 
 
@@ -369,23 +395,32 @@ class OfferLetterListCreateView(APIView):
         application = get_object_or_404(CandidateApplication, pk=pk)
         serializer = OfferLetterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            offer = serializer.save(application=application)
-            document_content = (
-                f'Offer Letter\nApplication: {application.pk}\nOffered salary: {offer.offered_salary}\n'
-                f'Issued at: {offer.issued_at.isoformat()}\n'
-            )
-            object_key = storage.generate_offer_letter_object_key(offer.pk)
-            object_key = storage.save_document(object_key, ContentFile(document_content.encode()))
-            offer.document_object_key = object_key
-            offer.save(update_fields=['document_object_key'])
-            audit.services.record(
-                category=AuditLog.CATEGORY_RECORD_CHANGE,
-                action='offer_letter_issued',
-                actor=request.user,
-                target_type='offer_letter',
-                target_id=offer.pk,
-            )
+        object_key = None
+        try:
+            with transaction.atomic():
+                offer = serializer.save(application=application)
+                document_content = (
+                    f'Offer Letter\nApplication: {application.pk}\nOffered salary: {offer.offered_salary}\n'
+                    f'Issued at: {offer.issued_at.isoformat()}\n'
+                )
+                object_key = storage.generate_offer_letter_object_key(offer.pk)
+                object_key = storage.save_document(object_key, ContentFile(document_content.encode()))
+                offer.document_object_key = object_key
+                offer.save(update_fields=['document_object_key'])
+                audit.services.record(
+                    category=AuditLog.CATEGORY_RECORD_CHANGE,
+                    action='offer_letter_issued',
+                    actor=request.user,
+                    target_type='offer_letter',
+                    target_id=offer.pk,
+                )
+        except Exception:
+            # The document was already written to storage before this block;
+            # a failed metadata write must not leave it orphaned there with
+            # no `offer_letter` row pointing to it.
+            if object_key:
+                storage.delete_document(object_key)
+            raise
         return Response(OfferLetterSerializer(offer).data, status=status.HTTP_201_CREATED)
 
 
@@ -400,10 +435,15 @@ class OfferLetterDecideView(APIView):
     permission_classes = [IsRecruiter]
 
     def post(self, request, pk):
-        offer = get_object_or_404(OfferLetter, pk=pk)
         serializer = OfferDecisionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
+            offer = get_object_or_404(OfferLetter.objects.select_for_update(), pk=pk)
+            if offer.status != OfferLetter.STATUS_PENDING:
+                return Response(
+                    {'detail': f'offer already decided (status {offer.status!r}).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             offer.status = serializer.validated_data['decision']
             offer.decided_at = timezone.now()
             offer.save(update_fields=['status', 'decided_at'])

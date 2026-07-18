@@ -77,6 +77,19 @@ class OfferLetterTests(APITestCase):
 
         self.assertEqual(Employee.objects.count(), before_count)
 
+    def test_a_decided_offer_cannot_be_decided_again(self):
+        self.client.force_authenticate(self.recruiter)
+        create_response = self.client.post(
+            f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '95000.00'},
+        )
+        self.client.post(f'/api/offers/{create_response.data["id"]}/decide/', {'decision': OfferLetter.STATUS_ACCEPTED})
+
+        response = self.client.post(
+            f'/api/offers/{create_response.data["id"]}/decide/', {'decision': OfferLetter.STATUS_WITHDRAWN},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_anonymous_is_denied(self):
         response = self.client.get(f'/api/applications/{self.application.pk}/offer/')
 

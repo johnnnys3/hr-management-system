@@ -115,3 +115,25 @@ class JobRequisitionTests(APITestCase):
         response = self.client.get(REQUISITIONS_URL)
 
         self.assertEqual(response.status_code, 401)
+
+    def test_an_already_approved_requisition_cannot_be_approved_again(self):
+        requisition = JobRequisition.objects.create(
+            department=self.department, job_title=self.job_title, requested_by=self.recruiter,
+            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin,
+        )
+        self.client.force_authenticate(self.hr_admin)
+
+        response = self.client.post(_approve_url(requisition.pk))
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_a_rejected_requisition_cannot_be_approved(self):
+        requisition = JobRequisition.objects.create(
+            department=self.department, job_title=self.job_title, requested_by=self.recruiter,
+            status=JobRequisition.STATUS_REJECTED,
+        )
+        self.client.force_authenticate(self.hr_admin)
+
+        response = self.client.post(_approve_url(requisition.pk))
+
+        self.assertEqual(response.status_code, 400)
