@@ -38,7 +38,8 @@ class NotificationMarkReadView(APIView):
 
     def post(self, request, pk):
         notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
-        if notification.read_at is None:
-            notification.read_at = timezone.now()
-            notification.save(update_fields=['read_at'])
+        # Conditional UPDATE, not read-then-save: two concurrent POSTs must
+        # not let the second overwrite the first's `read_at` with its own.
+        Notification.objects.filter(pk=notification.pk, read_at__isnull=True).update(read_at=timezone.now())
+        notification.refresh_from_db()
         return Response(NotificationSerializer(notification).data)

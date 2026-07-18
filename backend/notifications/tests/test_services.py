@@ -46,7 +46,35 @@ class SendTests(TestCase):
         mail_send.assert_not_called()
 
     @patch('mail.services.send')
-    def test_send_with_email_channel_dispatches_mail(self, mail_send):
+    def test_send_with_email_channel_dispatches_mail_on_commit(self, mail_send):
+        with self.captureOnCommitCallbacks(execute=True):
+            services.send(
+                recipient=self.recipient,
+                category=Notification.CATEGORY_REQUEST_UPDATE,
+                channel=Notification.CHANNEL_EMAIL,
+                subject='Update',
+                body='Body text',
+            )
+
+        mail_send.assert_called_once_with(
+            template='notification', recipient=self.recipient.email, context={'subject': 'Update', 'body': 'Body text'},
+        )
+
+    @patch('mail.services.send')
+    def test_send_with_both_channel_dispatches_mail_on_commit(self, mail_send):
+        with self.captureOnCommitCallbacks(execute=True):
+            services.send(
+                recipient=self.recipient,
+                category=Notification.CATEGORY_REQUEST_UPDATE,
+                channel=Notification.CHANNEL_BOTH,
+                subject='Update',
+                body='Body text',
+            )
+
+        mail_send.assert_called_once()
+
+    @patch('mail.services.send')
+    def test_send_with_email_channel_does_not_dispatch_before_commit(self, mail_send):
         services.send(
             recipient=self.recipient,
             category=Notification.CATEGORY_REQUEST_UPDATE,
@@ -55,18 +83,4 @@ class SendTests(TestCase):
             body='Body text',
         )
 
-        mail_send.assert_called_once_with(
-            template='notification', recipient=self.recipient.email, context={'subject': 'Update', 'body': 'Body text'},
-        )
-
-    @patch('mail.services.send')
-    def test_send_with_both_channel_dispatches_mail(self, mail_send):
-        services.send(
-            recipient=self.recipient,
-            category=Notification.CATEGORY_REQUEST_UPDATE,
-            channel=Notification.CHANNEL_BOTH,
-            subject='Update',
-            body='Body text',
-        )
-
-        mail_send.assert_called_once()
+        mail_send.assert_not_called()

@@ -97,6 +97,21 @@ class NotificationMarkReadTests(APITestCase):
         self.notification.refresh_from_db()
         self.assertEqual(self.notification.read_at, first_read_at)
 
+    def test_concurrent_mark_read_does_not_let_the_second_writer_overwrite_the_first(self):
+        """Regression for the read-then-save race: two `filter(read_at__isnull=True).update(...)`
+        calls simulate two concurrent requests racing past the same unread row."""
+        first_updated = Notification.objects.filter(pk=self.notification.pk, read_at__isnull=True).update(
+            read_at='2026-07-01T00:00:00Z',
+        )
+        second_updated = Notification.objects.filter(pk=self.notification.pk, read_at__isnull=True).update(
+            read_at='2026-07-02T00:00:00Z',
+        )
+
+        self.assertEqual(first_updated, 1)
+        self.assertEqual(second_updated, 0)
+        self.notification.refresh_from_db()
+        self.assertEqual(self.notification.read_at.isoformat(), '2026-07-01T00:00:00+00:00')
+
     def test_marking_another_users_notification_read_is_404(self):
         self.client.force_authenticate(self.other_user)
 

@@ -7,6 +7,8 @@ cross-cutting and absorbed per consumer: other modules import and call
 `audit.services.record` follows for `audit_log`. When `channel` includes
 email, this module is mail dispatch's consumer, not the reverse.
 """
+from django.db import transaction
+
 import mail.services
 
 from .models import Notification
@@ -23,9 +25,15 @@ def send(*, recipient, category, channel, subject, body, related_type=None, rela
         related_id=related_id,
     )
     if channel in (Notification.CHANNEL_EMAIL, Notification.CHANNEL_BOTH):
-        mail.services.send(
-            template='notification',
-            recipient=recipient.email,
-            context={'subject': subject, 'body': body},
+        # Deferred to commit: `mail.services.send` only enqueues a Celery
+        # task, off the transaction entirely — queuing it immediately would
+        # dispatch mail for a notification (or its wider caller) that a
+        # later rollback undoes.
+        transaction.on_commit(
+            lambda: mail.services.send(
+                template='notification',
+                recipient=recipient.email,
+                context={'subject': subject, 'body': body},
+            )
         )
     return notification
