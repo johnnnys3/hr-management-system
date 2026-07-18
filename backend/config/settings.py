@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'audit.apps.AuditConfig',
     'mail.apps.MailConfig',
     'accounts.apps.AccountsConfig',
+    'iam.apps.IamConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
