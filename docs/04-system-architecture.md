@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** The plan moved Dashboard from module 5 to module 14 and modules 6–14 renumber to 5–13 accordingly — in the plan's v1.5 numbering, not this document's. In this document's own numbering below (still v1.4), Dashboard's dependencies read as module 11 (Notification) and module 14 (Leave Management); reconciliation will renumber those to 10 and 13. Reconcile at M2 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6.** The plan swapped Employee Management and Departments (its modules 5 and 6) on this document's own finding: §4's catalog and §4.1's dependency graph below already state `Employee Mgmt <- Departments, Reporting Structure` (v1.4 numbering: module 6 depends on 7 and 8) while the build order that catalog sits beside — this document's own, still v1.4 — builds Employee Management before Departments. This document did not catch that its build order contradicted its own dependency graph; the plan did, while starting Module 5's real implementation. Reconciliation will swap modules 6 and 7 below (Employee Management, Departments) to match; module 8, Reporting Structure, does not move — `docs/05-database-schema.md` §4.6 shows its foreign keys point into `employee`, not the reverse, so the "8" in `Employee Mgmt <- 7, 8` overstates a schema-level dependency that does not exist. **Reconciliation will also correct that edge**, both in §4's catalog row and §4.1's dependency graph, to `Employee Mgmt <- Departments` alone — dropping Reporting Structure from Employee Management's stated dependencies rather than carrying the overstatement forward under corrected numbers. Reconcile at M2 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** §4's catalog, §4.1's dependency graph, and §5's requirement assignment are renumbered throughout to v1.6's numbering (Dashboard at 14; Departments at 5, Employee Management at 6; Onboarding at 9, Notification at 10, Employee Self-Service at 11, Manager Self-Service at 12, Leave Management at 13; Recruitment at 8, Reporting Structure at 7). Employee Management's stated dependency on Reporting Structure is dropped, per the correction the row above already specified — its schema foreign keys point into `employee`, not the reverse (`docs/05-database-schema.md` §4.6) — leaving Employee Management depending on Departments alone. No requirement, business rule, estimate, or module boundary changes; this is the renumbering the two rows above already called for, done. Filed as DOC-007 | 1.1 |
+| John Kessie | 2026-07-18 | **Dashboard's stated dependencies omitted Notification.** `docs/06-api-contracts.md` §4.10 has always stated an Employee's dashboard view reads "pending tasks" from Notification, but §4's catalog row and §4.1's dependency graph for Dashboard never listed module 10 (Notification) among its consumed modules — found by CodeRabbit during DOC-007's review (PR #53), confirmed pre-existing rather than introduced by that renumbering. Adds module 10 to both the catalog row and the dependency-graph line for Dashboard. No requirement, endpoint, or module-boundary change. Filed as DOC-008 | 1.2 |
 
 ---
 
@@ -118,7 +119,7 @@ The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6
 | 11 | Employee Self-Service | Module 6 (own record), Module 10 (own notifications) | Self-service updates routed for approval | Consumes Module 10 (first consumer — why Notification precedes this module) | Employee: own record only (HRMS-NFR-017, HRMS-BR-006) |
 | 12 | Manager Self-Service | Module 7 (direct reports), Module 10 (approval tasks) | Approval/rejection decisions | Consumes Module 10 | Manager: direct reports only (HRMS-NFR-018, HRMS-BR-007) |
 | 13 | Leave Management | Module 6 (employee), Module 12 (manager approval) | Leave approval/rejection (HRMS-BR-010, HRMS-BR-011) | Consumes Module 10 for pending-approval and decision notices | Employee: own requests. Manager: direct reports'. HR: all |
-| 14 | Dashboard | Modules 6, 13, 16, 17 (read-only, per role) | — | — | Delegates to the visibility rule of whichever module's data it renders |
+| 14 | Dashboard | Modules 6, 10, 13, 16, 17 (read-only, per role) | — | — | Delegates to the visibility rule of whichever module's data it renders |
 | 15 | Compensation and Benefits | Module 6 (employee identity) | Compensation history changes (HRMS-DR-010: never overwritten) | — | HR Administrator: create/read/update structures. HR Officer: assign, read. Payroll Officer: read |
 | 16 | Payroll | Module 15 (compensation records), Module 2 (payroll communication) | Payroll actions; finalisation approvals, including refused self-approvals — approver must not be the initiator (HRMS-BR-008; `docs/07-iam-rbac.md` §4.4) | Sends via Module 2 | Payroll Officer: all payroll fields. Employee: own payslip only (HRMS-BR-006) |
 | 17 | Reports | Modules 6, 13, 15, 16 (read-only aggregation) | Report exports where they touch payroll cost | — | Per source module's rule; Executive: aggregate only, never an individual record (`docs/07-iam-rbac.md` §4.3) |
@@ -144,7 +145,7 @@ Modules 18 to 20 are process, not application modules; they appear in the plan's
 11 Employee Self-Svc   <- 6, 10
 12 Manager Self-Svc    <- 7, 10
 13 Leave Management    <- 6, 12, 10
-14 Dashboard           <- 6, 13, 16, 17
+14 Dashboard           <- 6, 10, 13, 16, 17
 15 Compensation        <- 6
 16 Payroll             <- 15, 2
 17 Reports             <- 6, 13, 15, 16
