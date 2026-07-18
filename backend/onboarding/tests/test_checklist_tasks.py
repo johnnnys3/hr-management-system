@@ -92,9 +92,14 @@ class OnboardingTaskTests(APITestCase):
     def test_transitioning_away_from_completed_clears_completion_metadata(self):
         task = OnboardingTask.objects.create(checklist=self.checklist, name='IT provisioning')
         self.client.force_authenticate(self.hr_officer)
-        self.client.patch(
+        first_response = self.client.patch(
             f'/api/onboarding-checklists/{self.checklist.pk}/tasks/{task.pk}/', {'status': 'completed'},
         )
+        self.assertEqual(first_response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.status, OnboardingTask.STATUS_COMPLETED)
+        self.assertEqual(task.completed_by, self.hr_officer)
+        self.assertIsNotNone(task.completed_at)
 
         response = self.client.patch(
             f'/api/onboarding-checklists/{self.checklist.pk}/tasks/{task.pk}/', {'status': 'in_progress'},
@@ -118,3 +123,4 @@ class OnboardingTaskTests(APITestCase):
         task = OnboardingTask.objects.get(pk=response.data['id'])
         self.assertEqual(task.status, OnboardingTask.STATUS_PENDING)
         self.assertIsNone(task.completed_by)
+        self.assertIsNone(task.completed_at)
