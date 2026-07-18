@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | 2026-07-16 | Initial system architecture document, closing milestone M2 | 1.0 |
+| John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** The plan moved Dashboard from module 5 to module 14 and modules 6–14 renumber to 5–13 accordingly — in the plan's v1.5 numbering, not this document's. In this document's own numbering below (still v1.4), Dashboard's dependencies read as module 11 (Notification) and module 14 (Leave Management); reconciliation will renumber those to 10 and 13. Reconcile at M2 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 
 ---
 

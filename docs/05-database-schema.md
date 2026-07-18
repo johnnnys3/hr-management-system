@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | 2026-07-16 | Initial database schema, closing milestone M3 | 1.0 |
+| John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5's Dashboard renumbering (module 5 → 14; modules 6–14 → 5–13).** §4's module numbering below is still v1.4. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 
 ---
 

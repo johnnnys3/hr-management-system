@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-07-15
 **Bears on:** `docs/02-project-plan.md` §11 question 2 (where Notification sits in the build order)
+**Note, 2026-07-18:** the module numbers below are v1.4's. Plan v1.5 moved Dashboard from 5 to 14 and renumbered modules 6–14 to 5–13 accordingly (Mail dispatch stays 2, Notification moves from 11 to 10). This ADR's placements and estimates are unaffected and are not reopened; only the numbers are stale, and are left as written pending reconciliation per plan §5.3.
 
 ## Context
 
