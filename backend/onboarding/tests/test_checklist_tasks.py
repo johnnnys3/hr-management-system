@@ -4,6 +4,7 @@ from rest_framework.test import APITestCase
 from departments.models import Department, JobTitle
 from employees.models import Employee
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
+from notifications.models import Notification
 from onboarding.models import OnboardingChecklist, OnboardingTask
 
 from .helpers import user_with_role
@@ -110,6 +111,33 @@ class OnboardingTaskTests(APITestCase):
         self.assertEqual(task.status, OnboardingTask.STATUS_IN_PROGRESS)
         self.assertIsNone(task.completed_by)
         self.assertIsNone(task.completed_at)
+
+    def test_creating_a_task_notifies_the_employee_if_they_have_a_user_account(self):
+        employee_user = user_with_role('grace@example.com', HR_OFFICER)
+        employee_user.employee = self.checklist.employee
+        employee_user.save(update_fields=['employee'])
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.post(
+            f'/api/onboarding-checklists/{self.checklist.pk}/tasks/', {'name': 'IT provisioning'},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        task = OnboardingTask.objects.get(pk=response.data['id'])
+        notification = Notification.objects.get(related_type='onboarding_task', related_id=task.pk)
+        self.assertEqual(notification.recipient_id, employee_user.pk)
+        self.assertEqual(notification.category, Notification.CATEGORY_PENDING_TASK)
+
+    def test_creating_a_task_does_not_error_when_the_employee_has_no_user_account(self):
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.post(
+            f'/api/onboarding-checklists/{self.checklist.pk}/tasks/', {'name': 'IT provisioning'},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        task = OnboardingTask.objects.get(pk=response.data['id'])
+        self.assertFalse(Notification.objects.filter(related_type='onboarding_task', related_id=task.pk).exists())
 
     def test_creating_a_task_ignores_a_client_supplied_status(self):
         self.client.force_authenticate(self.hr_officer)

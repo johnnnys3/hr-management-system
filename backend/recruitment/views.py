@@ -8,7 +8,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import audit.services
+import notifications.services
 from audit.models import AuditLog
+from notifications.models import Notification
 
 from . import storage
 from .models import Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter
@@ -103,6 +105,15 @@ class JobRequisitionApproveView(APIView):
                 target_type='job_requisition',
                 target_id=requisition.pk,
             )
+            notifications.services.send(
+                recipient=requisition.requested_by,
+                category=Notification.CATEGORY_REQUEST_UPDATE,
+                channel=Notification.CHANNEL_IN_APP,
+                subject='Job requisition approved',
+                body=f'Your job requisition #{requisition.pk} has been approved.',
+                related_type='job_requisition',
+                related_id=requisition.pk,
+            )
         return Response(JobRequisitionSerializer(requisition).data)
 
 
@@ -127,6 +138,15 @@ class JobRequisitionRejectView(APIView):
                 actor=request.user,
                 target_type='job_requisition',
                 target_id=requisition.pk,
+            )
+            notifications.services.send(
+                recipient=requisition.requested_by,
+                category=Notification.CATEGORY_REQUEST_UPDATE,
+                channel=Notification.CHANNEL_IN_APP,
+                subject='Job requisition rejected',
+                body=f'Your job requisition #{requisition.pk} has been rejected.',
+                related_type='job_requisition',
+                related_id=requisition.pk,
             )
         return Response(JobRequisitionSerializer(requisition).data)
 

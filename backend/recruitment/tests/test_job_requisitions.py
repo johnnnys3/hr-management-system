@@ -3,6 +3,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from iam.roles import HR_ADMINISTRATOR, RECRUITER
+from notifications.models import Notification
 from recruitment.models import JobRequisition
 
 from .helpers import user_with_role
@@ -75,6 +76,9 @@ class JobRequisitionTests(APITestCase):
         requisition.refresh_from_db()
         self.assertEqual(requisition.status, JobRequisition.STATUS_APPROVED)
         self.assertEqual(requisition.approved_by_id, self.hr_admin.pk)
+        notification = Notification.objects.get(related_type='job_requisition', related_id=requisition.pk)
+        self.assertEqual(notification.recipient_id, self.recruiter.pk)
+        self.assertEqual(notification.category, Notification.CATEGORY_REQUEST_UPDATE)
 
     def test_hr_administrator_can_reject(self):
         requisition = JobRequisition.objects.create(
@@ -87,6 +91,9 @@ class JobRequisitionTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         requisition.refresh_from_db()
         self.assertEqual(requisition.status, JobRequisition.STATUS_REJECTED)
+        notification = Notification.objects.get(related_type='job_requisition', related_id=requisition.pk)
+        self.assertEqual(notification.recipient_id, self.recruiter.pk)
+        self.assertEqual(notification.category, Notification.CATEGORY_REQUEST_UPDATE)
 
     def test_recruiter_cannot_approve(self):
         requisition = JobRequisition.objects.create(
