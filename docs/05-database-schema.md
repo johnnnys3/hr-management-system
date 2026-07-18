@@ -16,6 +16,7 @@
 |---|---|---|---|
 | John Kessie | 2026-07-16 | Initial database schema, closing milestone M3 | 1.0 |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5's Dashboard renumbering (module 5 → 14; modules 6–14 → 5–13).** §4's module numbering below is still v1.4. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
+| John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; modules 6 ↔ 7 below, still v1.4).** This document is the source of the finding: §4.4's `employee.department_id` is a NOT NULL foreign key into §4.5's `department`, but the build order these headings sit in still builds Employee Management before Departments. Reconciliation will swap §4.4 and §4.5's ordering and heading numbers; §4.6 Reporting Structure does not move — its foreign keys point into `employee`, not the reverse, so it has no schema-level reason to precede Employee Management. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 
 ---
 

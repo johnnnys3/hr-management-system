@@ -16,6 +16,7 @@
 |---|---|---|---|
 | John Kessie | 2026-07-16 | Initial API contracts document, closing milestone M4 | 1.0 |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** §4.10's Dashboard is module 5 there and module 14 in the plan as of v1.5; every module-numbered heading and cross-reference in §4 is still v1.4. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
+| John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; §4.3/§4.4 headings below, still v1.4-numbered as module 6 and 7).** No endpoint contract changes; only the heading numbers and any build-order cross-references are stale. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 
 ---
 
