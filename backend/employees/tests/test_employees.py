@@ -305,3 +305,12 @@ class EmployeeSelfServiceTests(APITestCase):
         response = self.client.get('/api/employees/me/')
 
         self.assertEqual(response.status_code, 403)
+
+    def test_terminated_employee_loses_self_service_access(self):
+        self.employee.employment_status = Employee.STATUS_TERMINATED
+        self.employee.save()
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get('/api/employees/me/')
+
+        self.assertEqual(response.status_code, 403)
