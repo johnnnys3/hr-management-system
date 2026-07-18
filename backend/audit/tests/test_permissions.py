@@ -82,3 +82,16 @@ class AuditLogReadSurfaceTests(APITestCase):
         self.assertEqual(self.client.post(AUDIT_LOG_URL, {}).status_code, 405)
         self.assertEqual(self.client.put(AUDIT_LOG_URL, {}).status_code, 405)
         self.assertEqual(self.client.delete(AUDIT_LOG_URL).status_code, 405)
+
+    def test_category_filter_scopes_to_permission_change(self):
+        """`docs/06-api-contracts.md` §4.9: RBAC/IAM's audit-log view is
+        this endpoint filtered `?category=permission_change`, not a second
+        endpoint."""
+        AuditLog.objects.create(category=AuditLog.CATEGORY_PERMISSION_CHANGE, action='role_grant_approved')
+        user = self._user_in_group('sysadmin3@example.com', SYSTEM_ADMINISTRATOR_GROUP)
+        self.client.force_authenticate(user)
+
+        response = self.client.get(AUDIT_LOG_URL, {'category': 'permission_change'})
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['category'], 'permission_change')
