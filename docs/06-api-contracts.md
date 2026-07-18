@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** §4.10's Dashboard is module 5 there and module 14 in the plan as of v1.5; every module-numbered heading and cross-reference in §4 is still v1.4. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; §4.3/§4.4 headings below, still v1.4-numbered as module 6 and 7).** No endpoint contract changes; only the heading numbers and any build-order cross-references are stale. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** Every module-numbered heading and cross-reference in §4 is renumbered to v1.6 (Departments 5, Reporting Structure 7, Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13, Dashboard 14); section order (§4.1-§4.15) is unchanged, only the module labels and numbers within them. No endpoint, permission, or visibility-rule content changes. Filed as DOC-007 | 1.1 |
+| John Kessie | 2026-07-18 | **§8's traceability table omitted HRMS-FR-030 and HRMS-FR-031 entirely — found while scoping Module 12 against DOC-010.** FR-030 (view team members) is addressed by §4.5's `/api/employees/{id}/direct-reports/`, already stated in that row's own text ("the endpoint a Manager Self-Service view ... calls to enumerate its team") but never added to §8's table. FR-031 is `docs/01-srs.md` v1.3's newly marked duplicate of HRMS-FR-064; it is not added, on the same convention DOC-009 set for FR-028/FR-029 — a duplicate requirement is traced through its canonical ID, not re-traced under the restating one. §8 gains a row for FR-030; no endpoint, permission, or visibility-rule content changes. Filed as DOC-010 | 1.2 |
 
 ---
 
@@ -317,6 +318,7 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 | HRMS-FR-013 to HRMS-FR-021 (recruitment) | §4.6 |
 | HRMS-FR-022 to HRMS-FR-024 (onboarding) | §4.7 |
 | HRMS-FR-025 to HRMS-FR-027 (self-service profile) | §4.3, §4.11 |
+| HRMS-FR-030 (manager views team) | §4.5, §4.11 |
 | HRMS-FR-028, HRMS-FR-044 (payslips) | §4.14 |
 | HRMS-FR-032 (manager team reports) | §4.15 |
 | HRMS-FR-033, HRMS-FR-034 (notification) | §4.8 |

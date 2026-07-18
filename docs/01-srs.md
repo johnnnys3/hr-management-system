@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date Created | May 2026 |
@@ -16,6 +16,7 @@
 | John Kessie | May 2026 | Initial SRS document for HRMS | 1.0 |
 | John Kessie | 2026-07-15 | HRMS-NFR-024 promoted from a recommendation to a *shall*: multi-factor authentication is mandatory for administrators and payroll users, and the second factor is placed outside the control of the roles that administer accounts and credentials, including at enrollment and recovery. This closes the gap against HRMS-NFR-019, a *shall*, which was unenforceable while a System Administrator could reset a payroll user's credentials under §2.3.1 and authenticate as them. HRMS-FR-051 deferred to later versions on the pattern of HRMS-FR-055, the training data its condition presupposed being excluded by §6.4; §2.2 and §4.5 reconciled. Equity mentions removed from §2.2 and §4.6, no functional requirement having covered them. HRMS-NFR-001 to HRMS-NFR-006 restated as measurable thresholds at the upper bound of each stated range, at the 95th percentile, over a stated measurement window, at a workload pinned to 200 concurrent users; the data volumes they are verified against are recorded as TBD-016 and HRMS-NFR-005's threshold as TBD-017, neither being stated in this document. §2.2 predictive attrition analytics marked deferred, aligning the summary with HRMS-FR-055. No requirement other than HRMS-NFR-024 changes modality, and no scope is added or removed | 1.1 |
 | John Kessie | 2026-07-18 | **HRMS-FR-028/HRMS-FR-044 and HRMS-FR-029/HRMS-FR-063 are duplicate pairs, found while scoping Module 11 (Employee Self-Service) against `docs/02-project-plan.md` §6.1's build order.** §4.3 (self-service) and §4.4 (Payroll) both state "the system shall allow employees to view their own payslips", verbatim, as FR-028 and FR-044; §4.3 and §4.7 (Leave Management) both state the same leave-submission requirement as FR-029 and FR-063. Each pair had been assigned to two different modules by the plan, which read as Employee Self-Service (module 11) depending on unbuilt Payroll (16) and Leave Management (13) — a sixth instance of the provider-precedes-consumer defect this project's plan has caught five times before, except here the defect is duplication, not a genuine second requirement scheduled early. FR-044 and FR-063 are marked canonical; FR-028 and FR-029 are marked as restating them, not superseding or removing them, since neither this project's convention nor traceability tooling assumes requirement IDs are renumbered once assigned. No requirement's modality, scope, or module ownership beyond this correction changes. Filed as DOC-009; `docs/02-project-plan.md` and `docs/04-system-architecture.md` reconciled in the same change | 1.2 |
+| John Kessie | 2026-07-18 | **HRMS-FR-031 duplicates HRMS-FR-064, found while scoping Module 12 (Manager Self-Service) — the same pattern DOC-009 found in Module 11, checked for on the strength of that precedent rather than stumbled on independently.** §4.3's "Manager Approves Request" stimulus/response sequence and FR-031 ("approve or reject requests") name no request type; §4.7's FR-064 is the same action, qualified to "leave requests" — and no other manager-approval workflow exists anywhere in this document for FR-031 to mean. FR-064 is marked canonical; FR-031 is marked as restating it. **Unlike FR-028/FR-029, HRMS-FR-032 (manager team-level reports) is not part of this correction** — `docs/06-api-contracts.md` §4.15 assigns it to Reports (module 17) as a genuine, distinct read surface, not a restatement of any other requirement; it is a real forward dependency, recorded as a deferred residual at `docs/02-project-plan.md` rather than resolved here. Filed as DOC-010; `docs/02-project-plan.md` reconciled in the same change | 1.3 |
 
 ---
 
@@ -496,7 +497,7 @@ HRMS-FR-029: The system shall allow employees to submit leave requests. *(Duplic
 
 HRMS-FR-030: The system shall allow managers to view assigned team members.
 
-HRMS-FR-031: The system shall allow managers to approve or reject requests.
+HRMS-FR-031: The system shall allow managers to approve or reject requests. *(Duplicate of HRMS-FR-064, §4.7. Leave Management (module 13) is the canonical owner — no other manager-approval workflow exists in this SRS for this requirement to name; this restates the same requirement in the self-service use case, not a second one — see revision history v1.3.)*
 
 HRMS-FR-032: The system shall allow managers to view team-level reports.
 
@@ -619,7 +620,7 @@ Priority: Medium
 
 HRMS-FR-063: The system shall allow employees to request leave. *(Canonical; HRMS-FR-029, §4.3, restates this requirement and is not a second one.)*
 
-HRMS-FR-064: The system shall allow managers to approve or reject leave requests.
+HRMS-FR-064: The system shall allow managers to approve or reject leave requests. *(Canonical; HRMS-FR-031, §4.3, restates this requirement and is not a second one.)*
 
 HRMS-FR-065: The system shall track leave balances by leave type.
 
