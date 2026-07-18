@@ -14,10 +14,29 @@ JOB_TITLES_URL = '/api/job-titles/'
 
 
 def _detail_url(pk):
+    """
+    Build the detail endpoint URL for a job title.
+    
+    Parameters:
+    	pk: The primary key of the job title.
+    
+    Returns:
+    	str: The URL for the job title detail endpoint.
+    """
     return f'/api/job-titles/{pk}/'
 
 
 def _user_with_role(email, role_name):
+    """
+    Create a user with the specified email address and IAM role.
+    
+    Parameters:
+    	email (str): Email address for the new user.
+    	role_name (str): Name of the Django group assigned to the user.
+    
+    Returns:
+    	User: The created user.
+    """
     user = User.objects.create_user(email=email, password='x')
     user.groups.add(Group.objects.get(name=role_name))
     return user

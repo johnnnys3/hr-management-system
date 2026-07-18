@@ -14,10 +14,28 @@ DEPARTMENTS_URL = '/api/departments/'
 
 
 def _detail_url(pk):
+    """Build the detail endpoint URL for a department.
+    
+    Parameters:
+    	pk: The department's primary key.
+    
+    Returns:
+    	str: The department detail endpoint URL.
+    """
     return f'/api/departments/{pk}/'
 
 
 def _user_with_role(email, role_name):
+    """
+    Create a user with the specified email and assign the user to an existing role group.
+    
+    Parameters:
+        email (str): Email address for the new user.
+        role_name (str): Name of the group to assign to the user.
+    
+    Returns:
+        User: The created user.
+    """
     user = User.objects.create_user(email=email, password='x')
     user.groups.add(Group.objects.get(name=role_name))
     return user
@@ -29,6 +47,7 @@ class DepartmentListCreateTests(APITestCase):
         self.hr_officer = _user_with_role('hrofficer@example.com', HR_OFFICER)
 
     def test_hr_administrator_can_create_a_department(self):
+        """Verify that an HR administrator can create a department through the API."""
         self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(DEPARTMENTS_URL, {'name': 'Engineering'})
@@ -37,6 +56,11 @@ class DepartmentListCreateTests(APITestCase):
         self.assertTrue(Department.objects.filter(name='Engineering').exists())
 
     def test_hr_officer_cannot_create_a_department(self):
+        """
+        Verify that an HR officer cannot create a department.
+        
+        The request must be rejected with HTTP 403.
+        """
         self.client.force_authenticate(self.hr_officer)
 
         response = self.client.post(DEPARTMENTS_URL, {'name': 'Engineering'})
@@ -53,6 +77,7 @@ class DepartmentListCreateTests(APITestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_recruiter_and_payroll_officer_can_read_departments(self):
+        """Verify that recruiters and payroll officers can list departments."""
         Department.objects.create(name='Engineering')
 
         for role in (RECRUITER, PAYROLL_OFFICER):
@@ -84,8 +109,11 @@ class DepartmentDetailTests(APITestCase):
         self.department = Department.objects.create(name='Engineering')
 
     def test_hr_administrator_can_retire_a_department(self):
-        """`PATCH {"is_active": false}` retires rather than deletes,
-        `docs/05-database-schema.md` §2.3 — there is no `DELETE`."""
+        """
+        Retire a department through the detail endpoint by setting it inactive.
+        
+        The department remains stored and has `is_active` set to `False`.
+        """
         self.client.force_authenticate(self.hr_admin)
 
         response = self.client.patch(_detail_url(self.department.pk), {'is_active': False})
