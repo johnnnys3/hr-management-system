@@ -13,6 +13,7 @@ class Department(models.Model):
         db_table = 'department'
 
     def __str__(self):
+        """Return the department name as its string representation."""
         return self.name
 
 
@@ -31,4 +32,5 @@ class JobTitle(models.Model):
         db_table = 'job_title'
 
     def __str__(self):
+        """Return the department name as its string representation."""
         return self.name
