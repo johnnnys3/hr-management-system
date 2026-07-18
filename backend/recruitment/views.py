@@ -1,0 +1,417 @@
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+import audit.services
+from audit.models import AuditLog
+
+from . import storage
+from .models import Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter
+from .permissions import CanAccessJobRequisitions, CanDecideRequisition, IsRecruiter
+from .serializers import (
+    CandidateApplicationSerializer,
+    CandidateSerializer,
+    InterviewSerializer,
+    JobPostingSerializer,
+    JobRequisitionSerializer,
+    OfferDecisionSerializer,
+    OfferLetterSerializer,
+)
+
+MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024
+
+
+class JobRequisitionListCreateView(APIView):
+    """`GET, POST /api/job-requisitions/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [CanAccessJobRequisitions]
+
+    def get(self, request):
+        queryset = JobRequisition.objects.order_by('-created_at')
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        return Response(JobRequisitionSerializer(queryset, many=True).data)
+
+    def post(self, request):
+        serializer = JobRequisitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            requisition = serializer.save(requested_by=request.user)
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_requisition_created',
+                actor=request.user,
+                target_type='job_requisition',
+                target_id=requisition.pk,
+            )
+        return Response(JobRequisitionSerializer(requisition).data, status=status.HTTP_201_CREATED)
+
+
+class JobRequisitionDetailView(APIView):
+    """`PATCH /api/job-requisitions/{id}/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [CanAccessJobRequisitions]
+
+    def get(self, request, pk):
+        requisition = get_object_or_404(JobRequisition, pk=pk)
+        return Response(JobRequisitionSerializer(requisition).data)
+
+    def patch(self, request, pk):
+        requisition = get_object_or_404(JobRequisition, pk=pk)
+        serializer = JobRequisitionSerializer(requisition, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            requisition = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_requisition_updated',
+                actor=request.user,
+                target_type='job_requisition',
+                target_id=requisition.pk,
+            )
+        return Response(JobRequisitionSerializer(requisition).data)
+
+
+class JobRequisitionApproveView(APIView):
+    """`POST /api/job-requisitions/{id}/approve/`, `docs/06-api-contracts.md`
+    §4.6. A dedicated action endpoint, not a `PATCH` to `status`, per §2.9 —
+    the transition also writes `approved_by` and an audit entry."""
+
+    permission_classes = [CanDecideRequisition]
+
+    def post(self, request, pk):
+        requisition = get_object_or_404(JobRequisition, pk=pk)
+        with transaction.atomic():
+            requisition.status = JobRequisition.STATUS_APPROVED
+            requisition.approved_by = request.user
+            requisition.save(update_fields=['status', 'approved_by', 'updated_at'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_requisition_approved',
+                actor=request.user,
+                target_type='job_requisition',
+                target_id=requisition.pk,
+            )
+        return Response(JobRequisitionSerializer(requisition).data)
+
+
+class JobRequisitionRejectView(APIView):
+    """`POST /api/job-requisitions/{id}/reject/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [CanDecideRequisition]
+
+    def post(self, request, pk):
+        requisition = get_object_or_404(JobRequisition, pk=pk)
+        with transaction.atomic():
+            requisition.status = JobRequisition.STATUS_REJECTED
+            requisition.save(update_fields=['status', 'updated_at'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_requisition_rejected',
+                actor=request.user,
+                target_type='job_requisition',
+                target_id=requisition.pk,
+            )
+        return Response(JobRequisitionSerializer(requisition).data)
+
+
+class JobPostingListCreateView(APIView):
+    """`GET, POST, PATCH /api/job-postings/`, `docs/06-api-contracts.md`
+    §4.6. `POST` requires `requisition.status = 'approved'` — enforced here,
+    not a schema constraint (`docs/05-database-schema.md` §4.7)."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request):
+        queryset = JobPosting.objects.order_by('-created_at')
+        requisition_id = request.query_params.get('requisition_id')
+        if requisition_id:
+            queryset = queryset.filter(requisition_id=requisition_id)
+        return Response(JobPostingSerializer(queryset, many=True).data)
+
+    def post(self, request):
+        serializer = JobPostingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        requisition = serializer.validated_data['requisition']
+        if requisition.status != JobRequisition.STATUS_APPROVED:
+            return Response(
+                {'detail': 'requisition must be approved before a posting can be created.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            posting = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_posting_created',
+                actor=request.user,
+                target_type='job_posting',
+                target_id=posting.pk,
+            )
+        return Response(JobPostingSerializer(posting).data, status=status.HTTP_201_CREATED)
+
+
+class JobPostingDetailView(APIView):
+    """`PATCH /api/job-postings/{id}/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request, pk):
+        posting = get_object_or_404(JobPosting, pk=pk)
+        return Response(JobPostingSerializer(posting).data)
+
+    def patch(self, request, pk):
+        posting = get_object_or_404(JobPosting, pk=pk)
+        serializer = JobPostingSerializer(posting, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            posting = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_posting_updated',
+                actor=request.user,
+                target_type='job_posting',
+                target_id=posting.pk,
+            )
+        return Response(JobPostingSerializer(posting).data)
+
+
+class JobPostingPublishView(APIView):
+    """`POST /api/job-postings/{id}/publish/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [IsRecruiter]
+
+    def post(self, request, pk):
+        posting = get_object_or_404(JobPosting, pk=pk)
+        with transaction.atomic():
+            posting.published_at = timezone.now()
+            posting.save(update_fields=['published_at', 'updated_at'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='job_posting_published',
+                actor=request.user,
+                target_type='job_posting',
+                target_id=posting.pk,
+            )
+        return Response(JobPostingSerializer(posting).data)
+
+
+class CandidateListCreateView(APIView):
+    """`GET, POST, PATCH /api/candidates/`, `docs/06-api-contracts.md` §4.6.
+    `POST` is multipart with an optional `resume` file — same object-storage
+    pattern as `employee_document` (ADR-0007), `resume_object_key` is
+    generated server-side, never taken from the client filename."""
+
+    permission_classes = [IsRecruiter]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request):
+        queryset = Candidate.objects.order_by('-created_at')
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(email__icontains=search)
+        return Response(CandidateSerializer(queryset, many=True).data)
+
+    def post(self, request):
+        serializer = CandidateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        resume_file = request.data.get('resume')
+        object_key = None
+        if resume_file:
+            if resume_file.size > MAX_RESUME_SIZE_BYTES:
+                return Response({'detail': 'resume exceeds the maximum allowed size.'}, status=status.HTTP_400_BAD_REQUEST)
+            content_type = storage.sniff_content_type(resume_file)
+            if content_type is None:
+                return Response({'detail': 'unrecognised file type.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            candidate = serializer.save()
+            if resume_file:
+                requested_key = storage.generate_resume_object_key(candidate.pk, content_type)
+                object_key = storage.save_document(requested_key, resume_file)
+                candidate.resume_object_key = object_key
+                candidate.save(update_fields=['resume_object_key'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='candidate_created',
+                actor=request.user,
+                target_type='candidate',
+                target_id=candidate.pk,
+            )
+        return Response(CandidateSerializer(candidate).data, status=status.HTTP_201_CREATED)
+
+
+class CandidateDetailView(APIView):
+    """`PATCH /api/candidates/{id}/`, `docs/06-api-contracts.md` §4.6."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request, pk):
+        candidate = get_object_or_404(Candidate, pk=pk)
+        return Response(CandidateSerializer(candidate).data)
+
+    def patch(self, request, pk):
+        candidate = get_object_or_404(Candidate, pk=pk)
+        serializer = CandidateSerializer(candidate, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            candidate = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='candidate_updated',
+                actor=request.user,
+                target_type='candidate',
+                target_id=candidate.pk,
+            )
+        return Response(CandidateSerializer(candidate).data)
+
+
+class CandidateApplicationListCreateView(APIView):
+    """`GET, POST /api/candidates/{id}/applications/`,
+    `docs/06-api-contracts.md` §4.6. Maps to `candidate_application`."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request, pk):
+        candidate = get_object_or_404(Candidate, pk=pk)
+        applications = candidate.applications.order_by('-applied_at')
+        return Response(CandidateApplicationSerializer(applications, many=True).data)
+
+    def post(self, request, pk):
+        candidate = get_object_or_404(Candidate, pk=pk)
+        serializer = CandidateApplicationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            application = serializer.save(candidate=candidate)
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='candidate_application_created',
+                actor=request.user,
+                target_type='candidate_application',
+                target_id=application.pk,
+            )
+        return Response(CandidateApplicationSerializer(application).data, status=status.HTTP_201_CREATED)
+
+
+class InterviewListCreateView(APIView):
+    """`GET, POST, PATCH /api/applications/{id}/interviews/`,
+    `docs/06-api-contracts.md` §4.6. `interviewer_employee_id` may reference
+    any employee, not only Recruiters — HRMS-FR-018 does not restrict who
+    may interview, only who may schedule."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request, pk):
+        application = get_object_or_404(CandidateApplication, pk=pk)
+        interviews = application.interviews.order_by('-scheduled_at')
+        return Response(InterviewSerializer(interviews, many=True).data)
+
+    def post(self, request, pk):
+        application = get_object_or_404(CandidateApplication, pk=pk)
+        serializer = InterviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            interview = serializer.save(application=application)
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='interview_scheduled',
+                actor=request.user,
+                target_type='interview',
+                target_id=interview.pk,
+            )
+        return Response(InterviewSerializer(interview).data, status=status.HTTP_201_CREATED)
+
+
+class InterviewDetailView(APIView):
+    """`PATCH /api/applications/{id}/interviews/{interview_id}/`, split from
+    the collection endpoint the same way `employees`' emergency-contacts
+    endpoints are."""
+
+    permission_classes = [IsRecruiter]
+
+    def patch(self, request, pk, interview_id):
+        application = get_object_or_404(CandidateApplication, pk=pk)
+        interview = get_object_or_404(Interview, pk=interview_id, application=application)
+        serializer = InterviewSerializer(interview, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            interview = serializer.save()
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='interview_updated',
+                actor=request.user,
+                target_type='interview',
+                target_id=interview.pk,
+            )
+        return Response(InterviewSerializer(interview).data)
+
+
+class OfferLetterListCreateView(APIView):
+    """`GET, POST /api/applications/{id}/offer/`, `docs/06-api-contracts.md`
+    §4.6. Creates `offer_letter`. `document_object_key` is generated
+    server-side once the offer is issued, same object-storage pattern as
+    employee documents."""
+
+    permission_classes = [IsRecruiter]
+
+    def get(self, request, pk):
+        application = get_object_or_404(CandidateApplication, pk=pk)
+        offers = application.offers.order_by('-issued_at')
+        return Response(OfferLetterSerializer(offers, many=True).data)
+
+    def post(self, request, pk):
+        application = get_object_or_404(CandidateApplication, pk=pk)
+        serializer = OfferLetterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            offer = serializer.save(application=application)
+            document_content = (
+                f'Offer Letter\nApplication: {application.pk}\nOffered salary: {offer.offered_salary}\n'
+                f'Issued at: {offer.issued_at.isoformat()}\n'
+            )
+            object_key = storage.generate_offer_letter_object_key(offer.pk)
+            object_key = storage.save_document(object_key, ContentFile(document_content.encode()))
+            offer.document_object_key = object_key
+            offer.save(update_fields=['document_object_key'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='offer_letter_issued',
+                actor=request.user,
+                target_type='offer_letter',
+                target_id=offer.pk,
+            )
+        return Response(OfferLetterSerializer(offer).data, status=status.HTTP_201_CREATED)
+
+
+class OfferLetterDecideView(APIView):
+    """`POST /api/offers/{id}/decide/`, `docs/06-api-contracts.md` §4.6.
+    Records the candidate's decision on their behalf, since a candidate has
+    no account (`CONTEXT.md`: "a candidate is not an employee"). An
+    `accepted` decision does not itself create an employee record —
+    HRMS-BR-013 requires onboarding initiation as the conversion trigger,
+    Module 10's endpoint, not this one."""
+
+    permission_classes = [IsRecruiter]
+
+    def post(self, request, pk):
+        offer = get_object_or_404(OfferLetter, pk=pk)
+        serializer = OfferDecisionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            offer.status = serializer.validated_data['decision']
+            offer.decided_at = timezone.now()
+            offer.save(update_fields=['status', 'decided_at'])
+            audit.services.record(
+                category=AuditLog.CATEGORY_RECORD_CHANGE,
+                action='offer_letter_decided',
+                actor=request.user,
+                target_type='offer_letter',
+                target_id=offer.pk,
+            )
+        return Response(OfferLetterSerializer(offer).data)

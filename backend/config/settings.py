@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'departments.apps.DepartmentsConfig',
     'employees.apps.EmployeesConfig',
     'reporting_structure.apps.ReportingStructureConfig',
+    'recruitment.apps.RecruitmentConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
