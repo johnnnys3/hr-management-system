@@ -168,7 +168,7 @@ This is a database-level constraint, not only an application check, for the same
 
 ## 4. Entity Catalog by Module
 
-Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 14 (Dashboard, reads modules 6/13/16/17 without a table of its own), modules 11 and 12 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), module 17 (Reports, aggregates read-only over modules 6/13/15/16), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data).
+Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 14 (Dashboard, reads modules 6/10/13/16/17 without a table of its own), modules 11 and 12 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), module 17 (Reports, aggregates read-only over modules 6/13/15/16), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data).
 
 ### 4.1 Module 1 — Audit
 
