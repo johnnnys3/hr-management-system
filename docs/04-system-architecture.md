@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -19,6 +19,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6.** The plan swapped Employee Management and Departments (its modules 5 and 6) on this document's own finding: §4's catalog and §4.1's dependency graph below already state `Employee Mgmt <- Departments, Reporting Structure` (v1.4 numbering: module 6 depends on 7 and 8) while the build order that catalog sits beside — this document's own, still v1.4 — builds Employee Management before Departments. This document did not catch that its build order contradicted its own dependency graph; the plan did, while starting Module 5's real implementation. Reconciliation will swap modules 6 and 7 below (Employee Management, Departments) to match; module 8, Reporting Structure, does not move — `docs/05-database-schema.md` §4.6 shows its foreign keys point into `employee`, not the reverse, so the "8" in `Employee Mgmt <- 7, 8` overstates a schema-level dependency that does not exist. **Reconciliation will also correct that edge**, both in §4's catalog row and §4.1's dependency graph, to `Employee Mgmt <- Departments` alone — dropping Reporting Structure from Employee Management's stated dependencies rather than carrying the overstatement forward under corrected numbers. Reconcile at M2 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** §4's catalog, §4.1's dependency graph, and §5's requirement assignment are renumbered throughout to v1.6's numbering (Dashboard at 14; Departments at 5, Employee Management at 6; Onboarding at 9, Notification at 10, Employee Self-Service at 11, Manager Self-Service at 12, Leave Management at 13; Recruitment at 8, Reporting Structure at 7). Employee Management's stated dependency on Reporting Structure is dropped, per the correction the row above already specified — its schema foreign keys point into `employee`, not the reverse (`docs/05-database-schema.md` §4.6) — leaving Employee Management depending on Departments alone. No requirement, business rule, estimate, or module boundary changes; this is the renumbering the two rows above already called for, done. Filed as DOC-007 | 1.1 |
 | John Kessie | 2026-07-18 | **Dashboard's stated dependencies omitted Notification.** `docs/06-api-contracts.md` §4.10 has always stated an Employee's dashboard view reads "pending tasks" from Notification, but §4's catalog row and §4.1's dependency graph for Dashboard never listed module 10 (Notification) among its consumed modules — found by CodeRabbit during DOC-007's review (PR #53), confirmed pre-existing rather than introduced by that renumbering. Adds module 10 to both the catalog row and the dependency-graph line for Dashboard. No requirement, endpoint, or module-boundary change. Filed as DOC-008 | 1.2 |
+| John Kessie | 2026-07-18 | **Module 11's row correctly listed modules 6 and 10 as dependencies and no more — the apparent gap against `docs/02-project-plan.md`'s pre-v1.7 requirement list (which also named modules 13 and 16's requirements) was the plan's error, not this document's.** `docs/01-srs.md` v1.2 marks HRMS-FR-028/HRMS-FR-044 and HRMS-FR-029/HRMS-FR-063 as duplicate pairs; module 11 never owned an independent payslip-view or leave-submission surface, so this document's dependency row needed no correction there. One stray citation is dropped: module 11's row named HRMS-BR-006 ("employees can only view their own payslips") as part of its own-record scoping rule, but that rule is Payroll's and was already correctly stated at module 16's row below — module 11's scoping is HRMS-NFR-017's own-record half alone. Filed as DOC-009, alongside `docs/01-srs.md` v1.2 and `docs/02-project-plan.md` v1.7 | 1.3 |
 
 ---
 
@@ -38,8 +39,8 @@ Developers building each module, and the project owner reviewing the module boun
 
 This document is downstream of four documents it does not revise:
 
-- **`docs/01-srs.md`** (v1.1) — the requirement set. Authoritative; where this document and the SRS disagree, the SRS governs.
-- **`docs/02-project-plan.md`** (v1.6) — the twenty-module build order at §6.1, with its requirement assignment. This document is what §5.2 calls "records the assignment at M2" for module 1 (Audit) and module 10 (Notification), and what plan §11 questions 1 to 3 call the same for modules 15 and 1. **None of the three placements is reopened here.**
+- **`docs/01-srs.md`** (v1.2) — the requirement set. Authoritative; where this document and the SRS disagree, the SRS governs.
+- **`docs/02-project-plan.md`** (v1.7) — the twenty-module build order at §6.1, with its requirement assignment. This document is what §5.2 calls "records the assignment at M2" for module 1 (Audit) and module 10 (Notification), and what plan §11 questions 1 to 3 call the same for modules 15 and 1. **None of the three placements is reopened here.**
 - **`docs/03-tech-stack.md`** (v1.0) and **ADR-0001 to ADR-0009** — the technology and architecture decisions this document builds against: modular monolith with a separate SPA (ADR-0001), Django/DRF (ADR-0002), PostgreSQL (ADR-0003), session-cookie authentication (ADR-0004), groups plus queryset scoping (ADR-0005), Celery/Redis (ADR-0006), S3-compatible storage (ADR-0007), Ant Design (ADR-0008), containerised deployment with hosting deferred (ADR-0009).
 - **`docs/07-iam-rbac.md`** (v1.6) and **ADR-0010, ADR-0011** — produced out of order (plan §5.3). The role model, the permission matrix, the visibility-rule table, and the mail-dispatch/notification split are fixed inputs here, not choices this document makes.
 
@@ -102,7 +103,7 @@ Two roles are wholly derived from this seam rather than granted through it (`doc
 
 ## 4. Module Catalog
 
-The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6.1 (v1.6 numbering, reconciled here per DOC-007), its principal requirements (restated from the plan, not re-derived), what it depends on within the build order, and how it participates in the two cross-cutting concerns of §3. "Consumes" lists modules whose data or capability this module reads or calls; it is not the build sequence, which plan §6.1 already fixes and this document does not reopen.
+The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6.1 (v1.7 numbering, reconciled per DOC-007, with the requirement-assignment corrections of DOC-009), its principal requirements (restated from the plan, not re-derived), what it depends on within the build order, and how it participates in the two cross-cutting concerns of §3. "Consumes" lists modules whose data or capability this module reads or calls; it is not the build sequence, which plan §6.1 already fixes and this document does not reopen.
 
 | # | Module | Consumes | Emits audit (§3.1) | Emits mail / notification (§3.2) | Visibility rule (§3.3) |
 |---|---|---|---|---|---|
@@ -116,7 +117,7 @@ The table gives, for each of the twenty modules of `docs/02-project-plan.md` §6
 | 8 | Recruitment | Module 6 (conversion target), Module 7 (approving manager, if any) | Requisition and offer decisions | Consumes neither Module 2 nor Module 10 (ADR-0011 rationale — no SRS requirement names a recruitment notification) | Recruiter: full. HR Administrator: read. Others: none |
 | 9 | Onboarding | Module 8 (candidate conversion), Module 6 (employee record created) | Onboarding task completion | Sends via Module 2 (email-only; ADR-0011 §"Why the surface sits at 11") | HR Officer: create/read/update. HR Administrator, Recruiter: read |
 | 10 | Notification | Module 2 (email channel) | — | *is* the in-app store; emission absorbed per consumer (§3.2) | Employee/Manager: own notifications only |
-| 11 | Employee Self-Service | Module 6 (own record), Module 10 (own notifications) | Self-service updates routed for approval | Consumes Module 10 (first consumer — why Notification precedes this module) | Employee: own record only (HRMS-NFR-017, HRMS-BR-006) |
+| 11 | Employee Self-Service | Module 6 (own record), Module 10 (own notifications) | Self-service updates routed for approval | Consumes Module 10 (first consumer — why Notification precedes this module) | Employee: own record only (HRMS-NFR-017, own-record half; HRMS-BR-006 is Payroll's rule, stated at module 16) |
 | 12 | Manager Self-Service | Module 7 (direct reports), Module 10 (approval tasks) | Approval/rejection decisions | Consumes Module 10 | Manager: direct reports only (HRMS-NFR-018, HRMS-BR-007) |
 | 13 | Leave Management | Module 6 (employee), Module 12 (manager approval) | Leave approval/rejection (HRMS-BR-010, HRMS-BR-011) | Consumes Module 10 for pending-approval and decision notices | Employee: own requests. Manager: direct reports'. HR: all |
 | 14 | Dashboard | Modules 6, 10, 13, 16, 17 (read-only, per role) | — | — | Delegates to the visibility rule of whichever module's data it renders |

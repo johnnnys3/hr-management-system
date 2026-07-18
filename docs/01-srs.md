@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date Created | May 2026 |
@@ -15,6 +15,7 @@
 |---|---|---|---|
 | John Kessie | May 2026 | Initial SRS document for HRMS | 1.0 |
 | John Kessie | 2026-07-15 | HRMS-NFR-024 promoted from a recommendation to a *shall*: multi-factor authentication is mandatory for administrators and payroll users, and the second factor is placed outside the control of the roles that administer accounts and credentials, including at enrollment and recovery. This closes the gap against HRMS-NFR-019, a *shall*, which was unenforceable while a System Administrator could reset a payroll user's credentials under §2.3.1 and authenticate as them. HRMS-FR-051 deferred to later versions on the pattern of HRMS-FR-055, the training data its condition presupposed being excluded by §6.4; §2.2 and §4.5 reconciled. Equity mentions removed from §2.2 and §4.6, no functional requirement having covered them. HRMS-NFR-001 to HRMS-NFR-006 restated as measurable thresholds at the upper bound of each stated range, at the 95th percentile, over a stated measurement window, at a workload pinned to 200 concurrent users; the data volumes they are verified against are recorded as TBD-016 and HRMS-NFR-005's threshold as TBD-017, neither being stated in this document. §2.2 predictive attrition analytics marked deferred, aligning the summary with HRMS-FR-055. No requirement other than HRMS-NFR-024 changes modality, and no scope is added or removed | 1.1 |
+| John Kessie | 2026-07-18 | **HRMS-FR-028/HRMS-FR-044 and HRMS-FR-029/HRMS-FR-063 are duplicate pairs, found while scoping Module 11 (Employee Self-Service) against `docs/02-project-plan.md` §6.1's build order.** §4.3 (self-service) and §4.4 (Payroll) both state "the system shall allow employees to view their own payslips", verbatim, as FR-028 and FR-044; §4.3 and §4.7 (Leave Management) both state the same leave-submission requirement as FR-029 and FR-063. Each pair had been assigned to two different modules by the plan, which read as Employee Self-Service (module 11) depending on unbuilt Payroll (16) and Leave Management (13) — a sixth instance of the provider-precedes-consumer defect this project's plan has caught five times before, except here the defect is duplication, not a genuine second requirement scheduled early. FR-044 and FR-063 are marked canonical; FR-028 and FR-029 are marked as restating them, not superseding or removing them, since neither this project's convention nor traceability tooling assumes requirement IDs are renumbered once assigned. No requirement's modality, scope, or module ownership beyond this correction changes. Filed as DOC-009; `docs/02-project-plan.md` and `docs/04-system-architecture.md` reconciled in the same change | 1.2 |
 
 ---
 
@@ -489,9 +490,9 @@ HRMS-FR-026: The system shall allow employees to update selected personal detail
 
 HRMS-FR-027: The system shall restrict employees from editing salary, job title, department, employment status, and reporting manager.
 
-HRMS-FR-028: The system shall allow employees to view their own payslips.
+HRMS-FR-028: The system shall allow employees to view their own payslips. *(Duplicate of HRMS-FR-044, §4.4. Payroll (module 16) is the canonical owner; this restates the same requirement in the self-service use case, not a second one — see revision history v1.2.)*
 
-HRMS-FR-029: The system shall allow employees to submit leave requests.
+HRMS-FR-029: The system shall allow employees to submit leave requests. *(Duplicate of HRMS-FR-063, §4.7. Leave Management (module 13) is the canonical owner; this restates the same requirement in the self-service use case, not a second one — see revision history v1.2.)*
 
 HRMS-FR-030: The system shall allow managers to view assigned team members.
 
@@ -535,7 +536,7 @@ HRMS-FR-042: The system shall support Tier 3 voluntary contributions.
 
 HRMS-FR-043: The system shall generate payslips.
 
-HRMS-FR-044: The system shall allow employees to view their own payslips.
+HRMS-FR-044: The system shall allow employees to view their own payslips. *(Canonical; HRMS-FR-028, §4.3, restates this requirement and is not a second one.)*
 
 HRMS-FR-045: The system shall generate payroll summary reports.
 
@@ -616,7 +617,7 @@ Priority: Medium
 
 #### 4.7 Functional Requirements
 
-HRMS-FR-063: The system shall allow employees to request leave.
+HRMS-FR-063: The system shall allow employees to request leave. *(Canonical; HRMS-FR-029, §4.3, restates this requirement and is not a second one.)*
 
 HRMS-FR-064: The system shall allow managers to approve or reject leave requests.
 
