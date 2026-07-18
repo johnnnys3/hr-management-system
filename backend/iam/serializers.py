@@ -4,6 +4,7 @@ from rest_framework import serializers
 from accounts.models import User
 
 from .models import RoleGrantRequest
+from .roles import ASSIGNED_ROLES
 
 
 class UserAdminSerializer(serializers.ModelSerializer):
@@ -51,7 +52,13 @@ class RoleGrantRequestSerializer(serializers.ModelSerializer):
 
 class RoleGrantRequestCreateSerializer(serializers.Serializer):
     subject_user_id = serializers.PrimaryKeyRelatedField(source='subject', queryset=User.objects.all())
-    role_id = serializers.PrimaryKeyRelatedField(source='role', queryset=Group.objects.all())
+    # Restricted to the six assigned-role groups (`docs/07-iam-rbac.md`
+    # §2.3), not `Group.objects.all()` — an arbitrary existing Django group
+    # unrelated to RBAC would otherwise be requestable and, for anything
+    # outside `PRIVILEGED_ROLES`, granted immediately with no approval step.
+    role_id = serializers.PrimaryKeyRelatedField(
+        source='role', queryset=Group.objects.filter(name__in=ASSIGNED_ROLES),
+    )
 
 
 class RoleGrantRequestDecisionSerializer(serializers.Serializer):

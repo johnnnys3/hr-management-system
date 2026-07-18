@@ -11,7 +11,7 @@ from audit.models import AuditLog
 
 from .models import RoleGrantRequest
 from .permissions import CanDecideRoleGrantRequest, IsFullyAuthenticated, IsSystemAdministrator
-from .roles import PRIVILEGED_ROLES
+from .roles import RECRUITER
 from .serializers import (
     RoleGrantRequestCreateSerializer,
     RoleGrantRequestDecisionSerializer,
@@ -99,12 +99,19 @@ class RoleGrantRequestCreateView(APIView):
                 detail={'role': role.name},
             )
 
-            if role.name not in PRIVILEGED_ROLES:
-                # `docs/07-iam-rbac.md` §7.3: the approval constraint applies
-                # to the five privileged roles. Recruiter is the one
-                # assigned role outside that set, and its grant takes
+            if role.name == RECRUITER:
+                # `docs/07-iam-rbac.md` §7.3: the approval constraint
+                # applies to the five privileged roles. Recruiter is the
+                # one assigned role outside that set, and its grant takes
                 # effect immediately — a request no one is required to
-                # decide would otherwise sit pending forever.
+                # decide would otherwise sit pending forever. Matched
+                # explicitly against `RECRUITER` rather than "not
+                # privileged" — `role_id` is already constrained to the
+                # six assigned-role groups by the serializer, but an
+                # explicit allow-list here means a future role added to
+                # `ASSIGNED_ROLES` without an explicit privileged/
+                # non-privileged classification fails closed (stays
+                # pending) rather than auto-granting by omission.
                 grant_request.status = RoleGrantRequest.STATUS_APPROVED
                 grant_request.decided_at = timezone.now()
                 grant_request.save(update_fields=['status', 'decided_at'])

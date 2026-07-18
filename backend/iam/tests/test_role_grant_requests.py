@@ -25,6 +25,20 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.payroll_officer = Group.objects.get(name=PAYROLL_OFFICER)
         self.recruiter = Group.objects.get(name=RECRUITER)
 
+    def test_an_unrelated_group_cannot_be_requested(self):
+        """`role_id` is restricted to the six assigned-role groups
+        (`docs/07-iam-rbac.md` §2.3) — an arbitrary Django group unrelated
+        to RBAC must not be requestable, let alone auto-granted."""
+        unrelated_group = Group.objects.create(name='Some Other App Group')
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.post(REQUESTS_URL, {
+            'subject_user_id': self.subject.pk, 'role_id': unrelated_group.pk,
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(self.subject.groups.filter(name='Some Other App Group').exists())
+
     def test_authenticated_user_can_request_a_grant_for_another_user(self):
         self.client.force_authenticate(self.requester)
 
@@ -161,6 +175,18 @@ class DecideRoleGrantRequestTests(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.grant_request.refresh_from_db()
         self.assertEqual(self.grant_request.status, 'refused')
+
+    def test_break_glass_superuser_cannot_decide_a_grant_request(self):
+        """§7.2: `is_superuser` is reserved for break-glass, and
+        `has_perm` returns `True` for it unconditionally. Without an
+        explicit check, that would make the break-glass account an
+        unconditional approver of every privileged grant."""
+        break_glass = User.objects.create_superuser(email='breakglass@example.com', password='x')
+        self.client.force_authenticate(break_glass)
+
+        response = self.client.post(_decide_url(self.grant_request.pk), {'decision': 'approved'})
+
+        self.assertEqual(response.status_code, 403)
 
     def test_approve_role_grant_is_not_granted_to_system_administrator_by_default(self):
         """`docs/07-iam-rbac.md` §7.3/§8: granting this to System

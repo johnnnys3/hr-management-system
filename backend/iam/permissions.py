@@ -22,4 +22,12 @@ class CanDecideRoleGrantRequest(BasePermission):
             return False
         if user.pk == obj.requester_id:
             return False
+        if user.is_superuser:
+            # `docs/07-iam-rbac.md` §7.2: `is_superuser` is reserved for
+            # break-glass, and `has_perm` short-circuits to `True` for it
+            # regardless of held permissions. Falling through to that call
+            # would make the break-glass account an unconditional approver
+            # of every privileged grant, which §7.3's whole point is to
+            # prevent for the System Administrator role it stands in for.
+            return False
         return user.has_perm('iam.approve_role_grant')

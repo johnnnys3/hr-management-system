@@ -101,6 +101,7 @@ class UserDetailTests(APITestCase):
         payroll = Group.objects.get(name='Payroll Officer')
         self.client.force_authenticate(self.admin)
 
-        self.client.patch(_detail_url(self.target.pk), {'groups': [payroll.pk]})
+        response = self.client.patch(_detail_url(self.target.pk), {'groups': [payroll.pk]})
 
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(self.target.groups.filter(name='Payroll Officer').exists())
