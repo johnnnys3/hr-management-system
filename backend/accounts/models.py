@@ -26,17 +26,14 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """`user_account`, `docs/05-database-schema.md` §4.2. Custom user model per ADR-0002.
-
-    `employee_id` is not modelled here. Its FK target, `employee`, does not
-    exist yet — Employee Management is module 6, not yet built. Module 6
-    adds the column and the FK when that table exists, rather than this
-    module forward-declaring a table it does not own.
-    """
+    """`user_account`, `docs/05-database-schema.md` §4.2. Custom user model per ADR-0002."""
 
     email = models.EmailField(unique=True, db_collation=CASE_INSENSITIVE_COLLATION)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    employee = models.OneToOneField(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_account',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
