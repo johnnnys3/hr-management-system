@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -17,6 +17,7 @@
 | John Kessie | 2026-07-16 | Initial API contracts document, closing milestone M4 | 1.0 |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5.** §4.10's Dashboard is module 5 there and module 14 in the plan as of v1.5; every module-numbered heading and cross-reference in §4 is still v1.4. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; §4.3/§4.4 headings below, still v1.4-numbered as module 6 and 7).** No endpoint contract changes; only the heading numbers and any build-order cross-references are stale. Reconcile at M4 sign-off per plan §5.3, or before Module 5's real implementation begins, whichever comes first | 1.0 (unreconciled) |
+| John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** Every module-numbered heading and cross-reference in §4 is renumbered to v1.6 (Departments 5, Reporting Structure 7, Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13, Dashboard 14); section order (§4.1-§4.15) is unchanged, only the module labels and numbers within them. No endpoint, permission, or visibility-rule content changes. Filed as DOC-007 | 1.1 |
 
 ---
 
@@ -169,14 +170,14 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/employees/` | POST | HR Officer: C (`docs/07-iam-rbac.md` §4.2) | n/a (creation, not a read) | Body maps to `employee` (`docs/05-database-schema.md` §4.4): `employee_number`, `first_name`, `last_name`, `date_of_birth`, `department_id`, `job_title_id`, `hire_date`. `employment_status` defaults `active` and is not client-settable at creation — HRMS-FR-027 forbids an employee editing their own status, and this endpoint's caller is HR, not the employee, but the status transition endpoint below is the one path that changes it, keeping the rule uniform regardless of caller |
 | `/api/employees/{id}/` | GET | Employee: R own; Manager: R direct reports; HR Officer, HR Administrator: R all; Payroll Officer: R (payroll fields only, §4.13 below) | Same as list | |
 | `/api/employees/{id}/` | PATCH | HR Officer: U (full record); HR Administrator: U status only (`docs/07-iam-rbac.md` §4.2's "R, U status" cell) | HR Administrator/Officer: all | HR Administrator's `PATCH` is restricted to `employment_status` at the serializer layer — a narrower write scope than HR Officer's, per the matrix cell distinguishing "R, U status" from "C, R, U." A status change also writes `employment_history` (`docs/05-database-schema.md` §4.4) |
-| `/api/employees/me/` | GET, PATCH | Employee: R, U own (self-service profile, HRMS-FR-025 to HRMS-FR-027) | Own record only | The Employee Self-Service (module 12) surface over this same table — see §4.13. `PATCH` here is restricted to non-master fields (HRMS-FR-027: salary, job title, department, status, and manager are not employee-writable); the serializer for this endpoint is a distinct, narrower one from `/api/employees/{id}/`'s HR-facing serializer, not the same serializer with a permission check bolted on, so that a future field addition to the HR serializer does not silently become employee-writable |
+| `/api/employees/me/` | GET, PATCH | Employee: R, U own (self-service profile, HRMS-FR-025 to HRMS-FR-027) | Own record only | The Employee Self-Service (module 11) surface over this same table — see §4.13. `PATCH` here is restricted to non-master fields (HRMS-FR-027: salary, job title, department, status, and manager are not employee-writable); the serializer for this endpoint is a distinct, narrower one from `/api/employees/{id}/`'s HR-facing serializer, not the same serializer with a permission check bolted on, so that a future field addition to the HR serializer does not silently become employee-writable |
 | `/api/employees/{id}/employment-history/` | GET | Same as `/api/employees/{id}/` read | Same as `/api/employees/{id}/` | Read-only over `employment_history` (`docs/05-database-schema.md` §4.4); written only by the status/department/job-title/manager-change endpoints, never directly |
 | `/api/employees/{id}/documents/` | GET | HR Officer: R; Employee: R own (`docs/07-iam-rbac.md` §4.2) | Employee: own only; HR Officer: all | |
 | `/api/employees/{id}/documents/` | POST | HR Officer: C (`docs/07-iam-rbac.md` §4.2) | n/a | Multipart upload. Server validates content type by inspection and size server-side (ADR-0007, `docs/05-database-schema.md` §4.4); `object_key` is generated, never taken from the client filename |
 | `/api/employees/{id}/documents/{doc_id}/download/` | GET | HR Officer: R; Employee: R own | Same as documents list | Returns a short-lived signed URL (ADR-0007 — the bucket is private, no document is served from a directly addressable URL), not the file bytes |
 | `/api/employees/{id}/emergency-contacts/` | GET, POST, PATCH | HR Officer: C, R, U (grouped under Employee records, HRMS-FR-007) | Same as `/api/employees/{id}/` | Maps to `emergency_contact` (`docs/05-database-schema.md` §4.4) |
 
-### 4.4 Module 7 — Departments and HR Configuration
+### 4.4 Module 5 — Departments and HR Configuration
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
@@ -184,19 +185,19 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/departments/` | POST, PATCH | HR Administrator: C, U | n/a | `PATCH {"is_active": false}` retires rather than deletes (`docs/05-database-schema.md` §2.3) |
 | `/api/job-titles/` | GET, POST, PATCH | Same as departments (§4.2's HR configuration row groups them, `docs/05-database-schema.md` §4.5) | Same as departments | |
 
-### 4.5 Module 8 — Reporting Structure
+### 4.5 Module 7 — Reporting Structure
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/reporting-relationships/` | GET | HR Officer, HR Administrator: R (grouped with Employee records; `docs/04-system-architecture.md` §4's module 8 row states "no independent read restriction beyond Module 6's") | Same as Employee records | Filterable: `manager_employee_id` |
-| `/api/employees/{id}/direct-reports/` | GET | Manager: R own direct reports; HR Officer, HR Administrator: R any | Manager: rows where `manager_employee_id = {caller's employee id}`; HR: any `{id}` (`docs/07-iam-rbac.md` §5 — direct reports only, no transitive chain) | The endpoint a Manager Self-Service view (module 13, §4.14) calls to enumerate its team; the query is `docs/05-database-schema.md` §4.6's derivation query, not a separate index |
+| `/api/reporting-relationships/` | GET | HR Officer, HR Administrator: R (grouped with Employee records; `docs/04-system-architecture.md` §4's module 7 row states "no independent read restriction beyond Module 6's") | Same as Employee records | Filterable: `manager_employee_id` |
+| `/api/employees/{id}/direct-reports/` | GET | Manager: R own direct reports; HR Officer, HR Administrator: R any | Manager: rows where `manager_employee_id = {caller's employee id}`; HR: any `{id}` (`docs/07-iam-rbac.md` §5 — direct reports only, no transitive chain) | The endpoint a Manager Self-Service view (module 12, §4.14) calls to enumerate its team; the query is `docs/05-database-schema.md` §4.6's derivation query, not a separate index |
 | `/api/employees/{id}/manager/` | PATCH | HR Officer: U (a manager change is a `reporting_relationship` write, grouped under Employee records write access since HRMS-FR-008's relationship is HR-maintained) | n/a | Writes a new `reporting_relationship` row and closes/replaces the prior one (current-state table, `docs/05-database-schema.md` §4.6); also writes `employment_history` with `event_type = 'manager_change'` |
 
-### 4.6 Module 9 — Recruitment
+### 4.6 Module 8 — Recruitment
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/job-requisitions/` | GET, POST, PATCH | Recruiter: C, R, U; HR Administrator: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Administrator: read (`docs/07-iam-rbac.md` §5 — no explicit requisition row; inherits Recruitment module's "Recruiter: full, HR Administrator: read, others: none" from `docs/04-system-architecture.md` §4's module 9 row) | |
+| `/api/job-requisitions/` | GET, POST, PATCH | Recruiter: C, R, U; HR Administrator: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Administrator: read (`docs/07-iam-rbac.md` §5 — no explicit requisition row; inherits Recruitment module's "Recruiter: full, HR Administrator: read, others: none" from `docs/04-system-architecture.md` §4's module 8 row) | |
 | `/api/job-requisitions/{id}/approve/` | POST | HR Administrator: A (`docs/07-iam-rbac.md` §4.2's "Requisition approval" row) | n/a | Sets `status = 'approved'`, `approved_by`. Distinct endpoint per §2.9, since approval is a gated transition, not an ordinary field write |
 | `/api/job-requisitions/{id}/reject/` | POST | HR Administrator: A | n/a | Sets `status = 'rejected'` |
 | `/api/job-postings/` | GET, POST, PATCH | Recruiter: C, R, U | Recruiter: full | `POST` requires `requisition.status = 'approved'` — enforced in application code, not a schema constraint (`docs/05-database-schema.md` §4.7 states no such check) |
@@ -205,9 +206,9 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/candidates/{id}/applications/` | GET, POST | Recruiter: C, R | Recruiter: full | Maps to `candidate_application` |
 | `/api/applications/{id}/interviews/` | GET, POST, PATCH | Recruiter: C, R, U | Recruiter: full | `interviewer_employee_id` may reference any employee, not only Recruiters — HRMS-FR-018 does not restrict who may interview, only who may schedule |
 | `/api/applications/{id}/offer/` | GET, POST | Recruiter: C, R | Recruiter: full | Creates `offer_letter`. `document_object_key` is generated server-side once the offer is issued, same object-storage pattern as employee documents |
-| `/api/offers/{id}/decide/` | POST | Recruiter: U (records the candidate's decision on their behalf, since a candidate has no account — `CONTEXT.md`: "a candidate is not an employee," and this system has no candidate-facing portal per SRS scope) | n/a | Body: `{"decision": "accepted" \| "rejected" \| "withdrawn"}`. An `accepted` decision does not itself create an employee record — HRMS-BR-013 requires onboarding initiation as the conversion trigger, which is module 10's endpoint below, not this one |
+| `/api/offers/{id}/decide/` | POST | Recruiter: U (records the candidate's decision on their behalf, since a candidate has no account — `CONTEXT.md`: "a candidate is not an employee," and this system has no candidate-facing portal per SRS scope) | n/a | Body: `{"decision": "accepted" \| "rejected" \| "withdrawn"}`. An `accepted` decision does not itself create an employee record — HRMS-BR-013 requires onboarding initiation as the conversion trigger, which is module 9's endpoint below, not this one |
 
-### 4.7 Module 10 — Onboarding
+### 4.7 Module 9 — Onboarding
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
@@ -215,7 +216,7 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/onboarding-checklists/{id}/` | GET | HR Officer: R; HR Administrator, Recruiter: R (`docs/07-iam-rbac.md` §4.2) | Per role, same scoping as Employee Management's read | |
 | `/api/onboarding-checklists/{id}/tasks/` | GET, POST, PATCH | HR Officer: C, R, U | Same as checklist | `PATCH {"status": "completed"}` sets `completed_by`, `completed_at` |
 
-### 4.8 Module 11 — Notification
+### 4.8 Module 10 — Notification
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
@@ -233,17 +234,17 @@ No `POST` for creating a notification is exposed to a client: notifications are 
 | `/api/role-grant-requests/{id}/decide/` | POST | Holder of `iam.approve_role_grant`, and not the requester (`docs/07-iam-rbac.md` §7.3) — enforced by the same `CHECK (approver_user_id IS NULL OR approver_user_id <> requester_user_id)` constraint | Only requests where the caller is eligible to approve | Body: `{"decision": "approved" \| "refused"}`. A `decision` that would violate the constraint is rejected with `code: "self_approval_forbidden"` (§2.7) even if it somehow reached this endpoint, since the database constraint is the actual enforcement and this is defence in depth at the API layer |
 | `/api/audit-log/` (permission changes) | GET | Covered by §4.1's audit-log endpoint, filtered `?category=permission_change` | Same as §4.1 | Not a second endpoint |
 
-### 4.10 Module 5 — Dashboard
+### 4.10 Module 14 — Dashboard
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/dashboard/` | GET | Any authenticated user; content varies by role | Delegates entirely to the visibility rule of whichever module's data it renders (`docs/04-system-architecture.md` §4's module 5 row) | Returns a role-appropriate composite: an Employee sees their own leave balance and pending tasks (modules 14, 11); a Manager additionally sees team-level counts (module 14, `docs/07-iam-rbac.md` §5's "Team-level (FR-032)"); an Executive sees aggregate figures only (§4.16 below), never an individual record. This endpoint issues no query of its own that is not already scoped by the source module's `visible_to`; it is a read-only composition layer, not a new data-access decision |
+| `/api/dashboard/` | GET | Any authenticated user; content varies by role | Delegates entirely to the visibility rule of whichever module's data it renders (`docs/04-system-architecture.md` §4's module 14 row) | Returns a role-appropriate composite: an Employee sees their own leave balance and pending tasks (modules 13, 10); a Manager additionally sees team-level counts (module 13, `docs/07-iam-rbac.md` §5's "Team-level (FR-032)"); an Executive sees aggregate figures only (§4.16 below), never an individual record. This endpoint issues no query of its own that is not already scoped by the source module's `visible_to`; it is a read-only composition layer, not a new data-access decision |
 
-### 4.11 Modules 12/13 — Employee and Manager Self-Service
+### 4.11 Modules 11/12 — Employee and Manager Self-Service
 
-Self-service is not a separate resource shape; it is a narrower read/write surface over resources modules 6, 8, and 14 already own, per `docs/04-system-architecture.md` §4's module 12/13 rows ("read Employee, Leave, and Notification without owning new storage"). This document does not duplicate those endpoints under a `/api/self-service/` prefix; the "own record" and "direct reports" scoping already stated per-endpoint in §4.3, §4.5, and §4.12 below **is** the self-service surface. `/api/employees/me/` (§4.3) is Employee Self-Service's profile endpoint; `/api/employees/{id}/direct-reports/` (§4.5) and the leave-approval endpoints of §4.12 are Manager Self-Service's.
+Self-service is not a separate resource shape; it is a narrower read/write surface over resources modules 6, 7, and 13 already own, per `docs/04-system-architecture.md` §4's module 11/12 rows ("read Employee, Leave, and Notification without owning new storage"). This document does not duplicate those endpoints under a `/api/self-service/` prefix; the "own record" and "direct reports" scoping already stated per-endpoint in §4.3, §4.5, and §4.12 below **is** the self-service surface. `/api/employees/me/` (§4.3) is Employee Self-Service's profile endpoint; `/api/employees/{id}/direct-reports/` (§4.5) and the leave-approval endpoints of §4.12 are Manager Self-Service's.
 
-### 4.12 Module 14 — Leave Management
+### 4.12 Module 13 — Leave Management
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
@@ -252,7 +253,7 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 | `/api/leave-requests/` | GET | Employee: R own; Manager: R direct reports'; HR Officer, HR Administrator: R all | `docs/07-iam-rbac.md` §5 | Filterable: `status`, `leave_type_id`, date range |
 | `/api/leave-requests/` | POST | Employee: C own (`docs/07-iam-rbac.md` §4.2's "C, R own" cell) | n/a | `employee_id` is fixed to the caller, not client-supplied — an Employee cannot request leave on another employee's behalf through this endpoint regardless of body content |
 | `/api/leave-requests/{id}/` | PATCH | HR Officer: U (correction/cancellation only — `docs/07-iam-rbac.md` §4.3: "HR Officer may update a leave request... but may not approve it") | HR Officer: all | This endpoint's permission class explicitly excludes writing `status` to `'approved'`; that transition is `approve/` below, held by Manager only, so the same field cannot be reached by two different permission paths |
-| `/api/leave-requests/{id}/approve/` | POST | Manager: A, and only for the requester's direct manager (`docs/07-iam-rbac.md` §4.2's "Leave approval," Manager-only at action level per §4.3) | Manager: only requests from own direct reports (`docs/07-iam-rbac.md` §5) | Sets `status = 'approved'`, `approved_by`, `decided_at`; decrements `leave_balance.used_days` (HRMS-BR-010 — balance reduces only on approval). Emits a decision notice to module 11 (`docs/04-system-architecture.md` §4's module 14 row) |
+| `/api/leave-requests/{id}/approve/` | POST | Manager: A, and only for the requester's direct manager (`docs/07-iam-rbac.md` §4.2's "Leave approval," Manager-only at action level per §4.3) | Manager: only requests from own direct reports (`docs/07-iam-rbac.md` §5) | Sets `status = 'approved'`, `approved_by`, `decided_at`; decrements `leave_balance.used_days` (HRMS-BR-010 — balance reduces only on approval). Emits a decision notice to module 10 (`docs/04-system-architecture.md` §4's module 13 row) |
 | `/api/leave-requests/{id}/reject/` | POST | Manager: A, same scoping as approve | Same | Sets `status = 'rejected'`; balance is **not** decremented (HRMS-BR-011) |
 | `/api/leave-requests/{id}/cancel/` | POST | Employee: U own (own pending request only) | Own request only | Sets `status = 'cancelled'` |
 | `/api/leave-calendar/` | GET | HR Officer, HR Administrator: R; Manager: R (`docs/07-iam-rbac.md` §4.2's Leave calendar row) | HR: organisation-wide; Manager: direct reports' (`docs/07-iam-rbac.md` §5, same scope as leave requests) | HRMS-FR-071. Read-only composite over `leave_request` where `status = 'approved'`, not a separate table |
@@ -295,7 +296,7 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
 | `/api/reports/headcount/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Per source module's rule; Executive: aggregate only, never an individual record (`docs/07-iam-rbac.md` §4.3) | Aggregates over module 6 |
-| `/api/reports/leave-utilization/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Same pattern | Aggregates over module 14 |
+| `/api/reports/leave-utilization/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Same pattern | Aggregates over module 13 |
 | `/api/reports/payroll-cost/` | GET | Payroll Officer: R; Executive: R (aggregate) (`docs/07-iam-rbac.md` §4.2's "R (payroll cost)" cells) | Payroll Officer: full detail; Executive: aggregate only, and **never** a payslip or an individual employee's figure — this is where §4.3's aggregate-only rule is load-bearing rather than incidental, since payroll cost is exactly the data HRMS-NFR-019 restricts | Aggregates over module 16 |
 | `/api/reports/{report}/export/` | POST | Same permission as the corresponding report endpoint | Same | Triggers an async export (`docs/03-tech-stack.md` §4.2 — "large report exports are batch operations"). Returns `202` with a `job_id`; same async pattern as §4.14's payroll actions |
 | `/api/report-exports/{job_id}/` | GET | Same as the export's caller (own job only) | Own job only | The poll target for the row above: `status` (`pending`, `complete`, `failed`) and, once `complete`, a signed URL to the generated file (same object-storage pattern as §4.3, §4.14). Emits an audit entry where the export touches payroll cost (`docs/04-system-architecture.md` §4's module 17 row) |

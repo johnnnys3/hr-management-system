@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -17,6 +17,7 @@
 | John Kessie | 2026-07-16 | Initial database schema, closing milestone M3 | 1.0 |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5's Dashboard renumbering (module 5 → 14; modules 6–14 → 5–13).** §4's module numbering below is still v1.4. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; modules 6 ↔ 7 below, still v1.4).** This document is the source of the finding: §4.4's `employee.department_id` is a NOT NULL foreign key into §4.5's `department`, but the build order these headings sit in still builds Employee Management before Departments. Reconciliation will swap §4.4 and §4.5's ordering and heading numbers; §4.6 Reporting Structure does not move — its foreign keys point into `employee`, not the reverse, so it has no schema-level reason to precede Employee Management. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
+| John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** §4.4 and §4.5 swap content (Departments now §4.4/module 5, Employee Management now §4.5/module 6), matching the build order; §4.6 Reporting Structure does not move. Every other module number in §4 is renumbered to v1.6 throughout (Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13). No table, column, constraint, or requirement mapping changes — this is the renumbering the two rows above already called for, done. Filed as DOC-007 | 1.1 |
 
 ---
 
@@ -118,7 +119,7 @@ Two concerns, per `docs/04-system-architecture.md` §3, are not confined to one 
 
 **Mail dispatch (module 2) owns no table.** It sends email off the request cycle (Celery task, template rendering, bounded retry) and, per ADR-0011, a delivery failure goes to application logs, never to a database table and never to the audit log. This document accordingly gives module 2 no entry in §4.
 
-**Notification (module 11) owns one table.** SRS §6.1 does not name "Notification" among its 27 data entities — the SRS predates the module split ADR-0011 records — but `docs/04-system-architecture.md` §3.2 and §4 fix Notification as owning "the entity and the in-app feed," which this schema must therefore provide even though no SRS §6.1 row maps onto it directly. This is implementing an architecture decision already made, not adding scope; §7's traceability table marks it as such rather than silently folding it into an SRS row it does not belong to.
+**Notification (module 10) owns one table.** SRS §6.1 does not name "Notification" among its 27 data entities — the SRS predates the module split ADR-0011 records — but `docs/04-system-architecture.md` §3.2 and §4 fix Notification as owning "the entity and the in-app feed," which this schema must therefore provide even though no SRS §6.1 row maps onto it directly. This is implementing an architecture decision already made, not adding scope; §7's traceability table marks it as such rather than silently folding it into an SRS row it does not belong to.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -133,17 +134,17 @@ Two concerns, per `docs/04-system-architecture.md` §3, are not confined to one 
 | read_at | TIMESTAMPTZ | NULL | |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
 
-Visibility is `recipient_user_id = current user`, per `docs/04-system-architecture.md` §4's row for module 11 ("Employee/Manager: own notifications only"). No separate visibility rule is stated for it in §5 below: the predicate is a single equality, not a queryset traversal, and does not need the pattern §3.3 states for the modules that do.
+Visibility is `recipient_user_id = current user`, per `docs/04-system-architecture.md` §4's row for module 10 ("Employee/Manager: own notifications only"). No separate visibility rule is stated for it in §5 below: the predicate is a single equality, not a queryset traversal, and does not need the pattern §3.3 states for the modules that do.
 
 ### 3.3 The Derived-Role Columns
 
-`docs/07-iam-rbac.md` §3 fixes two roles as derived rather than granted: **Employee**, from holding an employee record whose employment status permits access, and **Manager**, from having direct reports. `docs/04-system-architecture.md` §3.3 states that both derivations depend on module 6 and module 8 "existing with the right columns before any module can compute them" and names this a constraint on this document, not a choice it is free to make differently. This section is where that constraint is discharged.
+`docs/07-iam-rbac.md` §3 fixes two roles as derived rather than granted: **Employee**, from holding an employee record whose employment status permits access, and **Manager**, from having direct reports. `docs/04-system-architecture.md` §3.3 states that both derivations depend on module 6 and module 7 "existing with the right columns before any module can compute them" and names this a constraint on this document, not a choice it is free to make differently. This section is where that constraint is discharged.
 
-**Employee derivation** reads `employee.employment_status` (§4.4). The column is `NOT NULL` (HRMS-BR-003, "every employee must have one employment status") and constrained to a fixed value set (§6, HRMS-DR rule table). Application code, not a database column, decides which values "permit access" — `docs/07-iam-rbac.md` §3.1 ties this to HRMS-BR-012 (terminated, resigned, and retired lose access "unless policy permits otherwise"), and "unless policy permits" is an organisational exception this schema does not attempt to encode as a second column; it is a derivation-time decision over the same enum, not a second source of truth to keep synchronised with it.
+**Employee derivation** reads `employee.employment_status` (§4.5). The column is `NOT NULL` (HRMS-BR-003, "every employee must have one employment status") and constrained to a fixed value set (§6, HRMS-DR rule table). Application code, not a database column, decides which values "permit access" — `docs/07-iam-rbac.md` §3.1 ties this to HRMS-BR-012 (terminated, resigned, and retired lose access "unless policy permits otherwise"), and "unless policy permits" is an organisational exception this schema does not attempt to encode as a second column; it is a derivation-time decision over the same enum, not a second source of truth to keep synchronised with it.
 
-**Manager derivation** reads `reporting_relationship.manager_employee_id` (§4.6): an employee is a Manager if and only if at least one row in that table names them as manager **and their own `employee.employment_status` permits access** — the same permitting-status test §3.3 applies to the Employee derivation, applied here to the manager rather than the subject, so that a manager whose own access has ended does not go on deriving a role from a row that has not yet been reassigned. The query is given in full at §4.6. The table is owned by module 8, not embedded as a column on `employee`, because `docs/04-system-architecture.md` §4 gives Reporting Structure its own row, its own audit emission, and no dependency Employee Management has reason to carry; a `manager_id` column on `employee` would make Employee Management's table double as Reporting Structure's, which the module boundary does not do anywhere else in this schema.
+**Manager derivation** reads `reporting_relationship.manager_employee_id` (§4.6): an employee is a Manager if and only if at least one row in that table names them as manager **and their own `employee.employment_status` permits access** — the same permitting-status test §3.3 applies to the Employee derivation, applied here to the manager rather than the subject, so that a manager whose own access has ended does not go on deriving a role from a row that has not yet been reassigned. The query is given in full at §4.6. The table is owned by module 7, not embedded as a column on `employee`, because `docs/04-system-architecture.md` §4 gives Reporting Structure its own row, its own audit emission, and no dependency Employee Management has reason to carry; a `manager_id` column on `employee` would make Employee Management's table double as Reporting Structure's, which the module boundary does not do anywhere else in this schema.
 
-Both tables are designed in §4.4 and §4.6 respectively; this section states the dependency the two designs jointly discharge, on the reasoning ADR-0005 already gives for derived scoping generally: a fact the organisational data already states is not copied into a second record that can drift from it.
+Both tables are designed in §4.5 and §4.6 respectively; this section states the dependency the two designs jointly discharge, on the reasoning ADR-0005 already gives for derived scoping generally: a fact the organisational data already states is not copied into a second record that can drift from it.
 
 ### 3.4 Append-Only Compensation History
 
@@ -167,7 +168,7 @@ This is a database-level constraint, not only an application check, for the same
 
 ## 4. Entity Catalog by Module
 
-Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 5 (Dashboard, reads modules 6/14/16/17 without a table of its own), modules 12 and 13 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), module 17 (Reports, aggregates read-only over modules 6/14/15/16), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data).
+Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 14 (Dashboard, reads modules 6/13/16/17 without a table of its own), modules 11 and 12 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), module 17 (Reports, aggregates read-only over modules 6/13/15/16), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data).
 
 ### 4.1 Module 1 — Audit
 
@@ -228,7 +229,25 @@ Two custom permissions this schema's constraints depend on being grantable — `
 
 Neither check constraint can express the further condition `docs/07-iam-rbac.md` §7.3 and §8 leave as a deployment condition — that `iam.approve_role_grant`'s holder falls within HRMS-NFR-024's scope. That is a property of who holds the permission at a point in time, not of any row this table stores, and the IAM document is explicit that it is a deployment condition rather than a design one; this schema does not attempt to encode it.
 
-### 4.4 Module 6 — Employee Management
+### 4.4 Module 5 — Departments
+
+**`department`.** HRMS-BR-002; SRS §2.7 HR configuration.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| name | TEXT | NOT NULL, UNIQUE | |
+| is_active | BOOLEAN | NOT NULL, DEFAULT true | §2.3 |
+| created_at, updated_at | — | — | §2.4 |
+
+**`job_title`.** HRMS-FR-003; grouped with Department under module 5 rather than Employee Management, on `docs/07-iam-rbac.md` §4.2's own grouping of "departments, job titles, leave types, approval workflows" as one HR-configuration permission row, and on plan §6.1's description of module 5's principal requirement as "SRS §2.7 HR configuration" rather than department alone.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| name | TEXT | NOT NULL, UNIQUE | |
+| is_active | BOOLEAN | NOT NULL, DEFAULT true | |
+| created_at, updated_at | — | — | §2.4 |
+
+### 4.5 Module 6 — Employee Management
 
 **`employee`.** SRS §6.1's central entity; HRMS-FR-001 to HRMS-FR-004, HRMS-FR-009, HRMS-FR-011, HRMS-FR-012; HRMS-BR-001 to HRMS-BR-003.
 
@@ -281,25 +300,7 @@ Neither check constraint can express the further condition `docs/07-iam-rbac.md`
 | is_primary | BOOLEAN | NOT NULL, DEFAULT false | |
 | created_at, updated_at | — | — | §2.4 |
 
-### 4.5 Module 7 — Departments
-
-**`department`.** HRMS-BR-002; SRS §2.7 HR configuration.
-
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| name | TEXT | NOT NULL, UNIQUE | |
-| is_active | BOOLEAN | NOT NULL, DEFAULT true | §2.3 |
-| created_at, updated_at | — | — | §2.4 |
-
-**`job_title`.** HRMS-FR-003; grouped with Department under module 7 rather than Employee Management, on `docs/07-iam-rbac.md` §4.2's own grouping of "departments, job titles, leave types, approval workflows" as one HR-configuration permission row, and on plan §6.1's description of module 7's principal requirement as "SRS §2.7 HR configuration" rather than department alone.
-
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| name | TEXT | NOT NULL, UNIQUE | |
-| is_active | BOOLEAN | NOT NULL, DEFAULT true | |
-| created_at, updated_at | — | — | §2.4 |
-
-### 4.6 Module 8 — Reporting Structure
+### 4.6 Module 7 — Reporting Structure
 
 **`reporting_relationship`.** HRMS-FR-008, HRMS-BR-004. Current-state table: one row per employee who has a manager. An employee with none (top management, HRMS-BR-004's exception) has no row rather than a null-manager row, so that "no manager" and "manager not yet recorded" are not the same state expressed two ways.
 
@@ -325,7 +326,7 @@ not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employm
 
 `docs/07-iam-rbac.md` §5 fixes manager visibility as direct reports only, not transitive — this table's shape (no chain, no self-referencing depth) is what makes that the only query it can express, which is the correct ceiling per that section rather than a limitation this schema works around.
 
-### 4.7 Module 9 — Recruitment
+### 4.7 Module 8 — Recruitment
 
 **`job_requisition`.** HRMS-FR-013, HRMS-FR-014.
 
@@ -392,9 +393,9 @@ not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employm
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','accepted','rejected','withdrawn') | HRMS-FR-021 |
 | issued_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
 | decided_at | TIMESTAMPTZ | NULL | |
-| document_object_key | TEXT | NULL | Generated letter document, same storage pattern as §4.4 |
+| document_object_key | TEXT | NULL | Generated letter document, same storage pattern as §4.5 |
 
-### 4.8 Module 10 — Onboarding
+### 4.8 Module 9 — Onboarding
 
 **`onboarding_checklist`.** HRMS-FR-022, HRMS-FR-023, HRMS-BR-013. Created only at conversion — HRMS-BR-013: "candidate records shall not become employee records until the offer is accepted and onboarding is initiated" — so this table's existence for a given employee is itself evidence that conversion has happened correctly, and a checklist row with no corresponding `employee` row is not a state this schema can represent.
 
@@ -417,13 +418,13 @@ not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employm
 | completed_at | TIMESTAMPTZ | NULL | |
 | created_at | — | — | §2.4; no separate `updated_at` — `completed_at` is the one mutation this table's status enum permits |
 
-### 4.9 Module 11 — Notification
+### 4.9 Module 10 — Notification
 
 `notification` — designed in §3.2.
 
-### 4.10 Module 14 — Leave Management
+### 4.10 Module 13 — Leave Management
 
-**`leave_type`.** HRMS-FR-066. Grouped under Leave Management rather than module 7's HR-configuration tables, on plan §6.1's assignment of HRMS-FR-066 to module 14 specifically, distinct from the department/job-title grouping of §4.5.
+**`leave_type`.** HRMS-FR-066. Grouped under Leave Management rather than module 5's HR-configuration tables, on plan §6.1's assignment of HRMS-FR-066 to module 13 specifically, distinct from the department/job-title grouping of §4.4.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -601,7 +602,7 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | payroll_run_id | BIGINT | FK → payroll_run, ON DELETE RESTRICT, UNIQUE | |
-| object_key | TEXT | NOT NULL, UNIQUE | Same object-storage pattern as §4.4; format is TBD-006, open |
+| object_key | TEXT | NOT NULL, UNIQUE | Same object-storage pattern as §4.5; format is TBD-006, open |
 | generated_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
 
 ---
@@ -664,9 +665,9 @@ SRS §6.2's ten rules, and where this schema enforces each.
 
 | Rule | Enforcement |
 |---|---|
-| HRMS-DR-001 — Employee ID must be unique | `employee.employee_number UNIQUE` (§4.4) |
+| HRMS-DR-001 — Employee ID must be unique | `employee.employee_number UNIQUE` (§4.5) |
 | HRMS-DR-002 — Email address must be unique | `user_account.email UNIQUE` (§4.2). Not applied to `candidate.email` — a candidate may apply more than once (§4.7) — nor to `employee`, which has no email column of its own; an employee's login identity is their `user_account` row, per `CONTEXT.md`'s User/Employee distinction |
-| HRMS-DR-003 — Date of birth must be a valid past date | `employee.date_of_birth CHECK (< CURRENT_DATE)` (§4.4) |
+| HRMS-DR-003 — Date of birth must be a valid past date | `employee.date_of_birth CHECK (< CURRENT_DATE)` (§4.5) |
 | HRMS-DR-004 — Employment start date must be valid | `employee.hire_date NOT NULL`; further validity (not future-dated) is an application-layer check, since the SRS does not define "valid" beyond existence and correct ordering |
 | HRMS-DR-005 — Salary values must not be negative | `CHECK (>= 0)` on `compensation_record.base_salary`, `offer_letter.offered_salary`, `pay_grade.min_salary`, `bonus_award.amount`, `benefit.cost`, `allowance_type.amount_or_rate`, `employee_allowance.amount_override`, `payslip_line.amount` (§4.7, §4.11, §4.12) — the rule is stated against "salary" but applied to every stored monetary magnitude in this schema, on the reading that HRMS-DR-005's intent is monetary values generally, not the one column literally named "salary" |
 | HRMS-DR-006 — Leave end date cannot be earlier than leave start date | `leave_request CHECK (end_date >= start_date)` (§4.10) |
