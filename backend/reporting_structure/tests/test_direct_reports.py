@@ -96,3 +96,12 @@ class DirectReportsTests(APITestCase):
         response = self.client.get(_direct_reports_url(self.manager.pk))
 
         self.assertEqual(response.status_code, 401)
+
+    def test_terminated_manager_loses_access(self):
+        self.manager.employment_status = Employee.STATUS_TERMINATED
+        self.manager.save()
+        self.client.force_authenticate(self.manager_user)
+
+        response = self.client.get(_direct_reports_url(self.manager.pk))
+
+        self.assertEqual(response.status_code, 403)
