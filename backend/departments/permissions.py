@@ -11,6 +11,15 @@ class CanAccessHRConfiguration(BasePermission):
     """
 
     def has_permission(self, request, view):
+        """Determine whether a user may access the requested HR configuration operation.
+        
+        Parameters:
+            request: The request whose user and HTTP method determine access.
+            view: The view associated with the request.
+        
+        Returns:
+            bool: `True` if the authenticated user has the required HR role for the operation, `False` otherwise.
+        """
         user = request.user
         if not (user and user.is_authenticated):
             return False
