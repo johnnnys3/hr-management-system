@@ -18,6 +18,11 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
 
 class JobPostingSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields['requisition'].read_only = True
+
     class Meta:
         model = JobPosting
         fields = [

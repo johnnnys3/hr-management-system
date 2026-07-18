@@ -115,6 +115,9 @@ class CandidateApplication(models.Model):
 
     class Meta:
         db_table = 'candidate_application'
+        constraints = [
+            models.UniqueConstraint(fields=['candidate', 'posting'], name='unique_candidate_posting_application'),
+        ]
 
     def __str__(self):
         return f'{self.candidate} -> {self.posting} ({self.stage})'
