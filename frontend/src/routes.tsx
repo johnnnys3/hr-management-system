@@ -4,6 +4,8 @@ import { ProtectedRoute } from './auth/ProtectedRoute'
 import { HomePage } from './modules/auth/HomePage'
 import { LoginPage } from './modules/auth/LoginPage'
 import { PasswordResetPage } from './modules/auth/PasswordResetPage'
+import { SecondFactorEnrollPage } from './modules/auth/SecondFactorEnrollPage'
+import { SecondFactorRecoveryPage } from './modules/auth/SecondFactorRecoveryPage'
 import { RoleGrantRequestsPage } from './modules/rbac/RoleGrantRequestsPage'
 import { UserManagementPage } from './modules/rbac/UserManagementPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
@@ -22,6 +24,8 @@ export const router = createBrowserRouter([
             children: [
               { path: '/', element: <HomePage /> },
               { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },
+              { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
+              { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },
               {
                 element: <ProtectedRoute requireGroup="System Administrator" />,
                 children: [{ path: '/users', element: <UserManagementPage /> }],
