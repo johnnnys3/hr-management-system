@@ -3,6 +3,7 @@
 §3.4: no PATCH/DELETE, a correction is a new POST superseding the prior
 current row."""
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework.test import APITestCase
 
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER
@@ -109,12 +110,32 @@ class CompensationRecordTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_db_rejects_two_current_rows_for_the_same_employee(self):
+        """`compensation_record_one_current_per_employee` is a
+        defense-in-depth guard independent of the view's own
+        select_for_update() locking — it must hold even if a caller
+        bypasses the view (e.g. a data migration, a bug elsewhere)."""
+        CompensationRecord.objects.create(
+            employee=self.employee, pay_grade=self.pay_grade, base_salary='1500.00', effective_from='2026-01-01',
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                CompensationRecord.objects.create(
+                    employee=self.employee, pay_grade=self.pay_grade,
+                    base_salary='1800.00', effective_from='2026-06-01',
+                )
+
     def test_no_patch_or_delete_endpoint_exists(self):
         self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
         created = self.client.post(
             self.url, {'pay_grade': self.pay_grade.pk, 'base_salary': '1500.00', 'effective_from': '2026-01-01'}
         ).data
 
+        # HR Administrator: passes the permission check for a
+        # non-GET/POST method, so this exercises "no handler exists"
+        # (405) rather than "role denied" (403, covered elsewhere).
+        self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
         patch = self.client.patch(self.url, {'base_salary': '9999.00'})
 
         self.assertEqual(patch.status_code, 405)

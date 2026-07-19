@@ -150,10 +150,14 @@ class CompensationRecordListCreateView(APIView):
         return Response(CompensationRecordSerializer(records, many=True).data)
 
     def post(self, request, pk):
-        employee = get_object_or_404(Employee, pk=pk)
+        get_object_or_404(Employee, pk=pk)
         serializer = CompensationRecordCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
+            # Locking the employee row (not just any existing compensation_record
+            # rows) closes the race on an employee's *first* record, where there
+            # is nothing yet to select_for_update() against.
+            employee = get_object_or_404(Employee.objects.select_for_update(), pk=pk)
             prior_current = (
                 CompensationRecord.objects
                 .select_for_update()
@@ -166,11 +170,15 @@ class CompensationRecordListCreateView(APIView):
                     {'effective_from': 'must be later than the current compensation record\'s effective_from.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            record = serializer.save(employee=employee, recorded_by=request.user)
-            if prior_current is not None and prior_current.pk != record.pk:
+            # The prior current row must be marked superseded *before* the new
+            # row is inserted: compensation_record_one_current_per_employee
+            # allows only one is_superseded=False row per employee at a time,
+            # so inserting first would violate it.
+            if prior_current is not None:
                 prior_current.is_superseded = True
-                prior_current.effective_to = record.effective_from
+                prior_current.effective_to = serializer.validated_data['effective_from']
                 prior_current.save(update_fields=['is_superseded', 'effective_to'])
+            record = serializer.save(employee=employee, recorded_by=request.user)
             audit.services.record(
                 category=AuditLog.CATEGORY_RECORD_CHANGE,
                 action='compensation_record_created',

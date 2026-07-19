@@ -34,9 +34,11 @@ class CanAccessCompensationRecords(BasePermission):
         user = request.user
         if not (user and user.is_authenticated):
             return False
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return _in_groups(user, HR_READ_ROLES)
         if request.method == 'POST':
             return _in_groups(user, [HR_OFFICER])
-        return _in_groups(user, HR_READ_ROLES)
+        return _in_groups(user, [HR_ADMINISTRATOR])
 
 
 class CanAccessBonusCycles(BasePermission):

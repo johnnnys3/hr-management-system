@@ -1,7 +1,12 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from employees.models import Employee
+
+NON_NEGATIVE = MinValueValidator(Decimal('0'))
 
 
 class SalaryStructure(models.Model):
@@ -26,16 +31,16 @@ class PayGrade(models.Model):
 
     salary_structure = models.ForeignKey(SalaryStructure, on_delete=models.RESTRICT, related_name='pay_grades')
     name = models.CharField(max_length=255)
-    min_salary = models.DecimalField(max_digits=14, decimal_places=2)
-    max_salary = models.DecimalField(max_digits=14, decimal_places=2)
+    min_salary = models.DecimalField(max_digits=14, decimal_places=2, validators=[NON_NEGATIVE])
+    max_salary = models.DecimalField(max_digits=14, decimal_places=2, validators=[NON_NEGATIVE])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'pay_grade'
         constraints = [
-            models.CheckConstraint(check=models.Q(min_salary__gte=0), name='pay_grade_min_salary_gte_0'),
-            models.CheckConstraint(check=models.Q(max_salary__gte=models.F('min_salary')), name='pay_grade_max_gte_min'),
+            models.CheckConstraint(condition=models.Q(min_salary__gte=0), name='pay_grade_min_salary_gte_0'),
+            models.CheckConstraint(condition=models.Q(max_salary__gte=models.F('min_salary')), name='pay_grade_max_gte_min'),
             models.UniqueConstraint(fields=['salary_structure', 'name'], name='pay_grade_unique_name_per_structure'),
         ]
 
@@ -53,7 +58,7 @@ class CompensationRecord(models.Model):
 
     employee = models.ForeignKey(Employee, on_delete=models.RESTRICT, related_name='compensation_records')
     pay_grade = models.ForeignKey(PayGrade, on_delete=models.RESTRICT, related_name='compensation_records', null=True, blank=True)
-    base_salary = models.DecimalField(max_digits=14, decimal_places=2)
+    base_salary = models.DecimalField(max_digits=14, decimal_places=2, validators=[NON_NEGATIVE])
     currency = models.CharField(max_length=8, default='GHS')
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
@@ -66,7 +71,11 @@ class CompensationRecord(models.Model):
     class Meta:
         db_table = 'compensation_record'
         constraints = [
-            models.CheckConstraint(check=models.Q(base_salary__gte=0), name='compensation_record_base_salary_gte_0'),
+            models.CheckConstraint(condition=models.Q(base_salary__gte=0), name='compensation_record_base_salary_gte_0'),
+            models.UniqueConstraint(
+                fields=['employee'], condition=models.Q(is_superseded=False),
+                name='compensation_record_one_current_per_employee',
+            ),
         ]
 
     def __str__(self):
@@ -102,13 +111,13 @@ class BonusAward(models.Model):
 
     bonus_cycle = models.ForeignKey(BonusCycle, on_delete=models.RESTRICT, related_name='awards')
     employee = models.ForeignKey(Employee, on_delete=models.RESTRICT, related_name='bonus_awards')
-    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    amount = models.DecimalField(max_digits=14, decimal_places=2, validators=[NON_NEGATIVE])
     awarded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'bonus_award'
         constraints = [
-            models.CheckConstraint(check=models.Q(amount__gte=0), name='bonus_award_amount_gte_0'),
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='bonus_award_amount_gte_0'),
         ]
 
     def __str__(self):
@@ -130,7 +139,7 @@ class AllowanceType(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
     calculation_method = models.CharField(max_length=32, choices=CALCULATION_CHOICES)
-    amount_or_rate = models.DecimalField(max_digits=14, decimal_places=4)
+    amount_or_rate = models.DecimalField(max_digits=14, decimal_places=4, validators=[NON_NEGATIVE])
     is_taxable = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -138,9 +147,9 @@ class AllowanceType(models.Model):
     class Meta:
         db_table = 'allowance_type'
         constraints = [
-            models.CheckConstraint(check=models.Q(amount_or_rate__gte=0), name='allowance_type_amount_gte_0'),
+            models.CheckConstraint(condition=models.Q(amount_or_rate__gte=0), name='allowance_type_amount_gte_0'),
             models.CheckConstraint(
-                check=~models.Q(calculation_method='percentage_of_salary') | models.Q(amount_or_rate__lte=1),
+                condition=~models.Q(calculation_method='percentage_of_salary') | models.Q(amount_or_rate__lte=1),
                 name='allowance_type_percentage_rate_lte_1',
             ),
         ]
@@ -156,7 +165,7 @@ class EmployeeAllowance(models.Model):
 
     employee = models.ForeignKey(Employee, on_delete=models.RESTRICT, related_name='allowances')
     allowance_type = models.ForeignKey(AllowanceType, on_delete=models.RESTRICT, related_name='employee_allowances')
-    amount_override = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    amount_override = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, validators=[NON_NEGATIVE])
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -166,7 +175,7 @@ class EmployeeAllowance(models.Model):
         db_table = 'employee_allowance'
         constraints = [
             models.CheckConstraint(
-                check=models.Q(amount_override__isnull=True) | models.Q(amount_override__gte=0),
+                condition=models.Q(amount_override__isnull=True) | models.Q(amount_override__gte=0),
                 name='employee_allowance_amount_override_gte_0',
             ),
         ]
@@ -180,7 +189,7 @@ class Benefit(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
     provider = models.CharField(max_length=255, null=True, blank=True)
-    cost = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    cost = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, validators=[NON_NEGATIVE])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -188,7 +197,7 @@ class Benefit(models.Model):
         db_table = 'benefit'
         constraints = [
             models.CheckConstraint(
-                check=models.Q(cost__isnull=True) | models.Q(cost__gte=0), name='benefit_cost_gte_0'
+                condition=models.Q(cost__isnull=True) | models.Q(cost__gte=0), name='benefit_cost_gte_0'
             ),
         ]
 

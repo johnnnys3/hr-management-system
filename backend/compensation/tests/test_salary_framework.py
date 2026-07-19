@@ -71,6 +71,22 @@ class PayGradeTests(APITestCase):
         self.assertEqual(update.status_code, 200)
         self.assertEqual(update.data['max_salary'], '2500.00')
 
+    def test_negative_min_salary_is_rejected_with_400_not_500(self):
+        """`min_salary`/`max_salary` carry a DB CheckConstraint but no
+        model-level validator would leave a negative value to crash as
+        an unhandled IntegrityError instead of a clean 400."""
+        self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
+        structure_id = self.client.post(
+            '/api/salary-structures/', {'name': 'Core structure', 'effective_from': '2026-01-01'}
+        ).data['id']
+
+        response = self.client.post(
+            '/api/pay-grades/',
+            {'salary_structure': structure_id, 'name': 'Grade 1', 'min_salary': '-100.00', 'max_salary': '2000.00'},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_max_salary_below_min_salary_is_rejected(self):
         self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
         structure_id = self.client.post(
