@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.4 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -20,6 +20,7 @@
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** Every module-numbered heading and cross-reference in §4 is renumbered to v1.6 (Departments 5, Reporting Structure 7, Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13, Dashboard 14); section order (§4.1-§4.15) is unchanged, only the module labels and numbers within them. No endpoint, permission, or visibility-rule content changes. Filed as DOC-007 | 1.1 |
 | John Kessie | 2026-07-18 | **§8's traceability table omitted HRMS-FR-030 and HRMS-FR-031 entirely — found while scoping Module 12 against DOC-010.** FR-030 (view team members) is addressed by §4.5's `/api/employees/{id}/direct-reports/`, already stated in that row's own text ("the endpoint a Manager Self-Service view ... calls to enumerate its team") but never added to §8's table. FR-031 is `docs/01-srs.md` v1.3's newly marked duplicate of HRMS-FR-064; it is not added, on the same convention DOC-009 set for FR-028/FR-029 — a duplicate requirement is traced through its canonical ID, not re-traced under the restating one. §8 gains a row for FR-030; no endpoint, permission, or visibility-rule content changes. Filed as DOC-010 | 1.2 |
 | John Kessie | 2026-07-19 | **§8's traceability table cited HRMS-FR-045 (payroll summary reports) as addressed by §4.14, folded silently into the "HRMS-FR-035 to HRMS-FR-046" range — but §4.14's own endpoint table has no summary-report route, found reviewing PAYROLL-001 against `docs/01-srs.md` §4.4.** Same defect shape as FR-032 at v1.2 of the plan: a requirement genuinely belongs to Reports' aggregate read surface, not Payroll's per-run/per-payslip one. §4.15 gains `/api/reports/payroll-summary/`, same shape as the existing `/api/reports/payroll-cost/` row (Payroll Officer: R full detail; Executive: R aggregate only, HRMS-NFR-019); §8's FR-035–046 range is split to exclude FR-045, which moves to the FR-049–055 Reports line. No other endpoint, permission, or visibility-rule content changes. Matches `docs/02-project-plan.md` v1.11's resolution, owner-confirmed 2026-07-19 | 1.3 |
+| John Kessie | 2026-07-19 | **§4.15's endpoint table had no route for HRMS-FR-050 (turnover reports) — named in the FR list on that row and in `docs/01-srs.md` line 566, but absent from the table, found while preparing the Module 17 handoff.** Same defect shape as FR-032 and FR-045 before it: a stated requirement with no endpoint built against it. §4.15 gains `/api/reports/turnover/`, same shape as the existing `/api/reports/headcount/` and `/api/reports/leave-utilization/` rows (HR Officer, HR Administrator: R; Manager: R team-level; Executive: R aggregate only, HRMS-NFR-019), computing hire/termination-date arithmetic over a period rather than a point-in-time count. No other endpoint, permission, or visibility-rule content changes. Owner-confirmed 2026-07-19 | 1.4 |
 
 ---
 
@@ -299,6 +300,7 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 |---|---|---|---|---|
 | `/api/reports/headcount/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Per source module's rule; Executive: aggregate only, never an individual record (`docs/07-iam-rbac.md` §4.3) | Aggregates over module 6 |
 | `/api/reports/leave-utilization/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Same pattern | Aggregates over module 13 |
+| `/api/reports/turnover/` | GET | HR Officer, HR Administrator: R; Manager: R (team-level); Executive: R (aggregate) | Same pattern | HRMS-FR-050, found unbacked by any endpoint while preparing the Module 17 handoff (same shape as FR-032, FR-045). Computes hires/terminations over a caller-specified date range, not a point-in-time count like `/api/reports/headcount/` |
 | `/api/reports/payroll-cost/` | GET | Payroll Officer: R; Executive: R (aggregate) (`docs/07-iam-rbac.md` §4.2's "R (payroll cost)" cells) | Payroll Officer: full detail; Executive: aggregate only, and **never** a payslip or an individual employee's figure — this is where §4.3's aggregate-only rule is load-bearing rather than incidental, since payroll cost is exactly the data HRMS-NFR-019 restricts | Aggregates over module 16 |
 | `/api/reports/payroll-summary/` | GET | Payroll Officer: R; Executive: R (aggregate) (same cells as the row above) | Same pattern as `/api/reports/payroll-cost/` — Payroll Officer full detail, Executive aggregate only, never an individual payslip | HRMS-FR-045, recorded as a residual of module 16 at `docs/02-project-plan.md` v1.11 (found unbacked by any endpoint during PAYROLL-001's review, same shape as FR-032). Aggregates over module 16, per-run rather than per-payslip |
 | `/api/reports/{report}/export/` | POST | Same permission as the corresponding report endpoint | Same | Triggers an async export (`docs/03-tech-stack.md` §4.2 — "large report exports are batch operations"). Returns `202` with a `job_id`; same async pattern as §4.14's payroll actions |
@@ -327,7 +329,8 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 | HRMS-FR-035 to HRMS-FR-044, HRMS-FR-046, HRMS-FR-048 (payroll processing) | §4.14 |
 | HRMS-FR-045 (payroll summary reports, residual of module 16 — `docs/02-project-plan.md` v1.11) | §4.15 |
 | HRMS-FR-047 (payroll finalisation approval) | §4.14 (`approve/`, `finalize/`) |
-| HRMS-FR-049 to HRMS-FR-055 (reports and dashboards) | §4.10, §4.15 |
+| HRMS-FR-049, HRMS-FR-052 to HRMS-FR-055 (reports and dashboards) | §4.10, §4.15 |
+| HRMS-FR-050 (turnover reports) | §4.15 (`/api/reports/turnover/`) |
 | HRMS-FR-056, HRMS-FR-057 (salary structures, pay grades) | §4.13 |
 | HRMS-FR-058 (compensation history) | §4.13 |
 | HRMS-FR-059 (bonus cycles) | §4.13 |
