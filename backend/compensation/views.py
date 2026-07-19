@@ -161,6 +161,11 @@ class CompensationRecordListCreateView(APIView):
                 .order_by('-effective_from')
                 .first()
             )
+            if prior_current is not None and serializer.validated_data['effective_from'] <= prior_current.effective_from:
+                return Response(
+                    {'effective_from': 'must be later than the current compensation record\'s effective_from.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             record = serializer.save(employee=employee, recorded_by=request.user)
             if prior_current is not None and prior_current.pk != record.pk:
                 prior_current.is_superseded = True
@@ -300,8 +305,6 @@ class EmployeeAllowanceListCreateView(APIView):
     def get(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         allowances = employee.allowances.order_by('-effective_from')
-        if allowances:
-            self.check_object_permissions(request, allowances[0])
         return Response(EmployeeAllowanceSerializer(allowances, many=True).data)
 
     def post(self, request, pk):
@@ -373,8 +376,6 @@ class BenefitEnrollmentListCreateView(APIView):
     def get(self, request, pk):
         employee = get_object_or_404(Employee, pk=pk)
         enrollments = employee.benefit_enrollments.order_by('-enrolled_at')
-        if enrollments:
-            self.check_object_permissions(request, enrollments[0])
         return Response(BenefitEnrollmentSerializer(enrollments, many=True).data)
 
     def post(self, request, pk):

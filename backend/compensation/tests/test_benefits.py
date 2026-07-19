@@ -62,6 +62,17 @@ class BenefitEnrollmentTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
 
+    def test_employee_cannot_read_anothers_with_zero_enrollments(self):
+        """A list-scoped permission check must not be skipped just
+        because the target employee happens to have no rows yet."""
+        other = make_employee('E-2', 'Ada', 'Lovelace')
+        other_user = User.objects.create_user(email='ada@example.com', password='x', employee=other)
+        self.client.force_authenticate(other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
     def test_patch_cancel_sets_cancelled_at(self):
         self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
         enrollment_id = self.client.post(self.url, {'benefit': self.benefit.pk}).data['id']

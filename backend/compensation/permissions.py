@@ -79,7 +79,13 @@ class CanAccessAllowanceTypes(BasePermission):
 class CanAccessEmployeeAllowances(BasePermission):
     """`GET, POST /api/employees/{id}/allowances/`,
     `docs/07-iam-rbac.md` §4.2's "R own" cell: HR Administrator C/R, HR
-    Officer/Payroll Officer R, Employee R own."""
+    Officer/Payroll Officer R, Employee R own.
+
+    The "own" scope is checked in `has_permission` against the URL's
+    `pk`, not `has_object_permission` against a fetched row — an
+    employee with zero allowances must still be denied access to
+    another employee's (empty) list, and object-level checks against
+    the first row of a possibly-empty queryset would skip that."""
 
     def has_permission(self, request, view):
         user = request.user
@@ -87,13 +93,9 @@ class CanAccessEmployeeAllowances(BasePermission):
             return False
         if request.method == 'POST':
             return _in_groups(user, [HR_ADMINISTRATOR])
-        return _in_groups(user, HR_READ_ROLES) or is_employee(user)
-
-    def has_object_permission(self, request, view, allowance):
-        user = request.user
         if _in_groups(user, HR_READ_ROLES):
             return True
-        return is_employee(user) and allowance.employee_id == user.employee_id
+        return is_employee(user) and str(user.employee_id) == str(view.kwargs.get('pk'))
 
 
 class CanAccessBenefits(BasePermission):
@@ -111,7 +113,13 @@ class CanAccessBenefits(BasePermission):
 
 class CanAccessBenefitEnrollments(BasePermission):
     """`GET, POST, PATCH /api/employees/{id}/benefit-enrollments/`:
-    HR Administrator C/R/U, Employee R own."""
+    HR Administrator C/R/U, Employee R own.
+
+    GET's "own" scope is checked in `has_permission` against the URL's
+    `pk`, for the same reason as `CanAccessEmployeeAllowances` above —
+    an empty list must not bypass the check. PATCH targets a specific
+    enrollment row (via `enrollment_id`), so it is still checked with
+    `has_object_permission` in the detail view."""
 
     def has_permission(self, request, view):
         user = request.user
@@ -119,7 +127,9 @@ class CanAccessBenefitEnrollments(BasePermission):
             return False
         if request.method in ('POST', 'PATCH'):
             return _in_groups(user, [HR_ADMINISTRATOR])
-        return _in_groups(user, [HR_ADMINISTRATOR]) or is_employee(user)
+        if _in_groups(user, [HR_ADMINISTRATOR]):
+            return True
+        return is_employee(user) and str(user.employee_id) == str(view.kwargs.get('pk'))
 
     def has_object_permission(self, request, view, enrollment):
         user = request.user

@@ -59,6 +59,23 @@ class CompensationRecordTests(APITestCase):
         # the superseded row's own recorded values are never rewritten
         self.assertEqual(str(first_row.base_salary), '1500.00')
 
+    def test_backdated_post_is_rejected(self):
+        """api-contracts §4.13: 'a correction is a new POST with a later
+        effective_from.' A backdated POST must not supersede the current
+        row and invert its effective_to/effective_from ordering."""
+        self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
+        self.client.post(
+            self.url, {'pay_grade': self.pay_grade.pk, 'base_salary': '1500.00', 'effective_from': '2026-06-01'}
+        )
+
+        response = self.client.post(
+            self.url, {'pay_grade': self.pay_grade.pk, 'base_salary': '1200.00', 'effective_from': '2026-01-01'}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CompensationRecord.objects.count(), 1)
+        self.assertFalse(CompensationRecord.objects.get().is_superseded)
+
     def test_get_returns_full_history_most_recent_first(self):
         self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
         self.client.post(

@@ -85,6 +85,17 @@ class EmployeeAllowanceTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_employee_cannot_read_anothers_with_zero_allowances(self):
+        """A list-scoped permission check must not be skipped just
+        because the target employee happens to have no rows yet."""
+        other = make_employee('E-2', 'Ada', 'Lovelace')
+        other_user = User.objects.create_user(email='ada@example.com', password='x', employee=other)
+        self.client.force_authenticate(other_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
     def test_employee_cannot_create(self):
         user = User.objects.create_user(email='grace@example.com', password='x', employee=self.employee)
         self.client.force_authenticate(user)
