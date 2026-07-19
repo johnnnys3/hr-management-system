@@ -1,0 +1,40 @@
+export interface Me {
+  id: number
+  email: string
+  groups: string[]
+  second_factor_enrollment_pending: boolean
+}
+
+export interface LoginSuccess extends Me {
+  second_factor_enrollment_required?: boolean
+}
+
+export interface LoginSecondFactorRequired {
+  second_factor_required: true
+}
+
+export type LoginResponse = LoginSuccess | LoginSecondFactorRequired
+
+export function isSecondFactorRequired(response: LoginResponse): response is LoginSecondFactorRequired {
+  return 'second_factor_required' in response
+}
+
+export interface UserAccount {
+  id: number
+  email: string
+  is_active: boolean
+  groups: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface RoleGrantRequestRecord {
+  id: number
+  requester: number
+  subject: number
+  role: number
+  status: 'pending' | 'approved' | 'refused'
+  approver: number | null
+  requested_at: string
+  decided_at: string | null
+}
