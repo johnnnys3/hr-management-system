@@ -20,7 +20,7 @@ export function getCsrfToken(): string | null {
 const UNSAFE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
 
 interface ApiFetchOptions {
-  method?: string
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: unknown
 }
 
@@ -50,7 +50,14 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
   }
 
   const text = await response.text()
-  const data = text ? JSON.parse(text) : undefined
+  let data: any
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new ApiError(response.status, 'The server returned an unexpected response.', 'invalid_response')
+    }
+  }
 
   if (!response.ok) {
     const errorBody = data?.error

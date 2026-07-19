@@ -70,6 +70,17 @@ describe('apiFetch', () => {
     await expect(apiFetch('/api/auth/me/')).rejects.toBeInstanceOf(ApiError)
   })
 
+  it('throws ApiError with code invalid_response for a non-JSON error body', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response('<html>Bad Gateway</html>', { status: 502 }),
+    )
+
+    await expect(apiFetch('/api/auth/me/')).rejects.toMatchObject({
+      status: 502,
+      code: 'invalid_response',
+    })
+  })
+
   it('returns undefined for a 204 No Content success response', async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }))
 
