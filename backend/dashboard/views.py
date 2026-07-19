@@ -20,6 +20,20 @@ class DashboardView(APIView):
 
     def get(self, request):
         user = request.user
+
+        if user.groups.filter(name=EXECUTIVE).exists():
+            # `docs/07-iam-rbac.md` §4.3: "Executive is read-only and
+            # aggregate ... never an individual employee record." Checked
+            # first and returned alone, so an Executive who also happens to
+            # hold an employee/manager record never gets the individual
+            # sections below alongside it.
+            #
+            # Aggregate figures themselves belong to Reports (module 17),
+            # not yet built — `docs/06-api-contracts.md` §4.10's note. Empty
+            # rather than omitted, so an Executive can distinguish "no data
+            # yet" from "this section doesn't apply to my role."
+            return Response({'aggregates': None})
+
         data = {}
 
         if is_employee(user):
@@ -41,12 +55,5 @@ class DashboardView(APIView):
                     employee_id__in=report_ids, status=LeaveRequest.STATUS_PENDING,
                 ).count(),
             }
-
-        if user.groups.filter(name=EXECUTIVE).exists():
-            # Aggregate figures belong to Reports (module 17), not yet
-            # built — `docs/06-api-contracts.md` §4.10's note. Empty rather
-            # than omitted, so an Executive can distinguish "no data yet"
-            # from "this section doesn't apply to my role."
-            data['aggregates'] = None
 
         return Response(data)

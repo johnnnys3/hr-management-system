@@ -106,6 +106,21 @@ class DashboardViewTests(APITestCase):
         self.assertNotIn('pending_tasks', response.data)
         self.assertNotIn('team', response.data)
 
+    def test_executive_who_also_has_a_manager_record_still_sees_only_aggregates(self):
+        # HRMS-NFR-019/§4.3: Executive is aggregate-only, even if the same
+        # user also holds an employee/manager record elsewhere.
+        manager, report = make_manager_and_report()
+        user = user_with_role('exec-mgr@example.com', EXECUTIVE, employee=manager)
+        LeaveRequest.objects.create(
+            employee=report, leave_type=self.leave_type, start_date=date.today(), end_date=date.today(),
+        )
+
+        self.client.force_authenticate(user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, {'aggregates': None})
+
     def test_role_with_no_applicable_section_sees_empty_composite(self):
         user = user_with_role('hro@example.com', HR_OFFICER)
 
