@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5's Dashboard renumbering (module 5 → 14; modules 6–14 → 5–13).** §4's module numbering below is still v1.4. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; modules 6 ↔ 7 below, still v1.4).** This document is the source of the finding: §4.4's `employee.department_id` is a NOT NULL foreign key into §4.5's `department`, but the build order these headings sit in still builds Employee Management before Departments. Reconciliation will swap §4.4 and §4.5's ordering and heading numbers; §4.6 Reporting Structure does not move — its foreign keys point into `employee`, not the reverse, so it has no schema-level reason to precede Employee Management. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** §4.4 and §4.5 swap content (Departments now §4.4/module 5, Employee Management now §4.5/module 6), matching the build order; §4.6 Reporting Structure does not move. Every other module number in §4 is renumbered to v1.6 throughout (Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13). No table, column, constraint, or requirement mapping changes — this is the renumbering the two rows above already called for, done. Filed as DOC-007 | 1.1 |
+| John Kessie | 2026-07-19 | **§4's own introduction stated module 17 (Reports) owns no table — but `docs/06-api-contracts.md` §4.15 promises `GET /api/report-exports/{job_id}/` with a persisted `pending`/`complete`/`failed` status and a signed URL once complete, and Reports has no underlying row (no `PayrollRun`-equivalent) to attach that state to.** Found starting REPORTS-001, same defect shape as `payslip.object_key`'s absence at PAYROLL-001 — a contract promise with no schema backing. §4 gains a new §4.13, `report_export` (report_type, params JSONB, requested_by, status, object_key, generated_at, failed_reason), same object-storage pattern as `payslip`/`bank_transfer_file`; `job_id` in the contract is this table's PK. §4's introductory sentence and the ERD block are updated to match; module 17 no longer reads as tableless. No other table, column, or requirement mapping changes. Owner-confirmed 2026-07-19 | 1.2 |
 
 ---
 
@@ -168,7 +169,7 @@ This is a database-level constraint, not only an application check, for the same
 
 ## 4. Entity Catalog by Module
 
-Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 14 (Dashboard, reads modules 6/10/13/16/17 without a table of its own), modules 11 and 12 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), module 17 (Reports, aggregates read-only over modules 6/13/15/16), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data).
+Tables are grouped by the module that owns them, in `docs/04-system-architecture.md` §4's numbering. A module not listed here owns no table: module 2 (Mail dispatch, §3.2), module 14 (Dashboard, reads modules 6/10/13/16/17 without a table of its own), modules 11 and 12 (Employee/Manager Self-Service, read Employee, Leave, and Notification without owning new storage), and modules 18 to 20 (Testing, UAT, Deployment — process modules, per `docs/04-system-architecture.md` §4's footnote, own no application data). Module 17 (Reports) aggregates read-only over modules 6/13/15/16 but owns one table of its own, `report_export` (§4.13), for tracking its async export jobs.
 
 ### 4.1 Module 1 — Audit
 
@@ -606,6 +607,25 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 | object_key | TEXT | NOT NULL, UNIQUE | Same object-storage pattern as §4.5; format is TBD-006, open |
 | generated_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
 
+### 4.13 Module 17 — Reports
+
+**`report_export`.** HRMS-FR-054. `docs/06-api-contracts.md` §4.15's `POST /api/reports/{report}/export/` / `GET /api/report-exports/{job_id}/` pair — Reports otherwise reads modules 6, 13, 15, and 16 without owning any storage of its own, but the async export job itself has no other row to attach its state to (unlike Payroll's `calculate`/`finalize`, which polls `payroll_run.status` directly). `job_id` in the contract is this table's PK, same as `payroll_run.id` serves that role for Payroll's async actions.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| report_type | TEXT | NOT NULL, CHECK IN ('headcount','leave_utilization','turnover','payroll_cost','payroll_summary') | Matches §4.15's five report endpoints. Stored underscored (Django/Postgres identifier convention, same as every other CHECK-enumerated column in this schema); the API layer's hyphenated slugs map 1:1 by substitution (`leave-utilization` ↔ `leave_utilization`, `payroll-cost` ↔ `payroll_cost`, `payroll-summary` ↔ `payroll_summary`, `headcount` and `turnover` unchanged) — the same slug/column convention `docs/06-api-contracts.md` §4.15's own endpoint paths already imply, not a new mapping this table invents |
+| params | JSONB | NOT NULL, DEFAULT '{}' | The caller's filter selection (department/role/date range/employment status, per HRMS-FR-053) at export time; not normalised into columns for the same reason `statutory_rate_table.rates` isn't (§4.12) — the filter shape differs by report type |
+| requested_by | BIGINT | FK → user_account, ON DELETE RESTRICT, NOT NULL | |
+| status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','complete','failed') | |
+| object_key | TEXT | NULL, UNIQUE | Same object-storage pattern as `payslip.object_key`/`bank_transfer_file.object_key`; NULL until `status = 'complete'` |
+| failed_reason | TEXT | NULL | Set only when `status = 'failed'`; NULL otherwise |
+| generated_at | TIMESTAMPTZ | NULL | Set only when `status = 'complete'`, same as `payslip.generated_at` marks its own completion rather than row creation |
+| created_at | — | — | §2.4 |
+| | | CHECK (status = 'complete' OR (object_key IS NULL AND generated_at IS NULL)) | Both fields are only ever set together, on the transition to `complete` |
+| | | CHECK (status = 'failed' OR failed_reason IS NULL) | `failed_reason` is only ever set on the transition to `failed` |
+
+Both CHECK constraints are database-level, on the same reasoning §3.5 gives the `payroll_run` approver constraint: an application-layer bug that reached the database with a mismatched status/artifact combination is rejected by the row itself, not only by the view logic that is supposed to prevent it — the same "defence-in-depth over an append-only/status-transition table" default `compensation_record`'s CodeRabbit-caught gaps established at COMP-001. Visibility is "own job only" (§4.15) — `requested_by = current user` — the same equality-scoped pattern `notification.recipient_user_id` already establishes (§4.9), not a new visibility shape. An export touching `payroll_cost` emits an audit entry per §4.15's own note; the other four `report_type` values do not, so that emission is conditional on this column's value rather than blanket per row, same as `docs/06-api-contracts.md` §4.15 already states it.
+
 ---
 
 ## 5. Entity-Relationship Overview
@@ -637,6 +657,7 @@ bonus_award ──> bonus_cycle
 payslip ──> employee
 payslip ──> payroll_run
 payslip_line ──> payslip
+report_export ──> user_account                  (requested_by)
 
 candidate_application ──> candidate
 candidate_application ──> job_posting ──> job_requisition ──> department
