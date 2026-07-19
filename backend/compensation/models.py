@@ -76,6 +76,14 @@ class CompensationRecord(models.Model):
                 fields=['employee'], condition=models.Q(is_superseded=False),
                 name='compensation_record_one_current_per_employee',
             ),
+            models.CheckConstraint(
+                condition=models.Q(is_superseded=False) | models.Q(effective_to__isnull=False),
+                name='compensation_record_superseded_has_effective_to',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(effective_to__isnull=True) | models.Q(effective_to__gte=models.F('effective_from')),
+                name='compensation_record_effective_to_gte_effective_from',
+            ),
         ]
 
     def __str__(self):

@@ -137,6 +137,8 @@ class CompensationRecordTests(APITestCase):
         # (405) rather than "role denied" (403, covered elsewhere).
         self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
         patch = self.client.patch(self.url, {'base_salary': '9999.00'})
+        delete = self.client.delete(self.url)
 
         self.assertEqual(patch.status_code, 405)
+        self.assertEqual(delete.status_code, 405)
         self.assertEqual(CompensationRecord.objects.get(pk=created['id']).base_salary, 1500)
