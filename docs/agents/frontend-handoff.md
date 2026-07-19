@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-19
 **Author:** John Kessie (via Claude)
-**Status:** Resolved 2026-07-19 — owner chose deliberate re-baseline; see `docs/02-project-plan.md` v1.9 revision history and DOC-011
+**Status:** Resolved 2026-07-19 — owner chose deliberate re-baseline; see `docs/02-project-plan.md` v1.9 revision history and DOC-011. **Batch position moved 2026-07-19 (v1.10):** now scheduled after M17 Reports and before M18 Testing, not after M14 Dashboard/before M15 Compensation and Benefits. End date, total effort, and construction order within the batch are unchanged — see v1.10's revision-history row.
 
 ## Purpose
 
