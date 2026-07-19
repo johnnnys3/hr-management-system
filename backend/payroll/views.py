@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -55,20 +55,25 @@ class PayrollRunListCreateView(APIView):
     def post(self, request):
         serializer = PayrollRunCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if PayrollRun.objects.filter(
-            period_start=serializer.validated_data['period_start'],
-            period_end=serializer.validated_data['period_end'],
-        ).exists():
-            return Response({'detail': 'a payroll run already exists for this period.'}, status=status.HTTP_409_CONFLICT)
-        with transaction.atomic():
-            payroll_run = serializer.save(initiated_by=request.user)
-            audit.services.record(
-                category=AuditLog.CATEGORY_RECORD_CHANGE,
-                action='payroll_run_created',
-                actor=request.user,
-                target_type='payroll_run',
-                target_id=payroll_run.pk,
-            )
+        try:
+            with transaction.atomic():
+                if PayrollRun.objects.filter(
+                    period_start=serializer.validated_data['period_start'],
+                    period_end=serializer.validated_data['period_end'],
+                ).exists():
+                    return Response({'detail': 'a payroll run already exists for this period.'}, status=status.HTTP_409_CONFLICT)
+                payroll_run = serializer.save(initiated_by=request.user)
+                audit.services.record(
+                    category=AuditLog.CATEGORY_RECORD_CHANGE,
+                    action='payroll_run_created',
+                    actor=request.user,
+                    target_type='payroll_run',
+                    target_id=payroll_run.pk,
+                )
+        except IntegrityError as e:
+            if 'payroll_run_unique_period' in str(e):
+                return Response({'detail': 'a payroll run already exists for this period.'}, status=status.HTTP_409_CONFLICT)
+            raise
         return Response(PayrollRunSerializer(payroll_run).data, status=status.HTTP_201_CREATED)
 
 
