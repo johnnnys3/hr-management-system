@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'leave.apps.LeaveConfig',
     'dashboard.apps.DashboardConfig',
     'compensation.apps.CompensationConfig',
+    'payroll.apps.PayrollConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'

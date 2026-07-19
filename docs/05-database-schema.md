@@ -583,6 +583,7 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 | net_pay | NUMERIC(14,2) | NOT NULL | |
 | currency | TEXT | NOT NULL, DEFAULT 'GHS' | |
 | generated_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | |
+| object_key | TEXT | NULL, UNIQUE | Points at the generated payslip PDF (`docs/06-api-contracts.md` §4.14's `/api/payslips/{id}/download/`), same pattern as `bank_transfer_file.object_key`. NULL until the owning run is finalized — `payroll.services.generate_payslip_pdf` runs inside `finalize_run`, so a payslip has no downloadable artifact before then (PAYROLL-001, added post-initial-build once the contract's PDF-download promise was found to have no backing column) |
 | | | UNIQUE (payroll_run_id, employee_id) | |
 
 **`payslip_line`.** SRS §6.1's "Allowance" and "Deduction" entities, computed-instance half (definitional half at §4.11 and above). One row per component of a payslip.
