@@ -75,6 +75,8 @@ function DecideRecoveryForm() {
         <label htmlFor="decide-recovery-id">Request ID</label>
         <InputNumber
           id="decide-recovery-id"
+          min={1}
+          precision={0}
           onChange={(value) => setRequestId(typeof value === 'number' ? value : null)}
         />
         <Button
