@@ -30,6 +30,21 @@ class ReportExportConstraintTests(TestCase):
                 status=ReportExport.STATUS_PENDING, object_key='reports/exports/headcount/1.json',
             )
 
+    def test_complete_without_generated_at_is_rejected(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ReportExport.objects.create(
+                report_type=ReportExport.REPORT_HEADCOUNT, requested_by=self.user,
+                status=ReportExport.STATUS_COMPLETE, object_key='reports/exports/headcount/1.json',
+                generated_at=None,
+            )
+
+    def test_pending_with_generated_at_is_rejected(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ReportExport.objects.create(
+                report_type=ReportExport.REPORT_HEADCOUNT, requested_by=self.user,
+                status=ReportExport.STATUS_PENDING, generated_at='2026-01-01T00:00:00Z',
+            )
+
     def test_failed_without_reason_is_rejected(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
             ReportExport.objects.create(
