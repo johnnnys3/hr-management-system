@@ -1,22 +1,24 @@
-import { Alert, Button, Card, Form, InputNumber, Popconfirm, Space, Typography } from 'antd'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Button, Card, Form, InputNumber, Popconfirm, Space, Table, Tag, Typography } from 'antd'
 import { useState } from 'react'
-import { createRoleGrantRequest, decideRoleGrantRequest } from '../../api/rbac'
+import { createRoleGrantRequest, decideRoleGrantRequest, listRoleGrantRequests } from '../../api/rbac'
 import { ApiError } from '../../api/client'
+import { useAuth } from '../../auth/AuthContext'
+import type { RoleGrantRequestRecord } from '../../api/types'
+
+const REQUESTS_QUERY_KEY = ['rbac', 'role-grant-requests']
 
 export function RoleGrantRequestsPage() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Typography.Paragraph type="secondary">
-        There is currently no list view for pending requests (backend gap — tracked separately). Use these
-        forms with a request ID obtained directly from the requester.
-      </Typography.Paragraph>
       <RaiseRequestForm />
-      <DecideRequestForm />
+      <RequestsTable />
     </Space>
   )
 }
 
 function RaiseRequestForm() {
+  const queryClient = useQueryClient()
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +29,7 @@ function RaiseRequestForm() {
     try {
       const created = await createRoleGrantRequest(values.subjectUserId, values.roleId)
       setResult(`Request #${created.id} submitted.`)
+      queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY })
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.')
     } finally {
@@ -55,58 +58,68 @@ function RaiseRequestForm() {
   )
 }
 
-function DecideRequestForm() {
-  const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [submittingAction, setSubmittingAction] = useState<'approved' | 'refused' | null>(null)
-  const [requestId, setRequestId] = useState<number | null>(null)
+function RequestsTable() {
+  const { me } = useAuth()
+  const queryClient = useQueryClient()
+  const { data: requests = [], isLoading } = useQuery({ queryKey: REQUESTS_QUERY_KEY, queryFn: listRoleGrantRequests })
 
-  const decide = async (decision: 'approved' | 'refused') => {
-    if (requestId == null) return
-    setError(null)
-    setSubmittingAction(decision)
-    try {
-      const decided = await decideRoleGrantRequest(requestId, decision)
-      setResult(`Request #${decided.id} ${decided.status}.`)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.')
-    } finally {
-      setSubmittingAction(null)
-    }
-  }
-
-  const isDisabled = requestId === null
-  const isSubmitting = submittingAction !== null
+  const mutation = useMutation({
+    mutationFn: ({ id, decision }: { id: number; decision: 'approved' | 'refused' }) =>
+      decideRoleGrantRequest(id, decision),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY }),
+  })
 
   return (
-    <Card title="Decide a role grant request">
-      {result && <Alert type="success" message={result} style={{ marginBottom: 16 }} />}
-      {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
-      <Space>
-        <label htmlFor="decide-request-id">Request ID</label>
-        <InputNumber
-          id="decide-request-id"
-          onChange={(value) => setRequestId(typeof value === 'number' ? value : null)}
-        />
-        <Popconfirm
-          title="Approve this role grant request?"
-          onConfirm={() => decide('approved')}
-          disabled={isDisabled}
-        >
-          <Button loading={submittingAction === 'approved'} disabled={isDisabled || isSubmitting}>
-            Approve
-          </Button>
-        </Popconfirm>
-        <Popconfirm
-          title="Refuse this role grant request?"
-          onConfirm={() => decide('refused')}
-          disabled={isDisabled}
-        >
-          <Button loading={submittingAction === 'refused'} disabled={isDisabled || isSubmitting} danger>
-            Refuse
-          </Button>
-        </Popconfirm>
-      </Space>
+    <Card title="Your requests and requests awaiting your decision">
+      <Table<RoleGrantRequestRecord>
+        rowKey="id"
+        loading={isLoading}
+        dataSource={requests}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'ID', dataIndex: 'id' },
+          { title: 'Requester', dataIndex: 'requester' },
+          { title: 'Subject', dataIndex: 'subject' },
+          { title: 'Role', dataIndex: 'role' },
+          {
+            title: 'Status',
+            dataIndex: 'status',
+            render: (status: string) => (
+              <Tag color={status === 'approved' ? 'green' : status === 'refused' ? 'red' : 'default'}>{status}</Tag>
+            ),
+          },
+          {
+            title: 'Actions',
+            render: (_: unknown, record: RoleGrantRequestRecord) =>
+              record.status === 'pending' && record.requester !== me?.id ? (
+                <Space>
+                  <Popconfirm
+                    title="Approve this role grant request?"
+                    onConfirm={() => mutation.mutate({ id: record.id, decision: 'approved' })}
+                  >
+                    <Button size="small" loading={mutation.isPending && mutation.variables?.id === record.id}>
+                      Approve
+                    </Button>
+                  </Popconfirm>
+                  <Popconfirm
+                    title="Refuse this role grant request?"
+                    onConfirm={() => mutation.mutate({ id: record.id, decision: 'refused' })}
+                  >
+                    <Button
+                      size="small"
+                      danger
+                      loading={mutation.isPending && mutation.variables?.id === record.id}
+                    >
+                      Refuse
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ) : (
+                <Typography.Text type="secondary">—</Typography.Text>
+              ),
+          },
+        ]}
+      />
     </Card>
   )
 }

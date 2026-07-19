@@ -76,6 +76,20 @@ class RoleGrantRequestCreateView(APIView):
 
     permission_classes = [IsFullyAuthenticated]
 
+    def get(self, request):
+        """`GET /api/role-grant-requests/`, `docs/06-api-contracts.md` §4.9:
+        own requests as requester, plus pending requests awaiting the
+        caller's decision (mirrors `CanDecideRoleGrantRequest`'s eligibility
+        — holds the permission, is not the requester, and is not the
+        `is_superuser` break-glass account, §7.2)."""
+        queryset = RoleGrantRequest.objects.filter(requester=request.user)
+        if not request.user.is_superuser and request.user.has_perm('iam.approve_role_grant'):
+            queryset |= RoleGrantRequest.objects.filter(
+                status=RoleGrantRequest.STATUS_PENDING,
+            ).exclude(requester=request.user)
+        serializer = RoleGrantRequestSerializer(queryset.order_by('-requested_at'), many=True)
+        return Response(serializer.data)
+
     def post(self, request):
         serializer = RoleGrantRequestCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

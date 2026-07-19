@@ -99,6 +99,57 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.assertFalse(self.subject.groups.filter(name=PAYROLL_OFFICER).exists())
 
 
+class ListRoleGrantRequestTests(APITestCase):
+    def setUp(self):
+        self.requester = User.objects.create_user(email='requester2@example.com', password='x')
+        self.subject = User.objects.create_user(email='subject2@example.com', password='x')
+        self.payroll_officer = Group.objects.get(name=PAYROLL_OFFICER)
+        self.grant_request = RoleGrantRequest.objects.create(
+            requester=self.requester, subject=self.subject, role=self.payroll_officer,
+        )
+
+    def test_requester_sees_their_own_request(self):
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([r['id'] for r in response.data], [self.grant_request.pk])
+
+    def test_eligible_approver_sees_the_pending_request(self):
+        approver = User.objects.create_user(email='approver2@example.com', password='x')
+        approver.user_permissions.add(Permission.objects.get(codename='approve_role_grant'))
+        self.client.force_authenticate(approver)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual([r['id'] for r in response.data], [self.grant_request.pk])
+
+    def test_decided_requests_are_not_shown_to_other_approvers(self):
+        self.grant_request.status = RoleGrantRequest.STATUS_APPROVED
+        self.grant_request.save(update_fields=['status'])
+        approver = User.objects.create_user(email='approver3@example.com', password='x')
+        approver.user_permissions.add(Permission.objects.get(codename='approve_role_grant'))
+        self.client.force_authenticate(approver)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.data, [])
+
+    def test_bystander_sees_nothing(self):
+        bystander = User.objects.create_user(email='bystander2@example.com', password='x')
+        self.client.force_authenticate(bystander)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.data, [])
+
+    def test_anonymous_is_denied(self):
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.status_code, 401)
+
+
 class DecideRoleGrantRequestTests(APITestCase):
     def setUp(self):
         self.requester = User.objects.create_user(email='requester@example.com', password='x')
