@@ -161,11 +161,11 @@ class Interview(models.Model):
 class OfferLetter(models.Model):
     """`offer_letter`, `docs/05-database-schema.md` §4.7. HRMS-FR-020, HRMS-FR-021.
 
-    `offered_pay_grade_id` is omitted from this module deliberately: it is a
-    forward FK into `pay_grade`, owned by Module 15 (Compensation and
-    Benefits), not yet built. Per this project's established
-    provider-precedes-consumer handling (see issue RECRUIT-001), the column
-    is added in a later migration once Module 15 lands.
+    `offered_pay_grade_id` was omitted from this module at RECRUIT-001
+    deliberately: it is a forward FK into `pay_grade`, owned by Module 15
+    (Compensation and Benefits), which had not been built. Module 15
+    (COMP-001) has now landed and the column is added below, per this
+    project's established provider-precedes-consumer handling.
     """
 
     STATUS_PENDING = 'pending'
@@ -181,6 +181,9 @@ class OfferLetter(models.Model):
 
     application = models.ForeignKey(CandidateApplication, on_delete=models.RESTRICT, related_name='offers')
     offered_salary = models.DecimalField(max_digits=14, decimal_places=2)
+    offered_pay_grade = models.ForeignKey(
+        'compensation.PayGrade', on_delete=models.RESTRICT, related_name='offer_letters', null=True, blank=True,
+    )
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
     issued_at = models.DateTimeField(auto_now_add=True)
     decided_at = models.DateTimeField(null=True, blank=True)
