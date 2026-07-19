@@ -68,9 +68,7 @@ describe('DepartmentsPage', () => {
     await user.click(dialog.getByRole('switch'))
     await user.click(dialog.getByRole('button', { name: /^save$/i }))
 
-    await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith(1, expect.objectContaining({ is_active: false })),
-    )
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith(1, { is_active: false }))
   })
 
   it('lists job titles on the Job Titles tab', async () => {

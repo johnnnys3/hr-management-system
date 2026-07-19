@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Form, Input, Modal, Switch, Table, Tabs, Tag, Typography, message } from 'antd'
+import { Alert, Button, Form, Input, Modal, Switch, Table, Tabs, Tag, Typography, message } from 'antd'
 import { useState } from 'react'
 import {
   createDepartment,
@@ -67,10 +67,20 @@ function ConfigTable({
   updateFn: (id: number, data: Partial<FormValues>) => Promise<NamedRecord>
 }) {
   const queryClient = useQueryClient()
-  const { data: records = [], isLoading } = useQuery({ queryKey, queryFn: listFn })
+  const { data: records = [], isLoading, error } = useQuery({ queryKey, queryFn: listFn })
   const [modalRecord, setModalRecord] = useState<NamedRecord | 'new' | null>(null)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey })
+
+  if (error) {
+    return (
+      <Alert
+        type="error"
+        message="Failed to load data"
+        description={error instanceof ApiError ? error.message : 'An error occurred while loading the list.'}
+      />
+    )
+  }
 
   return (
     <div>
@@ -129,7 +139,20 @@ function RecordFormModal({
   const [form] = Form.useForm<FormValues>()
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => (record ? updateFn(record.id, values) : createFn(values)),
+    mutationFn: (values: FormValues) => {
+      if (record) {
+        // Build PATCH payload from only changed fields
+        const changes: Partial<FormValues> = {}
+        if (values.name !== record.name) {
+          changes.name = values.name
+        }
+        if (values.is_active !== record.is_active) {
+          changes.is_active = values.is_active
+        }
+        return updateFn(record.id, changes)
+      }
+      return createFn(values)
+    },
     onSuccess: onSaved,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Save failed.'),
   })
