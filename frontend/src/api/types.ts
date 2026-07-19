@@ -42,6 +42,22 @@ export interface SecondFactorRecoveryRequestRecord {
   decided_at: string | null
 }
 
+export interface Department {
+  id: number
+  name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface JobTitle {
+  id: number
+  name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number
