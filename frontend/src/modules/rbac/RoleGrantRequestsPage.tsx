@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Form, InputNumber, Space, Typography } from 'antd'
+import { Alert, Button, Card, Form, InputNumber, Popconfirm, Space, Typography } from 'antd'
 import { useState } from 'react'
 import { createRoleGrantRequest, decideRoleGrantRequest } from '../../api/rbac'
 import { ApiError } from '../../api/client'
@@ -8,7 +8,7 @@ export function RoleGrantRequestsPage() {
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Typography.Paragraph type="secondary">
         There is currently no list view for pending requests (backend gap — tracked separately). Use these
-        forms with a request ID from a notification.
+        forms with a request ID obtained directly from the requester.
       </Typography.Paragraph>
       <RaiseRequestForm />
       <DecideRequestForm />
@@ -85,12 +85,14 @@ function DecideRequestForm() {
           id="decide-request-id"
           onChange={(value) => setRequestId(typeof value === 'number' ? value : null)}
         />
-        <Button loading={submitting} onClick={() => decide('approved')}>
-          Approve
-        </Button>
-        <Button loading={submitting} danger onClick={() => decide('refused')}>
-          Refuse
-        </Button>
+        <Popconfirm title="Approve this role grant request?" onConfirm={() => decide('approved')}>
+          <Button loading={submitting}>Approve</Button>
+        </Popconfirm>
+        <Popconfirm title="Refuse this role grant request?" onConfirm={() => decide('refused')}>
+          <Button loading={submitting} danger>
+            Refuse
+          </Button>
+        </Popconfirm>
       </Space>
     </Card>
   )

@@ -65,6 +65,7 @@ describe('RoleGrantRequestsPage', () => {
 
     await user.type(screen.getByLabelText(/request id/i), '11')
     await user.click(screen.getByRole('button', { name: /^approve$/i }))
+    await user.click(await screen.findByRole('button', { name: 'OK' }))
 
     await waitFor(() => expect(decideSpy).toHaveBeenCalledWith(11, 'approved'))
     expect(await screen.findByText(/request #11 approved/i)).toBeInTheDocument()
