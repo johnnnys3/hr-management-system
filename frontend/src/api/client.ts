@@ -68,8 +68,12 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
       errorBody?.fields,
     )
 
-    // Global 401 redirect for authenticated requests (not /auth/me/ on app load)
-    if (response.status === 401 && path !== '/api/auth/me/') {
+    // Global 401 redirect for authenticated requests only — excludes pre-auth
+    // endpoints (login, csrf bootstrap) whose own screens handle a 401 locally
+    // (e.g. LoginPage showing "Invalid credentials"), and /auth/me/ on app load,
+    // which AuthProvider treats as "not logged in" rather than "session expired".
+    const PRE_AUTH_PATHS = ['/api/auth/me/', '/api/auth/login/', '/api/auth/csrf/']
+    if (response.status === 401 && !PRE_AUTH_PATHS.includes(path)) {
       window.location.href = '/login'
     }
 
