@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from iam.roles import HR_ADMINISTRATOR, PAYROLL_OFFICER
 
 from ..models import PayrollRun
-from ..services import calculate_run, generate_payslip_pdf
+from ..services import calculate_run, finalize_run
 from .helpers import give_compensation, make_employee, user_with_role
 
 User = get_user_model()
@@ -92,8 +92,8 @@ class PayslipVisibilityTests(APITestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_download_after_pdf_generated(self):
-        generate_payslip_pdf(self.payslip)
+    def test_download_after_finalisation(self):
+        finalize_run(self.payroll_run)
         self.client.force_authenticate(user_with_role('other@example.com', PAYROLL_OFFICER))
 
         response = self.client.get(f'/api/payslips/{self.payslip.pk}/download/')
@@ -102,7 +102,7 @@ class PayslipVisibilityTests(APITestCase):
         self.assertIn('url', response.data)
 
     def test_employee_cannot_download_anothers(self):
-        generate_payslip_pdf(self.payslip)
+        finalize_run(self.payroll_run)
         other = make_employee('E-2', 'Ada', 'Lovelace')
         other_user = User.objects.create_user(email='ada2@example.com', password='x', employee=other)
         self.client.force_authenticate(other_user)

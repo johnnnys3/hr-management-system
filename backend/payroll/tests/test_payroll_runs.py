@@ -153,6 +153,25 @@ class PayrollRunLifecycleTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_calculate_denied_once_approved(self):
+        """Recalculating an approved run would silently rewrite payslips
+        an approver already signed off on — `calculate_run`'s
+        idempotency (HRMS-NFR-005) covers retrying a stuck/failed
+        calculation, not reopening a decided run."""
+        run_id = self.client.post(
+            '/api/payroll-runs/', {'period_start': '2026-01-01', 'period_end': '2026-01-31'}
+        ).data['id']
+        self.client.post(f'/api/payroll-runs/{run_id}/calculate/')
+        self.client.post(f'/api/payroll-runs/{run_id}/submit-for-approval/')
+        approver = self._approver()
+        self.client.force_authenticate(approver)
+        self.client.post(f'/api/payroll-runs/{run_id}/approve/')
+        self.client.force_authenticate(self.officer)
+
+        response = self.client.post(f'/api/payroll-runs/{run_id}/calculate/')
+
+        self.assertEqual(response.status_code, 400)
+
     def test_anonymous_is_denied(self):
         self.client.force_authenticate(None)
 

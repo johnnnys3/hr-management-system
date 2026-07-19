@@ -9,10 +9,9 @@ from rest_framework.views import APIView
 
 import audit.services
 from audit.models import AuditLog
-from iam.roles import PAYROLL_OFFICER
 
 from .models import PayrollRun, Payslip, StatutoryRateTable
-from .permissions import CanAccessPayslips, IsPayrollOfficer, can_decide_payroll_run
+from .permissions import CanAccessPayslips, IsPayrollOfficer, _payroll_officer, can_decide_payroll_run
 from .serializers import (
     BankTransferFileSerializer,
     PayrollRunCreateSerializer,
@@ -90,12 +89,24 @@ class PayrollRunDetailView(APIView):
 
 class PayrollRunCalculateView(APIView):
     """`POST /api/payroll-runs/{id}/calculate/`, `docs/06-api-contracts.md`
-    §4.14. Async: `202`, poll `GET .../{id}/` for `status`."""
+    §4.14. Async: `202`, poll `GET .../{id}/` for `status`. Only callable
+    from `draft`, `calculated`, or `failed` — `calculate_run` is
+    idempotent by design (a retry safely rebuilds this run's payslips),
+    but that idempotency must not extend to a run already
+    `pending_approval` or beyond: recalculating there would silently
+    rewrite payslips an approver has already signed off, or that are
+    already finalized."""
 
     permission_classes = [IsPayrollOfficer]
+    CALCULABLE_STATUSES = {PayrollRun.STATUS_DRAFT, PayrollRun.STATUS_CALCULATED, PayrollRun.STATUS_FAILED}
 
     def post(self, request, pk):
         payroll_run = get_object_or_404(PayrollRun, pk=pk)
+        if payroll_run.status not in self.CALCULABLE_STATUSES:
+            return Response(
+                {'detail': f'payroll run cannot be calculated from status {payroll_run.status!r}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         calculate_run_task.delay(payroll_run.pk)
         audit.services.record(
             category=AuditLog.CATEGORY_RECORD_CHANGE,
@@ -227,7 +238,7 @@ class PayslipListView(APIView):
 
     def get(self, request):
         queryset = Payslip.objects.select_related('payroll_run').prefetch_related('lines').order_by('-generated_at')
-        if not request.user.groups.filter(name=PAYROLL_OFFICER).exists():
+        if not _payroll_officer(request.user):
             queryset = queryset.filter(employee_id=request.user.employee_id)
         return Response(PayslipSerializer(queryset, many=True).data)
 

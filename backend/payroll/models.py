@@ -94,6 +94,10 @@ class PayrollRun(models.Model):
                 condition=models.Q(approved_by__isnull=True) | ~models.Q(approved_by=models.F('initiated_by')),
                 name='payroll_run_approver_not_initiator',
             ),
+            models.CheckConstraint(
+                condition=models.Q(period_end__gte=models.F('period_start')),
+                name='payroll_run_period_end_gte_start',
+            ),
             models.UniqueConstraint(fields=['period_start', 'period_end'], name='payroll_run_unique_period'),
         ]
 
@@ -117,6 +121,8 @@ class Payslip(models.Model):
         db_table = 'payslip'
         constraints = [
             models.UniqueConstraint(fields=['payroll_run', 'employee'], name='payslip_unique_run_employee'),
+            models.CheckConstraint(condition=models.Q(gross_pay__gte=0), name='payslip_gross_pay_gte_0'),
+            models.CheckConstraint(condition=models.Q(net_pay__gte=0), name='payslip_net_pay_gte_0'),
         ]
 
     def __str__(self):

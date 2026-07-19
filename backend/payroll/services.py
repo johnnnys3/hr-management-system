@@ -83,6 +83,9 @@ def calculate_run(payroll_run):
     is safe (HRMS-NFR-005)."""
     as_of = payroll_run.period_end
     with transaction.atomic():
+        # Locked so two concurrent calculate calls on the same run
+        # serialize rather than both deleting/rebuilding at once.
+        payroll_run = PayrollRun.objects.select_for_update().get(pk=payroll_run.pk)
         # PayslipLine.payslip is ON DELETE RESTRICT, so the lines of a
         # prior calculation must go first.
         PayslipLine.objects.filter(payslip__payroll_run=payroll_run).delete()
@@ -150,6 +153,10 @@ def finalize_run(payroll_run):
     exists (a retried task after a prior partial success) is not
     regenerated."""
     with transaction.atomic():
+        # Locked for the same reason as calculate_run: two concurrent
+        # finalize calls on the same run must serialize, not both pass
+        # the bank-transfer-file existence check at once.
+        payroll_run = PayrollRun.objects.select_for_update().get(pk=payroll_run.pk)
         if not hasattr(payroll_run, 'bank_transfer_file'):
             generate_bank_transfer_file(payroll_run)
         for payslip in payroll_run.payslips.filter(object_key__isnull=True).select_related('employee'):
@@ -201,11 +208,14 @@ def generate_payslip_pdf(payslip):
 
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
+    _, height = A4
     y = height - 25 * mm
 
     def line(text, size=10, gap=7 * mm):
         nonlocal y
+        if y < 20 * mm:
+            pdf.showPage()
+            y = height - 25 * mm
         pdf.setFont('Helvetica', size)
         pdf.drawString(20 * mm, y, text)
         y -= gap
