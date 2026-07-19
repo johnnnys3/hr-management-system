@@ -5,7 +5,10 @@ export interface Me {
   second_factor_enrollment_pending: boolean
 }
 
-export interface LoginSuccess extends Me {
+export interface LoginSuccess {
+  id: number
+  email: string
+  groups: string[]
   second_factor_enrollment_required?: boolean
 }
 
