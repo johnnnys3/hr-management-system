@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'dashboard.apps.DashboardConfig',
     'compensation.apps.CompensationConfig',
     'payroll.apps.PayrollConfig',
+    'reports.apps.ReportsConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
