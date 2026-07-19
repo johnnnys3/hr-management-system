@@ -1,23 +1,20 @@
-import { useEffect, useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfigProvider } from 'antd'
+import { RouterProvider } from 'react-router-dom'
+import { AuthProvider } from './auth/AuthProvider'
+import { router } from './routes'
+
+const queryClient = new QueryClient()
 
 function App() {
-  const [health, setHealth] = useState<string>('checking...')
-
-  useEffect(() => {
-    fetch('/api/health/')
-      .then((res) => res.json())
-      .then((data) => setHealth(data.status ?? 'unknown'))
-      .catch(() => setHealth('unreachable'))
-  }, [])
-
   return (
-    <main>
-      <h1>HRMS</h1>
-      <p>Environment Setup placeholder. This page exists only to prove the deployment composition.</p>
-      <p>
-        API health via same-origin <code>/api/health/</code>: <strong>{health}</strong>
-      </p>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ConfigProvider>
+          <RouterProvider router={router} />
+        </ConfigProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 
