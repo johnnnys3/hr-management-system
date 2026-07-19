@@ -45,11 +45,17 @@ class ReportExport(models.Model):
         db_table = 'report_export'
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(status='complete') | (models.Q(object_key__isnull=True) & models.Q(generated_at__isnull=True)),
+                condition=(
+                    models.Q(status='complete', object_key__isnull=False, generated_at__isnull=False)
+                    | (~models.Q(status='complete') & models.Q(object_key__isnull=True) & models.Q(generated_at__isnull=True))
+                ),
                 name='report_export_complete_fields',
             ),
             models.CheckConstraint(
-                condition=models.Q(status='failed') | models.Q(failed_reason__isnull=True),
+                condition=(
+                    models.Q(status='failed', failed_reason__isnull=False)
+                    | (~models.Q(status='failed') & models.Q(failed_reason__isnull=True))
+                ),
                 name='report_export_failed_reason',
             ),
         ]

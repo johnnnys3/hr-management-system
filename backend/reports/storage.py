@@ -4,11 +4,13 @@ import json
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.utils import timezone
 
 
 def generate_export_object_key(report_export_id, report_type):
-    return f'reports/exports/{report_type}/{report_export_id}-{timezone.now().strftime("%Y%m%dT%H%M%S")}.json'
+    # Deterministic — no timestamp — so a retried task overwrites the
+    # same object instead of orphaning the previous run's file, per
+    # `tasks.run_report_export`'s own idempotency claim.
+    return f'reports/exports/{report_type}/{report_export_id}.json'
 
 
 def save_export_file(object_key, data):

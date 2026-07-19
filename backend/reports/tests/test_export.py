@@ -94,3 +94,20 @@ class ReportExportTests(APITestCase):
         poll = self.client.get(f'/api/report-exports/{job_id}/')
 
         self.assertEqual(poll.data['status'], ReportExport.STATUS_COMPLETE)
+
+    def test_rerunning_export_reuses_same_object_key(self):
+        """A retried task must overwrite the same storage object rather
+        than orphaning the previous run's file — CodeRabbit's nitpick
+        on the first draft, which included a timestamp in the key."""
+        from ..models import ReportExport as RE
+        from ..tasks import run_report_export
+
+        report_export = RE.objects.create(
+            report_type=RE.REPORT_HEADCOUNT, requested_by=user_with_role('hr2@example.com', HR_OFFICER),
+        )
+        run_report_export(report_export)
+        first_key = report_export.object_key
+
+        run_report_export(report_export)
+
+        self.assertEqual(report_export.object_key, first_key)
