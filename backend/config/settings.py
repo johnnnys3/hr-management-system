@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',
     'leave.apps.LeaveConfig',
     'dashboard.apps.DashboardConfig',
+    'compensation.apps.CompensationConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'

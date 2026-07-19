@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/', include('notifications.urls')),
     path('api/', include('leave.urls')),
     path('api/', include('dashboard.urls')),
+    path('api/', include('compensation.urls')),
 ]
