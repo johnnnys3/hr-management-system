@@ -49,4 +49,30 @@ describe('UserManagementPage', () => {
       expect(createSpy).toHaveBeenCalledWith({ email: 'new@b.com', password: 'secret123', is_active: true }),
     )
   })
+
+  it('edits a user via row click, without sending an empty password', async () => {
+    vi.spyOn(rbacApi, 'listUsers').mockResolvedValue([
+      { id: 1, email: 'admin@b.com', is_active: true, groups: [], created_at: '', updated_at: '' },
+    ])
+    const updateSpy = vi.spyOn(rbacApi, 'updateUser').mockResolvedValue({
+      id: 1,
+      email: 'admin@b.com',
+      is_active: false,
+      groups: [],
+      created_at: '',
+      updated_at: '',
+    })
+    renderPage()
+    const user = userEvent.setup()
+
+    const row = await screen.findByText('admin@b.com')
+    await user.click(row)
+    const dialog = within(screen.getByRole('dialog'))
+    await user.click(dialog.getByRole('switch'))
+    await user.click(dialog.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith(1, expect.objectContaining({ is_active: false })))
+    const [, payload] = updateSpy.mock.calls[0]
+    expect(payload).not.toHaveProperty('password', '')
+  })
 })

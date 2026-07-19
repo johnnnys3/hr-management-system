@@ -27,7 +27,7 @@ export function UserManagementPage() {
         loading={isLoading}
         dataSource={users}
         pagination={{ pageSize: 25 }}
-        onRow={(record) => ({ onClick: () => setModalUser(record) })}
+        onRow={(record) => ({ onClick: () => setModalUser(record), style: { cursor: 'pointer' } })}
         columns={[
           { title: 'Email', dataIndex: 'email' },
           {
@@ -76,7 +76,7 @@ function UserFormModal({
   const mutation = useMutation({
     mutationFn: (values: UserFormValues) =>
       user
-        ? updateUser(user.id, values)
+        ? updateUser(user.id, { ...values, password: values.password || undefined })
         : createUser({ email: values.email, password: values.password ?? '', is_active: values.is_active }),
     onSuccess: onSaved,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Save failed.'),
