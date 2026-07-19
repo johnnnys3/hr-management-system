@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 import audit.services
 from audit.models import AuditLog
+from iam.roles import PAYROLL_OFFICER
 
 from .models import PayrollRun, Payslip, StatutoryRateTable
 from .permissions import CanAccessPayslips, IsPayrollOfficer, can_decide_payroll_run
@@ -221,7 +222,7 @@ class PayslipListView(APIView):
 
     def get(self, request):
         queryset = Payslip.objects.select_related('payroll_run').prefetch_related('lines').order_by('-generated_at')
-        if not request.user.groups.filter(name='Payroll Officer').exists():
+        if not request.user.groups.filter(name=PAYROLL_OFFICER).exists():
             queryset = queryset.filter(employee_id=request.user.employee_id)
         return Response(PayslipSerializer(queryset, many=True).data)
 

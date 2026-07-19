@@ -19,7 +19,7 @@ from compensation.models import CompensationRecord, EmployeeAllowance
 from employees.models import Employee
 
 from .models import BankTransferFile, PayrollRun, Payslip, PayslipLine, StatutoryRateTable
-from .storage import save_bank_transfer_file, save_payslip_pdf
+from .storage import generate_bank_transfer_object_key, generate_payslip_object_key, save_file
 
 DEDUCTION_RATE_TYPES = [
     (StatutoryRateTable.RATE_TYPE_PAYE, PayslipLine.LINE_DEDUCTION_PAYE),
@@ -180,8 +180,8 @@ def generate_bank_transfer_file(payroll_run):
             payslip.currency,
         ])
 
-    object_key = f'payroll/bank-transfer/{payroll_run.pk}-{timezone.now().strftime("%Y%m%dT%H%M%S")}.csv'
-    save_bank_transfer_file(object_key, buffer.getvalue().encode('utf-8'))
+    object_key = generate_bank_transfer_object_key(payroll_run.pk)
+    save_file(object_key, buffer.getvalue().encode('utf-8'))
     return BankTransferFile.objects.create(payroll_run=payroll_run, object_key=object_key)
 
 
@@ -224,8 +224,8 @@ def generate_payslip_pdf(payslip):
     pdf.showPage()
     pdf.save()
 
-    object_key = f'payroll/payslips/{payslip.payroll_run_id}/{payslip.employee_id}-{payslip.pk}.pdf'
-    save_payslip_pdf(object_key, buffer.getvalue())
+    object_key = generate_payslip_object_key(payslip.payroll_run_id, payslip.employee_id, payslip.pk)
+    save_file(object_key, buffer.getvalue())
     payslip.object_key = object_key
     payslip.save(update_fields=['object_key'])
     return payslip
