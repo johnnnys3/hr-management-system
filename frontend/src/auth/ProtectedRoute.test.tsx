@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { AuthContext } from './AuthContext'
 import { ProtectedRoute } from './ProtectedRoute'
 
-function renderWithAuth(me: Parameters<typeof AuthContext.Provider>[0]['value']['me'], requireGroup?: string) {
+function renderWithAuth(me: NonNullable<Parameters<typeof AuthContext.Provider>[0]['value']>['me'], requireGroup?: string) {
   return render(
     <AuthContext.Provider value={{ me, isLoading: false, refetch: async () => {}, logout: async () => {} }}>
       <MemoryRouter initialEntries={['/protected']}>
