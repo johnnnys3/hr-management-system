@@ -613,7 +613,7 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| report_type | TEXT | NOT NULL, CHECK IN ('headcount','leave_utilization','turnover','payroll_cost','payroll_summary') | Matches §4.15's five report endpoints |
+| report_type | TEXT | NOT NULL, CHECK IN ('headcount','leave_utilization','turnover','payroll_cost','payroll_summary') | Matches §4.15's five report endpoints. Stored underscored (Django/Postgres identifier convention, same as every other CHECK-enumerated column in this schema); the API layer's hyphenated slugs map 1:1 by substitution (`leave-utilization` ↔ `leave_utilization`, `payroll-cost` ↔ `payroll_cost`, `payroll-summary` ↔ `payroll_summary`, `headcount` and `turnover` unchanged) — the same slug/column convention `docs/06-api-contracts.md` §4.15's own endpoint paths already imply, not a new mapping this table invents |
 | params | JSONB | NOT NULL, DEFAULT '{}' | The caller's filter selection (department/role/date range/employment status, per HRMS-FR-053) at export time; not normalised into columns for the same reason `statutory_rate_table.rates` isn't (§4.12) — the filter shape differs by report type |
 | requested_by | BIGINT | FK → user_account, ON DELETE RESTRICT, NOT NULL | |
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending','complete','failed') | |
@@ -621,8 +621,10 @@ Finalisation writes across `payroll_run`, `payslip`, `payslip_line`, and `compen
 | failed_reason | TEXT | NULL | Set only when `status = 'failed'`; NULL otherwise |
 | generated_at | TIMESTAMPTZ | NULL | Set only when `status = 'complete'`, same as `payslip.generated_at` marks its own completion rather than row creation |
 | created_at | — | — | §2.4 |
+| | | CHECK (status = 'complete' OR (object_key IS NULL AND generated_at IS NULL)) | Both fields are only ever set together, on the transition to `complete` |
+| | | CHECK (status = 'failed' OR failed_reason IS NULL) | `failed_reason` is only ever set on the transition to `failed` |
 
-Visibility is "own job only" (§4.15) — `requested_by = current user` — the same equality-scoped pattern `notification.recipient_user_id` already establishes (§4.9), not a new visibility shape. An export touching `payroll_cost` emits an audit entry per §4.15's own note; the other four `report_type` values do not, so that emission is conditional on this column's value rather than blanket per row, same as `docs/06-api-contracts.md` §4.15 already states it.
+Both CHECK constraints are database-level, on the same reasoning §3.5 gives the `payroll_run` approver constraint: an application-layer bug that reached the database with a mismatched status/artifact combination is rejected by the row itself, not only by the view logic that is supposed to prevent it — the same "defence-in-depth over an append-only/status-transition table" default `compensation_record`'s CodeRabbit-caught gaps established at COMP-001. Visibility is "own job only" (§4.15) — `requested_by = current user` — the same equality-scoped pattern `notification.recipient_user_id` already establishes (§4.9), not a new visibility shape. An export touching `payroll_cost` emits an audit entry per §4.15's own note; the other four `report_type` values do not, so that emission is conditional on this column's value rather than blanket per row, same as `docs/06-api-contracts.md` §4.15 already states it.
 
 ---
 
