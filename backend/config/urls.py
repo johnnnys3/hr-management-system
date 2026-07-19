@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/', include('recruitment.urls')),
     path('api/', include('onboarding.urls')),
     path('api/', include('notifications.urls')),
+    path('api/', include('leave.urls')),
 ]
