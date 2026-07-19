@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-19
 **Author:** John Kessie (via Claude)
-**Status:** Draft — records a gap, does not yet resolve it
+**Status:** Resolved 2026-07-19 — owner chose deliberate re-baseline; see `docs/02-project-plan.md` v1.9 revision history and DOC-011
 
 ## Purpose
 
@@ -12,14 +12,14 @@ This document hands off the state of the frontend to whoever picks it up next (i
 
 `frontend/` is the Environment Setup scaffold only — `INFRA-001`, PR #25, merged 2026-07-17. It is unmodified Vite + React + TypeScript boilerplate:
 
-```
+```text
 frontend/src/App.tsx      — default Vite starter component
 frontend/src/App.css      — default Vite starter styles
 frontend/src/main.tsx     — default entry point
 frontend/index.html
 ```
 
-No routing, no API client, no auth flow, no components tied to any HRMS module. `frontend/dist/` contains a built artifact of that same starter template. Package manifest confirms the tech-stack selection (Vite, React, TypeScript) but no feature dependencies (no Ant Design, no TanStack Query, no React Router) are installed yet, despite all four being named in `docs/03-tech-stack.md` §2.
+No routing, no API client, no auth flow, no components tied to any HRMS module. `frontend/dist/` contains a built artifact of that same starter template. Package manifest confirms the tech-stack selection (Vite, React, TypeScript) but no feature dependencies (no Ant Design, no TanStack Query, no React Router) are installed yet, despite all three being named in `docs/03-tech-stack.md` §2.
 
 ## 2. What the Plan Says Should Exist
 
@@ -44,9 +44,9 @@ Per the current module build order (v1.8), thirteen modules are merged into `dev
 | 11 | Employee Self-Service | Merged (verification-only, no new endpoints) | Not built |
 | 12 | Manager Self-Service | Merged (verification-only, no new endpoints) | Not built |
 | 13 | Leave Management | Merged | Not built |
-| 14 | Dashboard | In progress (`feature/dash-001-dashboard`, current branch) | Not built |
+| 14 | Dashboard | Merged (PR #69, `6db57e7`) | Not built |
 
-Eleven modules with a genuine API surface (Mail dispatch excepted) have zero corresponding frontend code. By §6.1's own completion rule, none of modules 1, 3–10, 13 are actually complete — they are backend-complete and merged, but not module-complete.
+Twelve modules with a genuine API surface (Mail dispatch excepted) have zero corresponding frontend code, plus Dashboard — thirteen in total. By §6.1's own completion rule, none of modules 1, 3–14 except module 2 are actually complete — they are backend-complete and merged, but not module-complete.
 
 ## 3. Why This Happened
 
@@ -80,6 +80,8 @@ Two ways to close this gap, and the choice isn't this document's to make:
 
 Either is legitimate. What isn't: continuing to merge "module complete" PRs that don't meet §6.1's own bar without one of these two happening first.
 
+**Resolved 2026-07-19: the project owner chose path 2, deliberate re-baseline.** `docs/02-project-plan.md` v1.9 (DOC-011) adds a 12-day frontend implementation batch line item to §7.1, inserted into §6.3's schedule immediately after Dashboard and before Compensation and Benefits; the end date moves from 2026-11-10 to 2026-12-01. See that document's v1.9 revision-history row for the full accounting.
+
 ## 6. Immediate Next Step
 
-Before starting `frontend/src/App.tsx` work: decide which of the two paths in §5 applies, get it recorded (a plan revision-history entry if it's path 2), then start from Authentication (module 3) — it's the first module whose client interface every self-service and manager-facing screen downstream will depend on for session handling, and it's already backend-complete.
+Construction order for the thirteen retrofits is not fixed by the plan revision — start from Authentication (module 3) and RBAC/IAM (module 4): they are the first modules whose client interface every self-service and manager-facing screen downstream will depend on for session handling and permission gating, and both are already backend-complete.
