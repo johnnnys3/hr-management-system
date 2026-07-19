@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 from iam.roles import EXECUTIVE, HR_OFFICER
 from leave.models import LeaveBalance, LeaveRequest, LeaveType
 from notifications.models import Notification
+from reporting_structure.models import ReportingRelationship
 
 from .helpers import make_employee, make_manager_and_report, user_with_role
 
@@ -78,7 +79,6 @@ class DashboardViewTests(APITestCase):
         )
         # Not counted: another manager's report's pending request.
         other_manager, other_report = make_employee('DASH-M-2', 'Edsger', 'Dijkstra'), make_employee('DASH-E-4', 'Donald', 'Knuth')
-        from reporting_structure.models import ReportingRelationship
         ReportingRelationship.objects.create(employee=other_report, manager_employee=other_manager, effective_from=date.today())
         LeaveRequest.objects.create(
             employee=other_report, leave_type=self.leave_type,
