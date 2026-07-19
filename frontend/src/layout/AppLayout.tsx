@@ -12,6 +12,7 @@ export function AppLayout() {
   const items = [
     { key: '/', label: <Link to="/">Home</Link> },
     { key: '/role-grant-requests', label: <Link to="/role-grant-requests">Role Grant Requests</Link> },
+    { key: '/second-factor/recovery', label: <Link to="/second-factor/recovery">2FA Recovery</Link> },
     ...(me?.groups.includes('System Administrator')
       ? [{ key: '/users', label: <Link to="/users">Users</Link> }]
       : []),

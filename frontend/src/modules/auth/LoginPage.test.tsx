@@ -41,7 +41,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'secret123')
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
-    await waitFor(() => expect(loginSpy).toHaveBeenCalledWith('a@b.com', 'secret123'))
+    await waitFor(() => expect(loginSpy).toHaveBeenCalledWith('a@b.com', 'secret123', undefined))
     await waitFor(() => expect(refetch).toHaveBeenCalled())
   })
 
@@ -57,15 +57,40 @@ describe('LoginPage', () => {
     expect(await screen.findByText('Invalid credentials.')).toBeInTheDocument()
   })
 
-  it('shows a not-yet-supported message when the account requires second-factor verification', async () => {
-    vi.spyOn(authApi, 'login').mockResolvedValue({ second_factor_required: true })
-    renderPage()
+  it('prompts for and submits a TOTP code when the account requires second-factor verification', async () => {
+    const loginSpy = vi.spyOn(authApi, 'login')
+    loginSpy.mockResolvedValueOnce({ second_factor_required: true })
+    loginSpy.mockResolvedValueOnce({ id: 1, email: 'admin@b.com', groups: ['System Administrator'] })
+    const { refetch } = renderPage()
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/email/i), 'admin@b.com')
     await user.type(screen.getByLabelText(/password/i), 'secret123')
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
-    expect(await screen.findByText(/second-factor verification isn't available/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/authenticator code/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/authenticator code/i), '123456')
+    await user.click(screen.getByRole('button', { name: /verify/i }))
+
+    await waitFor(() => expect(loginSpy).toHaveBeenLastCalledWith('admin@b.com', 'secret123', '123456'))
+    await waitFor(() => expect(refetch).toHaveBeenCalled())
+  })
+
+  it('routes to second-factor enrollment when the account has none set up yet', async () => {
+    vi.spyOn(authApi, 'login').mockResolvedValue({
+      id: 1,
+      email: 'admin@b.com',
+      groups: ['System Administrator'],
+      second_factor_enrollment_required: true,
+    })
+    const { refetch } = renderPage()
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/email/i), 'admin@b.com')
+    await user.type(screen.getByLabelText(/password/i), 'secret123')
+    await user.click(screen.getByRole('button', { name: /log in/i }))
+
+    await waitFor(() => expect(refetch).toHaveBeenCalled())
   })
 })

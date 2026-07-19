@@ -31,6 +31,17 @@ export interface UserAccount {
   updated_at: string
 }
 
+export interface SecondFactorEnrollResponse {
+  provisioning_uri: string
+}
+
+export interface SecondFactorRecoveryRequestRecord {
+  id: number
+  status: 'pending' | 'approved' | 'denied'
+  requested_at: string
+  decided_at: string | null
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number

@@ -9,11 +9,14 @@ import { isSecondFactorRequired } from '../../api/types'
 interface LoginFormValues {
   email: string
   password: string
+  totpCode?: string
 }
 
 export function LoginPage() {
   const { refetch } = useAuth()
   const navigate = useNavigate()
+  const [form] = Form.useForm<LoginFormValues>()
+  const [needsTotp, setNeedsTotp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -21,13 +24,15 @@ export function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const response = await login(values.email, values.password)
+      const response = await login(values.email, values.password, values.totpCode)
       if (isSecondFactorRequired(response)) {
-        setError("Second-factor verification isn't available in this client yet — contact your administrator.")
+        setNeedsTotp(true)
+        setError('Enter the 6-digit code from your authenticator app.')
         return
       }
       if (response.second_factor_enrollment_required) {
-        setError("Second-factor setup isn't available in this client yet — contact your administrator.")
+        await refetch()
+        navigate('/second-factor/enroll', { replace: true })
         return
       }
       await refetch()
@@ -44,16 +49,21 @@ export function LoginPage() {
       <Card style={{ width: 360 }}>
         <Typography.Title level={3}>Log in</Typography.Title>
         {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
-        <Form layout="vertical" onFinish={handleSubmit}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
-            <Input autoComplete="username" />
+            <Input autoComplete="username" disabled={needsTotp} />
           </Form.Item>
           <Form.Item label="Password" name="password" rules={[{ required: true }]}>
-            <Input.Password autoComplete="current-password" />
+            <Input.Password autoComplete="current-password" disabled={needsTotp} />
           </Form.Item>
+          {needsTotp && (
+            <Form.Item label="Authenticator code" name="totpCode" rules={[{ required: true }]}>
+              <Input autoComplete="one-time-code" maxLength={6} />
+            </Form.Item>
+          )}
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={submitting} block>
-              Log in
+              {needsTotp ? 'Verify' : 'Log in'}
             </Button>
           </Form.Item>
         </Form>
