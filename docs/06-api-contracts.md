@@ -239,7 +239,7 @@ No `POST` for creating a notification is exposed to a client: notifications are 
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/dashboard/` | GET | Any authenticated user; content varies by role | Delegates entirely to the visibility rule of whichever module's data it renders (`docs/04-system-architecture.md` §4's module 14 row) | Returns a role-appropriate composite: an Employee sees their own leave balance and pending tasks (modules 13, 10); a Manager additionally sees team-level counts (module 13, `docs/07-iam-rbac.md` §5's "Team-level (FR-032)"); an Executive sees aggregate figures only (§4.16 below), never an individual record. This endpoint issues no query of its own that is not already scoped by the source module's `visible_to`; it is a read-only composition layer, not a new data-access decision |
+| `/api/dashboard/` | GET | Any authenticated user; content varies by role | Delegates entirely to the visibility rule of whichever module's data it renders (`docs/04-system-architecture.md` §4's module 14 row) | Returns a role-appropriate composite: an Employee sees their own leave balance and pending tasks (modules 13, 10); a Manager additionally sees team-level counts (module 13, `docs/07-iam-rbac.md` §5's "Team-level (FR-032)"); an Executive sees aggregate figures only (§4.15's Reports endpoints, module 17 — not yet built; this endpoint returns an empty aggregate section for Executive until then), never an individual record. This endpoint issues no query of its own that is not already scoped by the source module's `visible_to`; it is a read-only composition layer, not a new data-access decision |
 
 ### 4.11 Modules 11/12 — Employee and Manager Self-Service
 

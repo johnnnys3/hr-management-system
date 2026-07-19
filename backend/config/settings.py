@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'onboarding.apps.OnboardingConfig',
     'notifications.apps.NotificationsConfig',
     'leave.apps.LeaveConfig',
+    'dashboard.apps.DashboardConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
