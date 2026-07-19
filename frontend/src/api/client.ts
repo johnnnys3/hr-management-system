@@ -61,12 +61,19 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
 
   if (!response.ok) {
     const errorBody = data?.error
-    throw new ApiError(
+    const apiError = new ApiError(
       response.status,
       errorBody?.message ?? `Request failed with status ${response.status}`,
       errorBody?.code,
       errorBody?.fields,
     )
+
+    // Global 401 redirect for authenticated requests (not /auth/me/ on app load)
+    if (response.status === 401 && path !== '/api/auth/me/') {
+      window.location.href = '/login'
+    }
+
+    throw apiError
   }
 
   return data as T

@@ -20,7 +20,9 @@ export function AppLayout() {
 
   const handleClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
-      void logout().then(() => navigate('/login', { replace: true }))
+      void logout()
+        .then(() => navigate('/login', { replace: true }))
+        .catch(() => navigate('/login', { replace: true }))
     }
   }
 

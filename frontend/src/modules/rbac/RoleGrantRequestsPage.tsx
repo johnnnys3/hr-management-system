@@ -58,22 +58,25 @@ function RaiseRequestForm() {
 function DecideRequestForm() {
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [submittingAction, setSubmittingAction] = useState<'approved' | 'refused' | null>(null)
   const [requestId, setRequestId] = useState<number | null>(null)
 
   const decide = async (decision: 'approved' | 'refused') => {
     if (requestId == null) return
     setError(null)
-    setSubmitting(true)
+    setSubmittingAction(decision)
     try {
       const decided = await decideRoleGrantRequest(requestId, decision)
       setResult(`Request #${decided.id} ${decided.status}.`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.')
     } finally {
-      setSubmitting(false)
+      setSubmittingAction(null)
     }
   }
+
+  const isDisabled = requestId === null
+  const isSubmitting = submittingAction !== null
 
   return (
     <Card title="Decide a role grant request">
@@ -85,11 +88,21 @@ function DecideRequestForm() {
           id="decide-request-id"
           onChange={(value) => setRequestId(typeof value === 'number' ? value : null)}
         />
-        <Popconfirm title="Approve this role grant request?" onConfirm={() => decide('approved')}>
-          <Button loading={submitting}>Approve</Button>
+        <Popconfirm
+          title="Approve this role grant request?"
+          onConfirm={() => decide('approved')}
+          disabled={isDisabled}
+        >
+          <Button loading={submittingAction === 'approved'} disabled={isDisabled || isSubmitting}>
+            Approve
+          </Button>
         </Popconfirm>
-        <Popconfirm title="Refuse this role grant request?" onConfirm={() => decide('refused')}>
-          <Button loading={submitting} danger>
+        <Popconfirm
+          title="Refuse this role grant request?"
+          onConfirm={() => decide('refused')}
+          disabled={isDisabled}
+        >
+          <Button loading={submittingAction === 'refused'} disabled={isDisabled || isSubmitting} danger>
             Refuse
           </Button>
         </Popconfirm>

@@ -20,7 +20,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await apiLogout()
-    queryClient.setQueryData(ME_QUERY_KEY, null)
     queryClient.clear()
   }
 

@@ -17,15 +17,19 @@ export function PasswordResetPage() {
 
 function RequestForm() {
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (values: { email: string }) => {
+    setError(null)
     setSubmitting(true)
     try {
       await requestPasswordReset(values.email)
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
-      setDone(true)
     }
   }
 
@@ -36,16 +40,19 @@ function RequestForm() {
         {done ? (
           <Alert type="info" message="If an account exists for that email, a reset link has been sent." />
         ) : (
-          <Form layout="vertical" onFinish={handleSubmit}>
-            <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
-              <Input autoComplete="username" />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" loading={submitting} block>
-                Send reset link
-              </Button>
-            </Form.Item>
-          </Form>
+          <>
+            {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
+            <Form layout="vertical" onFinish={handleSubmit}>
+              <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
+                <Input autoComplete="username" />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={submitting} block>
+                  Send reset link
+                </Button>
+              </Form.Item>
+            </Form>
+          </>
         )}
       </Card>
     </div>
