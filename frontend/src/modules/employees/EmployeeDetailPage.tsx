@@ -20,7 +20,9 @@ import {
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useAuth } from '../../auth/AuthContext'
 import { ApiError } from '../../api/client'
+import { changeManager, listDirectReports, listReportingRelationships } from '../../api/reporting'
 import { useDepartments, useJobTitles } from '../departments/hooks'
 import { STATUS_COLORS } from './constants'
 import {
@@ -29,6 +31,7 @@ import {
   getEmployeeDocumentDownloadUrl,
   listEmergencyContacts,
   listEmployeeDocuments,
+  listEmployees,
   listEmploymentHistory,
   updateEmergencyContact,
   updateEmployee,
@@ -64,6 +67,7 @@ export function EmployeeDetailPage() {
       <Tabs
         items={[
           { key: 'profile', label: 'Profile', children: <ProfileTab employee={employee} /> },
+          { key: 'reporting', label: 'Reporting', children: <ReportingTab employeeId={employeeId} /> },
           { key: 'history', label: 'Employment History', children: <HistoryTab employeeId={employeeId} /> },
           { key: 'documents', label: 'Documents', children: <DocumentsTab employeeId={employeeId} /> },
           { key: 'contacts', label: 'Emergency Contacts', children: <EmergencyContactsTab employeeId={employeeId} /> },
@@ -150,6 +154,112 @@ function ProfileTab({ employee }: { employee: Employee }) {
         Save
       </Button>
     </Form>
+  )
+}
+
+function ReportingTab({ employeeId }: { employeeId: number }) {
+  const { me } = useAuth()
+  const queryClient = useQueryClient()
+  const [changeOpen, setChangeOpen] = useState(false)
+  const canChangeManager = me?.groups.includes('HR Officer') ?? false
+
+  const { data: relationships = [] } = useQuery({
+    queryKey: ['reporting', 'relationships'],
+    queryFn: () => listReportingRelationships(),
+  })
+  const managerId = relationships.find((r) => r.employee === employeeId)?.manager_employee
+
+  const { data: manager } = useQuery({
+    queryKey: ['employees', 'detail', managerId],
+    queryFn: () => getEmployee(managerId as number),
+    enabled: managerId !== undefined,
+  })
+
+  const { data: directReports = [], isLoading: reportsLoading } = useQuery({
+    queryKey: ['reporting', 'direct-reports', employeeId],
+    queryFn: () => listDirectReports(employeeId),
+  })
+
+  return (
+    <div>
+      <Typography.Title level={5}>Manager</Typography.Title>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <Typography.Text>
+          {manager ? `${manager.first_name} ${manager.last_name} (${manager.employee_number})` : 'None'}
+        </Typography.Text>
+        {canChangeManager && (
+          <Button size="small" onClick={() => setChangeOpen(true)}>
+            Change Manager
+          </Button>
+        )}
+      </div>
+      <Typography.Title level={5}>Direct Reports</Typography.Title>
+      <Table<Employee>
+        rowKey="id"
+        loading={reportsLoading}
+        dataSource={directReports}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'Employee #', dataIndex: 'employee_number' },
+          { title: 'First Name', dataIndex: 'first_name' },
+          { title: 'Last Name', dataIndex: 'last_name' },
+        ]}
+      />
+      {changeOpen && (
+        <ChangeManagerModal
+          employeeId={employeeId}
+          onClose={() => setChangeOpen(false)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['reporting', 'relationships'] })
+            queryClient.invalidateQueries({ queryKey: ['employees', 'history', employeeId] })
+            setChangeOpen(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function ChangeManagerModal({
+  employeeId,
+  onClose,
+  onSaved,
+}: {
+  employeeId: number
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { data: employees = [] } = useQuery({ queryKey: ['employees', 'list', {}], queryFn: () => listEmployees() })
+  const [managerEmployeeId, setManagerEmployeeId] = useState<number | undefined>()
+
+  const mutation = useMutation({
+    mutationFn: () => changeManager(employeeId, managerEmployeeId as number),
+    onSuccess: onSaved,
+    onError: (e) => message.error(e instanceof ApiError ? e.message : 'Save failed.'),
+  })
+
+  return (
+    <Modal
+      open
+      title="Change Manager"
+      onCancel={onClose}
+      onOk={() => mutation.mutate()}
+      okText="Save"
+      okButtonProps={{ disabled: managerEmployeeId === undefined }}
+      confirmLoading={mutation.isPending}
+    >
+      <Select
+        style={{ width: '100%' }}
+        showSearch
+        placeholder="Select a manager"
+        optionFilterProp="label"
+        value={managerEmployeeId}
+        onChange={setManagerEmployeeId}
+        options={employees
+          .filter((e) => e.id !== employeeId)
+          .map((e) => ({ label: `${e.first_name} ${e.last_name} (${e.employee_number})`, value: e.id }))}
+      />
+    </Modal>
   )
 }
 

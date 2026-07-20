@@ -108,6 +108,13 @@ export interface EmergencyContact {
   updated_at: string
 }
 
+export interface ReportingRelationship {
+  id: number
+  employee: number
+  manager_employee: number
+  effective_from: string
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number

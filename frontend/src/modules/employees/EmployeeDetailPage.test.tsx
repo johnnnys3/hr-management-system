@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as departmentsApi from '../../api/departments'
 import * as employeesApi from '../../api/employees'
+import * as reportingApi from '../../api/reporting'
+import { AuthContext } from '../../auth/AuthContext'
 import type { Employee } from '../../api/types'
 import { EmployeeDetailPage } from './EmployeeDetailPage'
 
@@ -22,15 +24,24 @@ const employee: Employee = {
   updated_at: '',
 }
 
-function renderPage() {
+function renderPage(groups: string[] = []) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/employees/1']}>
-        <Routes>
-          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-        </Routes>
-      </MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          me: { id: 99, email: 'hr@b.com', groups, second_factor_enrollment_pending: false },
+          isLoading: false,
+          refetch: async () => {},
+          logout: async () => {},
+        }}
+      >
+        <MemoryRouter initialEntries={['/employees/1']}>
+          <Routes>
+            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -74,5 +85,24 @@ describe('EmployeeDetailPage', () => {
     await user.click(await screen.findByRole('tab', { name: /employment history/i }))
 
     expect(await screen.findByText('hired')).toBeInTheDocument()
+  })
+
+  it('shows manager and direct reports on the Reporting tab, with Change Manager for HR Officer', async () => {
+    vi.spyOn(employeesApi, 'getEmployee').mockImplementation((id) =>
+      Promise.resolve(id === 2 ? { ...employee, id: 2, first_name: 'Grace', last_name: 'Hopper' } : employee),
+    )
+    vi.spyOn(departmentsApi, 'listDepartments').mockResolvedValue([])
+    vi.spyOn(departmentsApi, 'listJobTitles').mockResolvedValue([])
+    vi.spyOn(reportingApi, 'listReportingRelationships').mockResolvedValue([
+      { id: 1, employee: 1, manager_employee: 2, effective_from: '2020-01-01' },
+    ])
+    vi.spyOn(reportingApi, 'listDirectReports').mockResolvedValue([])
+    renderPage(['HR Officer'])
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: /reporting/i }))
+
+    expect(await screen.findByText('Grace Hopper (EMP001)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /change manager/i })).toBeInTheDocument()
   })
 })
