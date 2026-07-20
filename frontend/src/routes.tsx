@@ -9,6 +9,8 @@ import { SecondFactorRecoveryPage } from './modules/auth/SecondFactorRecoveryPag
 import { RoleGrantRequestsPage } from './modules/rbac/RoleGrantRequestsPage'
 import { UserManagementPage } from './modules/rbac/UserManagementPage'
 import { DepartmentsPage } from './modules/departments/DepartmentsPage'
+import { EmployeesPage } from './modules/employees/EmployeesPage'
+import { EmployeeDetailPage } from './modules/employees/EmployeeDetailPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -32,6 +34,13 @@ export const router = createBrowserRouter([
                   />
                 ),
                 children: [{ path: '/departments', element: <DepartmentsPage /> }],
+              },
+              {
+                element: <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer']} />,
+                children: [
+                  { path: '/employees', element: <EmployeesPage /> },
+                  { path: '/employees/:id', element: <EmployeeDetailPage /> },
+                ],
               },
               { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
               { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },

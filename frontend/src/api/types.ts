@@ -58,6 +58,56 @@ export interface JobTitle {
   updated_at: string
 }
 
+export type EmploymentStatus = 'active' | 'on_leave' | 'suspended' | 'terminated' | 'resigned' | 'retired'
+
+export interface Employee {
+  id: number
+  employee_number: string
+  first_name: string
+  last_name: string
+  date_of_birth: string
+  department: number
+  job_title: number
+  employment_status: EmploymentStatus
+  hire_date: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EmploymentHistoryEntry {
+  id: number
+  employee: number
+  event_type: 'hired' | 'status_change' | 'department_change' | 'job_title_change' | 'manager_change'
+  effective_date: string
+  previous_value: Record<string, unknown> | null
+  new_value: Record<string, unknown>
+  recorded_by: number | null
+  created_at: string
+}
+
+export interface EmployeeDocument {
+  id: number
+  employee: number
+  document_type: string
+  file_name: string
+  content_type: string
+  size_bytes: number
+  uploaded_by: number | null
+  created_at: string
+}
+
+export interface EmergencyContact {
+  id: number
+  employee: number
+  name: string
+  relationship: string
+  phone: string
+  email: string | null
+  is_primary: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number

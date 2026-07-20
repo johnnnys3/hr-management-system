@@ -27,8 +27,9 @@ interface ApiFetchOptions {
 export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const headers: Record<string, string> = {}
+  const isFormData = options.body instanceof FormData
 
-  if (options.body !== undefined) {
+  if (options.body !== undefined && !isFormData) {
     headers['Content-Type'] = 'application/json'
   }
   if (UNSAFE_METHODS.has(method)) {
@@ -38,11 +39,18 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     }
   }
 
+  const body: BodyInit | null | undefined =
+    options.body === undefined
+      ? undefined
+      : isFormData
+        ? (options.body as BodyInit)
+        : JSON.stringify(options.body)
+
   const response = await fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body,
   })
 
   if (response.status === 204) {
