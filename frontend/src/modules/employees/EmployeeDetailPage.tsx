@@ -21,7 +21,8 @@ import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { listDepartments, listJobTitles } from '../../api/departments'
+import { useDepartments, useJobTitles } from '../departments/hooks'
+import { STATUS_COLORS } from './constants'
 import {
   createEmergencyContact,
   getEmployee,
@@ -85,8 +86,8 @@ interface ProfileFormValues {
 function ProfileTab({ employee }: { employee: Employee }) {
   const queryClient = useQueryClient()
   const [form] = Form.useForm<ProfileFormValues>()
-  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'departments'], queryFn: listDepartments })
-  const { data: jobTitles = [] } = useQuery({ queryKey: ['departments', 'job-titles'], queryFn: listJobTitles })
+  const { data: departments = [] } = useDepartments()
+  const { data: jobTitles = [] } = useJobTitles()
 
   const mutation = useMutation({
     mutationFn: (values: ProfileFormValues) =>
@@ -142,10 +143,7 @@ function ProfileTab({ employee }: { employee: Employee }) {
       </Form.Item>
       <Form.Item label="Employment Status" name="employment_status" rules={[{ required: true }]}>
         <Select
-          options={['active', 'on_leave', 'suspended', 'terminated', 'resigned', 'retired'].map((s) => ({
-            label: s.replace('_', ' '),
-            value: s,
-          }))}
+          options={Object.keys(STATUS_COLORS).map((s) => ({ label: s.replace('_', ' '), value: s }))}
         />
       </Form.Item>
       <Button type="primary" htmlType="submit" loading={mutation.isPending}>

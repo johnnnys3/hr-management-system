@@ -3,21 +3,13 @@ import { Alert, Button, DatePicker, Form, Input, Modal, Select, Space, Table, Ta
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listDepartments, listJobTitles } from '../../api/departments'
 import { ApiError } from '../../api/client'
 import { createEmployee, listEmployees, type EmployeeListParams } from '../../api/employees'
 import type { Employee } from '../../api/types'
+import { useDepartments, useJobTitles } from '../departments/hooks'
+import { STATUS_COLORS } from './constants'
 
 const EMPLOYEES_QUERY_KEY = ['employees', 'list']
-
-const STATUS_COLORS: Record<string, string> = {
-  active: 'green',
-  on_leave: 'gold',
-  suspended: 'orange',
-  terminated: 'red',
-  resigned: 'default',
-  retired: 'default',
-}
 
 export function EmployeesPage() {
   const navigate = useNavigate()
@@ -25,8 +17,8 @@ export function EmployeesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const queryClient = useQueryClient()
 
-  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'departments'], queryFn: listDepartments })
-  const { data: jobTitles = [] } = useQuery({ queryKey: ['departments', 'job-titles'], queryFn: listJobTitles })
+  const { data: departments = [] } = useDepartments()
+  const { data: jobTitles = [] } = useJobTitles()
   const {
     data: employees = [],
     isLoading,
