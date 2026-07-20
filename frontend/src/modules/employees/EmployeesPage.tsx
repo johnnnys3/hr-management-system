@@ -85,7 +85,16 @@ export function EmployeesPage() {
           loading={isLoading}
           dataSource={employees}
           pagination={{ pageSize: 25 }}
-          onRow={(record) => ({ onClick: () => navigate(`/employees/${record.id}`), style: { cursor: 'pointer' } })}
+          onRow={(record) => ({
+            onClick: () => navigate(`/employees/${record.id}`),
+            onKeyDown: (e) => {
+              if (e.key === 'Enter') {
+                navigate(`/employees/${record.id}`)
+              }
+            },
+            tabIndex: 0,
+            style: { cursor: 'pointer' },
+          })}
           columns={[
             { title: 'Employee #', dataIndex: 'employee_number' },
             { title: 'First Name', dataIndex: 'first_name' },

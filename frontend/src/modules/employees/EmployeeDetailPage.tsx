@@ -33,7 +33,7 @@ import {
   updateEmployee,
   uploadEmployeeDocument,
 } from '../../api/employees'
-import type { EmergencyContact, Employee, EmployeeDocument } from '../../api/types'
+import type { EmergencyContact, Employee, EmployeeDocument, EmploymentStatus } from '../../api/types'
 
 export function EmployeeDetailPage() {
   const params = useParams<{ id: string }>()
@@ -79,7 +79,7 @@ interface ProfileFormValues {
   hire_date: dayjs.Dayjs
   department: number
   job_title: number
-  employment_status: string
+  employment_status: EmploymentStatus
 }
 
 function ProfileTab({ employee }: { employee: Employee }) {
@@ -168,7 +168,7 @@ function HistoryTab({ employeeId }: { employeeId: number }) {
       dataSource={history}
       pagination={{ pageSize: 25 }}
       columns={[
-        { title: 'Event', dataIndex: 'event_type', render: (v: string) => v.replace('_', ' ') },
+        { title: 'Event', dataIndex: 'event_type', render: (v: string) => v.replaceAll('_', ' ') },
         { title: 'Effective Date', dataIndex: 'effective_date' },
         { title: 'Previous', dataIndex: 'previous_value', render: (v: unknown) => (v ? JSON.stringify(v) : '—') },
         { title: 'New', dataIndex: 'new_value', render: (v: unknown) => JSON.stringify(v) },
@@ -277,9 +277,16 @@ function EmergencyContactsTab({ employeeId }: { employeeId: number }) {
       <List
         loading={isLoading}
         dataSource={contacts}
+        rowKey="id"
         renderItem={(contact) => (
           <List.Item
             onClick={() => setModalContact(contact)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setModalContact(contact)
+              }
+            }}
+            tabIndex={0}
             style={{ cursor: 'pointer' }}
             actions={[contact.is_primary ? <Tag color="blue" key="primary">Primary</Tag> : null]}
           >

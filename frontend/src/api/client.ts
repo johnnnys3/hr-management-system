@@ -39,11 +39,18 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     }
   }
 
+  const body: BodyInit | null | undefined =
+    options.body === undefined
+      ? undefined
+      : isFormData
+        ? (options.body as BodyInit)
+        : JSON.stringify(options.body)
+
   const response = await fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
-    body: options.body === undefined ? undefined : isFormData ? options.body : JSON.stringify(options.body),
+    body,
   })
 
   if (response.status === 204) {
