@@ -6,6 +6,7 @@ from employees.models import Employee
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
 from notifications.models import Notification
 from onboarding.models import OnboardingChecklist, OnboardingTask
+from recruitment.models import Candidate, CandidateApplication, JobPosting, JobRequisition
 
 from .helpers import user_with_role
 
@@ -30,6 +31,75 @@ class OnboardingChecklistDetailTests(APITestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data['id'], self.checklist.pk)
+
+
+class OnboardingChecklistListTests(APITestCase):
+    def setUp(self):
+        self.hr_officer = user_with_role('hro-list@example.com', HR_OFFICER)
+        department = Department.objects.create(name='Engineering')
+        job_title = JobTitle.objects.create(name='Engineer')
+        self.employee = Employee.objects.create(
+            employee_number='EMP-3003', first_name='Katherine', last_name='Johnson',
+            date_of_birth='1918-08-26', department=department, job_title=job_title, hire_date='2026-08-01',
+        )
+        self.checklist = OnboardingChecklist.objects.create(employee=self.employee)
+        other_employee = Employee.objects.create(
+            employee_number='EMP-3004', first_name='Dorothy', last_name='Vaughan',
+            date_of_birth='1910-09-20', department=department, job_title=job_title, hire_date='2026-08-01',
+        )
+        OnboardingChecklist.objects.create(employee=other_employee)
+
+    def test_filters_by_employee_id(self):
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.get('/api/onboarding-checklists/', {'employee_id': self.employee.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['id'] for row in response.data], [self.checklist.pk])
+
+    def test_filters_by_application_id(self):
+        requisition = JobRequisition.objects.create(
+            department=self.employee.department, job_title=self.employee.job_title, requested_by=self.hr_officer,
+            status=JobRequisition.STATUS_APPROVED,
+        )
+        posting = JobPosting.objects.create(
+            requisition=requisition, title='Backend Engineer', description='Build things.',
+            channel=JobPosting.CHANNEL_INTERNAL,
+        )
+        candidate = Candidate.objects.create(first_name='Ada', last_name='Lovelace', email='ada@example.com')
+        application = CandidateApplication.objects.create(
+            candidate=candidate, posting=posting, stage=CandidateApplication.STAGE_HIRED,
+        )
+        self.checklist.application = application
+        self.checklist.save(update_fields=['application'])
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.get('/api/onboarding-checklists/', {'application_id': application.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['id'] for row in response.data], [self.checklist.pk])
+
+    def test_with_no_filter_returns_all_visible_checklists(self):
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.get('/api/onboarding-checklists/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+
+    def test_recruiter_can_list(self):
+        recruiter = user_with_role('recruiter-list@example.com', RECRUITER)
+        self.client.force_authenticate(recruiter)
+
+        response = self.client.get('/api/onboarding-checklists/', {'employee_id': self.employee.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['id'] for row in response.data], [self.checklist.pk])
+
+    def test_anonymous_is_denied(self):
+        response = self.client.get('/api/onboarding-checklists/')
+
+        self.assertEqual(response.status_code, 401)
 
 
 class OnboardingTaskTests(APITestCase):

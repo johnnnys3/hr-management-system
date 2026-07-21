@@ -112,6 +112,27 @@ class ConvertView(APIView):
         return Response(OnboardingChecklistSerializer(checklist).data, status=status.HTTP_201_CREATED)
 
 
+class OnboardingChecklistListView(APIView):
+    """`GET /api/onboarding-checklists/`, `docs/06-api-contracts.md` §4.7.
+    `POST /api/onboarding/convert/` returns the checklist id at creation
+    time, but that's the only way to learn it — there was no way to look
+    an existing checklist back up afterward (issue #101). Filterable by
+    `employee_id` or `application_id`, same shape as `/api/leave-requests/`'s
+    `status`/`leave_type_id` filters."""
+
+    permission_classes = [CanAccessOnboarding]
+
+    def get(self, request):
+        queryset = OnboardingChecklist.objects.order_by('-started_at')
+        employee_id = request.query_params.get('employee_id')
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        application_id = request.query_params.get('application_id')
+        if application_id:
+            queryset = queryset.filter(application_id=application_id)
+        return Response(OnboardingChecklistSerializer(queryset, many=True).data)
+
+
 class OnboardingChecklistDetailView(APIView):
     """`GET /api/onboarding-checklists/{id}/`, `docs/06-api-contracts.md` §4.7."""
 

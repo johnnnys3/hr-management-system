@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.7 |
+| Version | 1.8 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -24,6 +24,7 @@
 | John Kessie | 2026-07-21 | **§4.6's five `IsRecruiter`-gated endpoints (job postings, candidates, candidate applications, interviews, offers) never granted HR Officer any access, even though `docs/07-iam-rbac.md` §4.2's Recruitment row has stated "HR Officer: R" since that matrix was first written — found building FRONTEND-ONBOARD-001 (PR #97), where HR Officer has no way to reach an accepted offer to trigger HRMS-BR-013 conversion without it.** Not a new policy decision, a correction to match the IAM matrix's own already-documented intent. `backend/recruitment/permissions.py`'s `IsRecruiter` widened to grant HR Officer read (GET only; all writes, including `/api/offers/{id}/decide/`, remain Recruiter-only). §4.6's five affected rows updated. No change to `/api/job-requisitions/*` (a separate permission class, unaffected) | 1.5 |
 | John Kessie | 2026-07-21 | **§4.6's `/api/applications/{id}/offer/` row never documented `offered_pay_grade`, even though COMP-001 (PR #73) added `offer_letter.offered_pay_grade_id` as a real, client-settable FK into `pay_grade` — found via FRONTEND-RECRUIT-001's Issue Offer form having no field to set it (issue #98).** `backend/recruitment/serializers.py`'s `OfferLetterSerializer` gains `offered_pay_grade` (writable `PrimaryKeyRelatedField`, nullable per the model); §4.6's offer row documents it. Recruiter — the only role that issues offers — had no way to look up a valid pay grade id, since §4.13's `/api/pay-grades/` grants read only to HR Administrator, HR Officer, Payroll Officer per `docs/07-iam-rbac.md` §2.4's compensation-access split; §4.13's row is widened to grant Recruiter a blind-selection read (`id`/`name` only, no `min_salary`/`max_salary`), preserving §2.4's intent that Recruiter never sees salary figures. Owner-confirmed 2026-07-21 | 1.6 |
 | John Kessie | 2026-07-21 | **§4.10's Dashboard note said Executive's `aggregates` section returns `null` "until [module 17 Reports is built]" — Module 17 merged 2026-07-19 (PR #83), which deliberately left this wiring out of its own scope as a flagged follow-up (issue #100).** `backend/dashboard/views.py`'s Executive branch now calls `reports.services`' five report builders directly with `scope='aggregate'`, the same scope Executive resolves to at `/api/reports/*`, rather than round-tripping through those endpoints. Turnover has no caller-supplied period on this no-query-param endpoint; it defaults to the trailing 365 days, stated in the row's own note. §4.10's row updated to describe the real shape. No permission or visibility-rule content changes — Executive's access was already granted, only the placeholder is replaced | 1.7 |
+| John Kessie | 2026-07-21 | **§4.7 only exposed `GET /api/onboarding-checklists/{id}/` — there was no way to look up a checklist by `employee_id` or `application_id`, only by an id learned once, at `POST /api/onboarding/convert/`'s response — found building FRONTEND-ONBOARD-001, PR #97 (issue #101).** `/api/onboarding-checklists/` gains a `GET` list, filterable by `employee_id`/`application_id`, same shape as `/api/leave-requests/`'s `status`/`leave_type_id` filters. Same permission as the existing detail endpoint (HR Officer: R; HR Administrator, Recruiter: R). No new access granted, no schema change | 1.8 |
 
 ---
 
@@ -219,6 +220,7 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
 | `/api/onboarding/convert/` | POST | HR Officer: C (`docs/07-iam-rbac.md` §4.2's Onboarding row) | n/a | Body: `{"application_id": ...}` or a direct-hire employee payload with no prior application. **This is the HRMS-BR-013 conversion point**: creates the `employee` row, then the `onboarding_checklist` row referencing it (`docs/05-database-schema.md` §4.8 — a checklist row cannot exist before the employee row it references). Atomic: a failure partway does not leave an `employee` row with no checklist |
+| `/api/onboarding-checklists/` | GET | HR Officer: R; HR Administrator, Recruiter: R (`docs/07-iam-rbac.md` §4.2) | Per role, same scoping as Employee Management's read | Filterable: `employee_id`, `application_id`. `POST /api/onboarding/convert/` returns the checklist id at creation time, but that was the only way to learn it (issue #101) — this endpoint lets a caller who only has an employee or application id look the checklist back up |
 | `/api/onboarding-checklists/{id}/` | GET | HR Officer: R; HR Administrator, Recruiter: R (`docs/07-iam-rbac.md` §4.2) | Per role, same scoping as Employee Management's read | |
 | `/api/onboarding-checklists/{id}/tasks/` | GET, POST, PATCH | HR Officer: C, R, U | Same as checklist | `PATCH {"status": "completed"}` sets `completed_by`, `completed_at` |
 
