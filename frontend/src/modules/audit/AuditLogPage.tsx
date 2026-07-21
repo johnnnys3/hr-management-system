@@ -64,7 +64,9 @@ export function AuditLogPage() {
           {
             title: 'Target',
             render: (_: unknown, record: AuditLogEntry) =>
-              record.target_type ? `${record.target_type} #${record.target_id}` : '—',
+              record.target_type
+                ? `${record.target_type}${record.target_id == null ? '' : ` #${record.target_id}`}`
+                : '—',
           },
           { title: 'Actor', dataIndex: 'actor', render: (v: number | null) => v ?? '—' },
         ]}
