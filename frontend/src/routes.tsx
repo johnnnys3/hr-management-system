@@ -11,6 +11,7 @@ import { UserManagementPage } from './modules/rbac/UserManagementPage'
 import { DepartmentsPage } from './modules/departments/DepartmentsPage'
 import { EmployeesPage } from './modules/employees/EmployeesPage'
 import { EmployeeDetailPage } from './modules/employees/EmployeeDetailPage'
+import { MyProfilePage } from './modules/employees/MyProfilePage'
 import { RecruitmentPage } from './modules/recruitment/RecruitmentPage'
 import { CandidateDetailPage } from './modules/recruitment/CandidateDetailPage'
 import { OnboardingPage } from './modules/onboarding/OnboardingPage'
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
               { path: '/', element: <DashboardPage /> },
               { path: '/notifications', element: <NotificationsPage /> },
               { path: '/leave', element: <LeavePage /> },
+              { path: '/my-profile', element: <MyProfilePage /> },
               { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },
               {
                 element: (
