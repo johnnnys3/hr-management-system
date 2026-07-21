@@ -30,6 +30,7 @@ export function AppLayout() {
       ),
     },
     { key: '/leave', label: <Link to="/leave">Leave</Link> },
+    { key: '/my-profile', label: <Link to="/my-profile">My Profile</Link> },
     { key: '/role-grant-requests', label: <Link to="/role-grant-requests">Role Grant Requests</Link> },
     ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer'].includes(g))
       ? [{ key: '/departments', label: <Link to="/departments">Departments</Link> }]
