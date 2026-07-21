@@ -45,7 +45,10 @@ export function AppLayout() {
       : []),
     { key: '/second-factor/recovery', label: <Link to="/second-factor/recovery">2FA Recovery</Link> },
     ...(me?.groups.includes('System Administrator')
-      ? [{ key: '/users', label: <Link to="/users">Users</Link> }]
+      ? [
+          { key: '/users', label: <Link to="/users">Users</Link> },
+          { key: '/audit-log', label: <Link to="/audit-log">Audit Log</Link> },
+        ]
       : []),
     { key: 'logout', label: 'Log out' },
   ]
