@@ -18,7 +18,7 @@ export function AppLayout() {
   })
 
   const items = [
-    { key: '/', label: <Link to="/">Home</Link> },
+    { key: '/', label: <Link to="/">Dashboard</Link> },
     {
       key: '/notifications',
       label: (
