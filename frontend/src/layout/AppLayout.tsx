@@ -18,7 +18,7 @@ export function AppLayout() {
     ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer'].includes(g))
       ? [{ key: '/employees', label: <Link to="/employees">Employees</Link> }]
       : []),
-    ...(me?.groups.some((g) => ['Recruiter', 'HR Administrator'].includes(g))
+    ...(me?.groups.some((g) => ['Recruiter', 'HR Administrator', 'HR Officer'].includes(g))
       ? [{ key: '/recruitment', label: <Link to="/recruitment">Recruitment</Link> }]
       : []),
     ...(me?.groups.includes('HR Officer')

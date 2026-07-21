@@ -47,11 +47,11 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator']} />,
+                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator', 'HR Officer']} />,
                 children: [
                   { path: '/recruitment', element: <RecruitmentPage /> },
                   {
-                    element: <ProtectedRoute requireGroup="Recruiter" />,
+                    element: <ProtectedRoute requireGroup={['Recruiter', 'HR Officer']} />,
                     children: [{ path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> }],
                   },
                 ],

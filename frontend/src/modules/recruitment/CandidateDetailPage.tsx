@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, DatePicker, Form, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -19,7 +19,7 @@ import {
 } from '../../api/recruitment'
 import type { CandidateApplication, Interview } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
-import { useDepartments, useJobTitles } from '../departments/hooks'
+import { HireDetailsFields } from '../onboarding/HireDetailsFields'
 
 const STAGE_COLORS: Record<string, string> = {
   applied: 'default',
@@ -33,6 +33,8 @@ const STAGE_COLORS: Record<string, string> = {
 export function CandidateDetailPage() {
   const params = useParams<{ id: string }>()
   const candidateId = Number(params.id)
+  const { me } = useAuth()
+  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const [applyOpen, setApplyOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -67,9 +69,11 @@ export function CandidateDetailPage() {
         <Typography.Title level={5} style={{ margin: 0 }}>
           Applications
         </Typography.Title>
-        <Button type="primary" onClick={() => setApplyOpen(true)}>
-          New Application
-        </Button>
+        {isRecruiter && (
+          <Button type="primary" onClick={() => setApplyOpen(true)}>
+            New Application
+          </Button>
+        )}
       </div>
       <Table<CandidateApplication>
         rowKey="id"
@@ -154,6 +158,8 @@ function ApplicationDetail({ application }: { application: CandidateApplication 
 }
 
 function InterviewsPanel({ applicationId }: { applicationId: number }) {
+  const { me } = useAuth()
+  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const queryClient = useQueryClient()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const { data: interviews = [], isLoading } = useQuery({
@@ -166,9 +172,11 @@ function InterviewsPanel({ applicationId }: { applicationId: number }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <Typography.Text strong>Interviews</Typography.Text>
-        <Button size="small" onClick={() => setScheduleOpen(true)}>
-          Schedule Interview
-        </Button>
+        {isRecruiter && (
+          <Button size="small" onClick={() => setScheduleOpen(true)}>
+            Schedule Interview
+          </Button>
+        )}
       </div>
       <Table<Interview>
         rowKey="id"
@@ -259,6 +267,7 @@ function ScheduleInterviewModal({
 function OfferPanel({ application }: { application: CandidateApplication }) {
   const applicationId = application.id
   const { me } = useAuth()
+  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
   const queryClient = useQueryClient()
   const [issueOpen, setIssueOpen] = useState(false)
@@ -288,7 +297,8 @@ function OfferPanel({ application }: { application: CandidateApplication }) {
   })
 
   const currentOffer = offers[0]
-  const canIssueOffer = !isLoading && (!currentOffer || currentOffer.status === 'rejected' || currentOffer.status === 'withdrawn')
+  const canIssueOffer =
+    isRecruiter && !isLoading && (!currentOffer || currentOffer.status === 'rejected' || currentOffer.status === 'withdrawn')
   const canConvert = isHrOfficer && application.stage !== 'hired' && currentOffer?.status === 'accepted'
 
   return (
@@ -313,7 +323,7 @@ function OfferPanel({ application }: { application: CandidateApplication }) {
         <Space>
           <Typography.Text>Salary: {currentOffer.offered_salary}</Typography.Text>
           <Tag>{currentOffer.status}</Tag>
-          {currentOffer.status === 'pending' && (
+          {isRecruiter && currentOffer.status === 'pending' && (
             <Space>
               <Button
                 size="small"
@@ -363,8 +373,6 @@ interface ConvertFormValues {
 function ConvertModal({ applicationId, onClose }: { applicationId: number; onClose: () => void }) {
   const navigate = useNavigate()
   const [form] = Form.useForm<ConvertFormValues>()
-  const { data: departments = [] } = useDepartments()
-  const { data: jobTitles = [] } = useJobTitles()
 
   const mutation = useMutation({
     mutationFn: (values: ConvertFormValues) =>
@@ -390,21 +398,7 @@ function ConvertModal({ applicationId, onClose }: { applicationId: number; onClo
       confirmLoading={mutation.isPending}
     >
       <Form form={form} layout="vertical" onFinish={(values) => mutation.mutate(values)}>
-        <Form.Item label="Employee Number" name="employee_number" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item label="Date of Birth" name="date_of_birth" rules={[{ required: true }]}>
-          <DatePicker style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item label="Hire Date" name="hire_date" rules={[{ required: true }]}>
-          <DatePicker style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item label="Department" name="department" rules={[{ required: true }]}>
-          <Select options={departments.map((d) => ({ label: d.name, value: d.id }))} />
-        </Form.Item>
-        <Form.Item label="Job Title" name="job_title" rules={[{ required: true }]}>
-          <Select options={jobTitles.map((j) => ({ label: j.name, value: j.id }))} />
-        </Form.Item>
+        <HireDetailsFields includeName={false} />
       </Form>
     </Modal>
   )

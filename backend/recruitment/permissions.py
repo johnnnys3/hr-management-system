@@ -1,6 +1,6 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from iam.roles import HR_ADMINISTRATOR, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
 
 
 class CanAccessJobRequisitions(BasePermission):
@@ -27,10 +27,15 @@ class CanDecideRequisition(BasePermission):
 
 
 class IsRecruiter(BasePermission):
-    """Recruiter-only surface: job postings, candidates, applications,
-    interviews, and offers all read `docs/06-api-contracts.md` §4.6 as
-    "Recruiter" only, with no other role granted any access."""
+    """Job postings, candidates, applications, interviews, and offers:
+    Recruiter holds full C/R/U access; HR Officer holds R only, per
+    `docs/07-iam-rbac.md` §4.2's Recruitment row (HR Officer needs to reach
+    an accepted offer to trigger HRMS-BR-013 conversion, module 9)."""
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and user.groups.filter(name=RECRUITER).exists())
+        if not (user and user.is_authenticated):
+            return False
+        if request.method in SAFE_METHODS:
+            return user.groups.filter(name__in=[RECRUITER, HR_OFFICER]).exists()
+        return user.groups.filter(name=RECRUITER).exists()
