@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Button, DatePicker, Form, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, DatePicker, Form, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
@@ -344,10 +344,10 @@ function IssueOfferModal({
   onClose: () => void
   onCreated: () => void
 }) {
-  const [offeredSalary, setOfferedSalary] = useState('')
+  const [offeredSalary, setOfferedSalary] = useState<number | null>(null)
 
   const mutation = useMutation({
-    mutationFn: () => createOffer(applicationId, offeredSalary),
+    mutationFn: () => createOffer(applicationId, String(offeredSalary)),
     onSuccess: onCreated,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Issue failed.'),
   })
@@ -359,13 +359,15 @@ function IssueOfferModal({
       onCancel={onClose}
       onOk={() => mutation.mutate()}
       okText="Issue"
-      okButtonProps={{ disabled: !offeredSalary }}
+      okButtonProps={{ disabled: offeredSalary === null }}
       confirmLoading={mutation.isPending}
     >
-      <Input
+      <InputNumber
+        style={{ width: '100%' }}
         placeholder="Offered salary"
+        min={0}
         value={offeredSalary}
-        onChange={(e) => setOfferedSalary(e.target.value)}
+        onChange={setOfferedSalary}
       />
     </Modal>
   )
