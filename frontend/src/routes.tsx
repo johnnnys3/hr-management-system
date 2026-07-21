@@ -17,6 +17,7 @@ import { OnboardingPage } from './modules/onboarding/OnboardingPage'
 import { OnboardingChecklistPage } from './modules/onboarding/OnboardingChecklistPage'
 import { NotificationsPage } from './modules/notifications/NotificationsPage'
 import { LeavePage } from './modules/leave/LeavePage'
+import { AuditLogPage } from './modules/audit/AuditLogPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -72,7 +73,10 @@ export const router = createBrowserRouter([
               { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },
               {
                 element: <ProtectedRoute requireGroup="System Administrator" />,
-                children: [{ path: '/users', element: <UserManagementPage /> }],
+                children: [
+                  { path: '/users', element: <UserManagementPage /> },
+                  { path: '/audit-log', element: <AuditLogPage /> },
+                ],
               },
             ],
           },

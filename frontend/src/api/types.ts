@@ -285,3 +285,29 @@ export interface DashboardData {
   pending_tasks?: Notification[]
   team?: { pending_leave_requests: number }
 }
+
+export type AuditLogCategory =
+  | 'login_attempt'
+  | 'record_change'
+  | 'payroll_action'
+  | 'approval'
+  | 'permission_change'
+  | 'second_factor_event'
+
+export interface AuditLogEntry {
+  id: number
+  actor: number | null
+  category: AuditLogCategory
+  target_type: string | null
+  target_id: number | null
+  action: string
+  detail: Record<string, unknown> | null
+  occurred_at: string
+}
+
+export interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
