@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from audit.models import AuditLog
 from departments.models import JobTitle
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER
 
 User = get_user_model()
 
