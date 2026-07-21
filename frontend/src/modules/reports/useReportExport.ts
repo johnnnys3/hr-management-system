@@ -22,8 +22,8 @@ export function useReportExport(reportType: string) {
   })
 
   const reset = () => {
+    queryClient.removeQueries({ queryKey: ['reports', 'export', jobId] })
     setJobId(null)
-    queryClient.removeQueries({ queryKey: ['reports', 'export'] })
   }
 
   return { startExport: createMutation.mutate, isStarting: createMutation.isPending, job, reset }
