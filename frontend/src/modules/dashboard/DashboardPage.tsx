@@ -66,6 +66,16 @@ export function DashboardPage() {
               <Statistic title="Finalized Payslips" value={data.aggregates.payroll_summary.payslip_count} />
             </Card>
           </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic title="Finalized Payroll Gross Pay" value={data.aggregates.payroll_summary.gross_pay} />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic title="Finalized Payroll Net Pay" value={data.aggregates.payroll_summary.net_pay} />
+            </Card>
+          </Col>
         </Row>
       )}
 
