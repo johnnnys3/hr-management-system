@@ -94,14 +94,21 @@ class DashboardViewTests(APITestCase):
         self.assertEqual(response.data['team'], {'pending_leave_requests': 1})
         self.assertNotIn('aggregates', response.data)
 
-    def test_executive_sees_empty_aggregates_and_no_employee_data(self):
+    def test_executive_sees_real_aggregates_and_no_employee_data(self):
+        make_employee('DASH-E-5', 'Grace', 'Hopper')
         user = user_with_role('exec@example.com', EXECUTIVE)
 
         self.client.force_authenticate(user)
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.data['aggregates'])
+        aggregates = response.data['aggregates']
+        self.assertEqual(aggregates['headcount'], {'total': 1})
+        self.assertIn('entitled_days', aggregates['leave_utilization'])
+        self.assertIn('hires', aggregates['turnover'])
+        self.assertIn('gross_pay', aggregates['payroll_cost'])
+        self.assertIn('gross_pay', aggregates['payroll_summary'])
+        self.assertNotIn('breakdown', aggregates['headcount'])
         self.assertNotIn('leave_balance', response.data)
         self.assertNotIn('pending_tasks', response.data)
         self.assertNotIn('team', response.data)
@@ -119,7 +126,8 @@ class DashboardViewTests(APITestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, {'aggregates': None})
+        self.assertEqual(set(response.data.keys()), {'aggregates'})
+        self.assertNotIn('breakdown', response.data['aggregates']['headcount'])
 
     def test_role_with_no_applicable_section_sees_empty_composite(self):
         user = user_with_role('hro@example.com', HR_OFFICER)

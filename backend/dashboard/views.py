@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,13 +11,15 @@ from leave.serializers import LeaveBalanceSerializer
 from notifications.models import Notification
 from notifications.serializers import NotificationSerializer
 from reporting_structure.models import ReportingRelationship
+from reports.services import headcount_report, leave_utilization_report, payroll_cost_report, payroll_summary_report, turnover_report
+
+TURNOVER_WINDOW_DAYS = 365
 
 
 class DashboardView(APIView):
     """`GET /api/dashboard/`, `docs/06-api-contracts.md` §4.10. A read-only
-    composite over modules 6, 10, 13 (and, for Executive, module 17 once
-    built) — every section below reuses the source module's own visibility
-    rule rather than deciding access itself."""
+    composite over modules 6, 10, 13, 17 — every section below reuses the
+    source module's own visibility rule rather than deciding access itself."""
 
     permission_classes = [IsAuthenticated]
 
@@ -28,11 +33,22 @@ class DashboardView(APIView):
             # hold an employee/manager record never gets the individual
             # sections below alongside it.
             #
-            # Aggregate figures themselves belong to Reports (module 17),
-            # not yet built — `docs/06-api-contracts.md` §4.10's note. Empty
-            # rather than omitted, so an Executive can distinguish "no data
-            # yet" from "this section doesn't apply to my role."
-            return Response({'aggregates': None})
+            # Reused directly from Reports (module 17) with scope='aggregate'
+            # — the same scope `reports.permissions.report_scope`/
+            # `payroll_report_scope` resolve to for Executive — rather than
+            # going through `/api/reports/*` a second time. Turnover has no
+            # caller-supplied period here (Dashboard takes no query params),
+            # so it defaults to the trailing 365 days, a standard annual
+            # turnover window.
+            today = timezone.now().date()
+            turnover_period_start = today - timedelta(days=TURNOVER_WINDOW_DAYS - 1)
+            return Response({'aggregates': {
+                'headcount': headcount_report('aggregate', user)['aggregate'],
+                'leave_utilization': leave_utilization_report('aggregate', user)['aggregate'],
+                'turnover': turnover_report('aggregate', user, None, turnover_period_start, today)['aggregate'],
+                'payroll_cost': payroll_cost_report('aggregate')['aggregate'],
+                'payroll_summary': payroll_summary_report('aggregate')['aggregate'],
+            }})
 
         data = {}
 
