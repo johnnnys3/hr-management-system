@@ -72,8 +72,8 @@ describe('CandidateDetailPage', () => {
     vi.spyOn(recruitmentApi, 'listOffers').mockResolvedValue([])
     vi.spyOn(employeesApi, 'listEmployees').mockResolvedValue([])
     vi.spyOn(recruitmentApi, 'listPayGradeOptions').mockResolvedValue([
-      { id: 5, name: 'Grade 5' },
-      { id: 6, name: 'Grade 6' },
+      { id: 5, name: 'Level 3', salary_structure_name: 'Engineering Ladder' },
+      { id: 6, name: 'Level 3', salary_structure_name: 'Sales Ladder' },
     ])
     const createOffer = vi.spyOn(recruitmentApi, 'createOffer').mockResolvedValue({
       id: 100, application: 10, offered_salary: '90000', offered_pay_grade: 5, status: 'pending',
@@ -88,7 +88,7 @@ describe('CandidateDetailPage', () => {
 
     await user.type(screen.getByPlaceholderText('Offered salary'), '90000')
     await user.click(screen.getByRole('combobox'))
-    await user.click(await screen.findByText('Grade 5'))
+    await user.click(await screen.findByText('Level 3 (Engineering Ladder)'))
     await user.click(screen.getByRole('button', { name: /^issue$/i }))
 
     expect(createOffer).toHaveBeenCalledWith(10, '90000', 5)

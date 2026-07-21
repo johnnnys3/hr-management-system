@@ -36,11 +36,17 @@ class PayGradeSerializer(serializers.ModelSerializer):
 
 class PayGradeOptionSerializer(serializers.ModelSerializer):
     """Blind-selection view of a pay grade for roles without compensation
-    access (Recruiter) — id and name only, no salary figures."""
+    access (Recruiter) — id, name, and the parent salary structure's name
+    (not the structure's other fields), no salary figures. The structure
+    name disambiguates pay grades that share a name across different
+    structures (issue #107) — `PayGrade.name` is not unique organisation-wide,
+    only within a `salary_structure`."""
+
+    salary_structure_name = serializers.CharField(source='salary_structure.name', read_only=True)
 
     class Meta:
         model = PayGrade
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'salary_structure_name']
 
 
 class CompensationRecordSerializer(serializers.ModelSerializer):
