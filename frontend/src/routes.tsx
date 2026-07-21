@@ -15,6 +15,7 @@ import { RecruitmentPage } from './modules/recruitment/RecruitmentPage'
 import { CandidateDetailPage } from './modules/recruitment/CandidateDetailPage'
 import { OnboardingPage } from './modules/onboarding/OnboardingPage'
 import { OnboardingChecklistPage } from './modules/onboarding/OnboardingChecklistPage'
+import { NotificationsPage } from './modules/notifications/NotificationsPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: '/', element: <HomePage /> },
+              { path: '/notifications', element: <NotificationsPage /> },
               { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },
               {
                 element: (

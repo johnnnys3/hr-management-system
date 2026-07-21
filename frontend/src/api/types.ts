@@ -188,6 +188,20 @@ export interface PayGradeOption {
   name: string
 }
 
+export type NotificationCategory = 'pending_task' | 'request_update'
+
+export interface Notification {
+  id: number
+  category: NotificationCategory
+  channel: 'in_app' | 'email' | 'both'
+  subject: string
+  body: string
+  related_type: string | null
+  related_id: number | null
+  read_at: string | null
+  created_at: string
+}
+
 export interface OnboardingChecklist {
   id: number
   employee: number
