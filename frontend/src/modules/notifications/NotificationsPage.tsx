@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, List, Segmented, Tag, Typography } from 'antd'
+import { Alert, Button, List, Segmented, Tag, Typography } from 'antd'
 import { useState } from 'react'
+import { ApiError } from '../../api/client'
 import { listNotifications, markNotificationRead } from '../../api/notifications'
 import type { Notification } from '../../api/types'
 
@@ -14,7 +15,7 @@ const NOTIFICATIONS_QUERY_KEY = ['notifications', 'list']
 export function NotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'unread'>('unread')
   const queryClient = useQueryClient()
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading, error } = useQuery({
     queryKey: [...NOTIFICATIONS_QUERY_KEY, filter],
     queryFn: () => listNotifications(filter === 'unread' ? { read_at__isnull: true } : {}),
   })
@@ -23,6 +24,16 @@ export function NotificationsPage() {
     mutationFn: markNotificationRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY }),
   })
+
+  if (error) {
+    return (
+      <Alert
+        type="error"
+        message="Failed to load notifications"
+        description={error instanceof ApiError ? error.message : 'An error occurred while loading notifications.'}
+      />
+    )
+  }
 
   return (
     <div>
