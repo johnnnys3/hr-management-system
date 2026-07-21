@@ -234,3 +234,39 @@ export interface RoleGrantRequestRecord {
   requested_at: string
   decided_at: string | null
 }
+
+export interface LeaveType {
+  id: number
+  name: string
+  requires_approval: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface LeaveBalance {
+  id: number
+  employee: number
+  leave_type: number
+  period_start: string
+  period_end: string
+  entitled_days: string
+  used_days: string
+  created_at: string
+  updated_at: string
+}
+
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export interface LeaveRequest {
+  id: number
+  employee: number
+  leave_type: number
+  start_date: string
+  end_date: string
+  reason: string | null
+  status: LeaveRequestStatus
+  approved_by: number | null
+  decided_at: string | null
+  created_at: string
+}
