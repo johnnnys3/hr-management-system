@@ -1,5 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Card, Col, List, Row, Statistic, Typography } from 'antd'
+import {
+  ArrowUpOutlined,
+  BankOutlined,
+  CalendarOutlined,
+  DollarOutlined,
+  FileDoneOutlined,
+  TeamOutlined,
+  UserAddOutlined,
+  UserDeleteOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import { Alert, Avatar, Card, Col, List, Row, Statistic, Typography } from 'antd'
 import { ApiError } from '../../api/client'
 import { getDashboard } from '../../api/dashboard'
 import { useAuth } from '../../auth/AuthContext'
@@ -8,18 +19,41 @@ import { useAuth } from '../../auth/AuthContext'
 // mint/yellow/cream tile treatment. ponytail: fixed 3-color cycle, not a
 // theming system -- extend the array if more colors are ever wanted.
 const TILE_COLORS = ['#E7F0E4', '#FBF3D5', '#FFFFFF']
+const ICON_COLORS = ['#3C8C5B', '#B8952E', '#3C6E9C']
 
 function tileStyle(index: number) {
-  return { background: TILE_COLORS[index % TILE_COLORS.length], border: 'none' }
+  return {
+    background: TILE_COLORS[index % TILE_COLORS.length],
+    border: 'none',
+    boxShadow: '0 4px 16px rgba(30, 20, 0, 0.06)',
+  }
+}
+
+const STAT_ICONS: Record<string, typeof TeamOutlined> = {
+  Headcount: TeamOutlined,
+  Hires: UserAddOutlined,
+  Terminations: UserDeleteOutlined,
+  'Leave Days Entitled': CalendarOutlined,
+  'Leave Days Used': CalendarOutlined,
+  'Payroll Gross Pay': DollarOutlined,
+  'Payroll Net Pay': DollarOutlined,
+  'Finalized Payslips': FileDoneOutlined,
+  'Finalized Payroll Gross Pay': BankOutlined,
+  'Finalized Payroll Net Pay': BankOutlined,
+  'Team Pending Leave Requests': CalendarOutlined,
 }
 
 function HeadlineStat({ label, value }: { label: string; value: number }) {
+  const Icon = STAT_ICONS[label] ?? ArrowUpOutlined
   return (
-    <div style={{ textAlign: 'right' }}>
-      <Typography.Text strong style={{ fontSize: 28, lineHeight: 1 }}>
-        {value}
-      </Typography.Text>
-      <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 13 }}>{label}</div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <Avatar size={36} icon={<Icon />} style={{ background: '#111', flexShrink: 0 }} />
+      <div>
+        <Typography.Text strong style={{ fontSize: 28, lineHeight: 1, display: 'block' }}>
+          {value}
+        </Typography.Text>
+        <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 13 }}>{label}</div>
+      </div>
     </div>
   )
 }
@@ -68,10 +102,16 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <Typography.Title level={2} style={{ margin: 0 }}>
-          Good morning{me ? `, ${me.email.split('@')[0]}` : ''}
-        </Typography.Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <Avatar size={48} icon={<UserOutlined />} style={{ background: '#111' }} />
+          <div>
+            <Typography.Title level={3} style={{ margin: 0, lineHeight: 1.2 }}>
+              Good morning{me ? `, ${me.email.split('@')[0]}` : ''}
+            </Typography.Title>
+            <Typography.Text type="secondary">Here's what's happening today.</Typography.Text>
+          </div>
+        </div>
         {headlineStats.length > 0 && (
           <div style={{ display: 'flex', gap: 32 }}>
             {headlineStats.map((stat) => (
@@ -85,17 +125,30 @@ export function DashboardPage() {
         <Col span={16}>
           {remainingStats.length > 0 && (
             <Row gutter={[16, 16]}>
-              {remainingStats.map((stat, i) => (
-                <Col span={12} key={stat.title}>
-                  <Card style={tileStyle(i)}>
-                    <Statistic title={stat.title} value={stat.value} />
-                  </Card>
-                </Col>
-              ))}
+              {remainingStats.map((stat, i) => {
+                const Icon = STAT_ICONS[stat.title] ?? ArrowUpOutlined
+                return (
+                  <Col span={12} key={stat.title}>
+                    <Card style={tileStyle(i)} styles={{ body: { padding: 20 } }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <Avatar
+                          size={40}
+                          icon={<Icon />}
+                          style={{ background: ICON_COLORS[i % ICON_COLORS.length] }}
+                        />
+                        <Statistic title={stat.title} value={stat.value} />
+                      </div>
+                    </Card>
+                  </Col>
+                )
+              })}
             </Row>
           )}
           {data.leave_balance && (
-            <Card title="My Leave Balance" style={{ marginTop: remainingStats.length > 0 ? 16 : 0 }}>
+            <Card
+              title="My Leave Balance"
+              style={{ marginTop: remainingStats.length > 0 ? 16 : 0, boxShadow: '0 4px 16px rgba(30, 20, 0, 0.06)' }}
+            >
               <List
                 dataSource={data.leave_balance}
                 locale={{ emptyText: 'No leave balance records.' }}
