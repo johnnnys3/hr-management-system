@@ -7,13 +7,13 @@ import * as reportsApi from '../../api/reports'
 import { AuthContext } from '../../auth/AuthContext'
 import { ReportsPage } from './ReportsPage'
 
-function renderPage(groups: string[]) {
+function renderPage(groups: string[], isManager = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider
         value={{
-          me: { id: 1, email: 'user@b.com', groups, is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
+          me: { id: 1, email: 'user@b.com', groups, is_employee: true, is_manager: isManager, second_factor_enrollment_pending: false },
           isLoading: false,
           refetch: async () => {},
           logout: async () => {},
@@ -82,5 +82,16 @@ describe('ReportsPage', () => {
     await user.click(await screen.findByText('Export'))
     expect(createSpy).toHaveBeenCalledWith('headcount', { department_id: undefined })
     expect(await screen.findByText('Download')).toBeInTheDocument()
+  })
+
+  it('shows a Manager the org report tabs without a department filter (Manager cannot read /api/departments/)', async () => {
+    const listDepartmentsSpy = vi.spyOn(departmentsApi, 'listDepartments')
+    vi.spyOn(reportsApi, 'getHeadcountReport').mockResolvedValue({ aggregate: { total: 3 } })
+
+    renderPage([], true)
+
+    expect(await screen.findByText('Headcount')).toBeInTheDocument()
+    expect(screen.queryByText('Filter by department')).not.toBeInTheDocument()
+    expect(listDepartmentsSpy).not.toHaveBeenCalled()
   })
 })

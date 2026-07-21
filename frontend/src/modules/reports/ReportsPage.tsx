@@ -24,8 +24,8 @@ function ReportError({ error }: { error: unknown }) {
   )
 }
 
-function HeadcountTab() {
-  const { data: departments = [] } = useDepartments()
+function HeadcountTab({ isHr }: { isHr: boolean }) {
+  const { data: departments = [] } = useDepartments({ enabled: isHr })
   const [departmentId, setDepartmentId] = useState<number>()
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports', 'headcount', departmentId],
@@ -37,14 +37,16 @@ function HeadcountTab() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Select
-          allowClear
-          placeholder="Filter by department"
-          style={{ width: 220 }}
-          value={departmentId}
-          onChange={setDepartmentId}
-          options={departments.map((d) => ({ value: d.id, label: d.name }))}
-        />
+        {isHr && (
+          <Select
+            allowClear
+            placeholder="Filter by department"
+            style={{ width: 220 }}
+            value={departmentId}
+            onChange={setDepartmentId}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+          />
+        )}
         <ExportControl reportType="headcount" params={{ department_id: departmentId }} />
       </Space>
       <Statistic title="Total Headcount" value={data?.aggregate.total} loading={isLoading} />
@@ -64,8 +66,8 @@ function HeadcountTab() {
   )
 }
 
-function LeaveUtilizationTab() {
-  const { data: departments = [] } = useDepartments()
+function LeaveUtilizationTab({ isHr }: { isHr: boolean }) {
+  const { data: departments = [] } = useDepartments({ enabled: isHr })
   const [departmentId, setDepartmentId] = useState<number>()
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports', 'leave-utilization', departmentId],
@@ -77,14 +79,16 @@ function LeaveUtilizationTab() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Select
-          allowClear
-          placeholder="Filter by department"
-          style={{ width: 220 }}
-          value={departmentId}
-          onChange={setDepartmentId}
-          options={departments.map((d) => ({ value: d.id, label: d.name }))}
-        />
+        {isHr && (
+          <Select
+            allowClear
+            placeholder="Filter by department"
+            style={{ width: 220 }}
+            value={departmentId}
+            onChange={setDepartmentId}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+          />
+        )}
         <ExportControl reportType="leave_utilization" params={{ department_id: departmentId }} />
       </Space>
       <Space size="large">
@@ -108,8 +112,8 @@ function LeaveUtilizationTab() {
   )
 }
 
-function TurnoverTab() {
-  const { data: departments = [] } = useDepartments()
+function TurnoverTab({ isHr }: { isHr: boolean }) {
+  const { data: departments = [] } = useDepartments({ enabled: isHr })
   const [departmentId, setDepartmentId] = useState<number>()
   const [range, setRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([dayjs().subtract(365, 'day'), dayjs()])
   const periodStart = range[0].format('YYYY-MM-DD')
@@ -125,14 +129,16 @@ function TurnoverTab() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Select
-          allowClear
-          placeholder="Filter by department"
-          style={{ width: 220 }}
-          value={departmentId}
-          onChange={setDepartmentId}
-          options={departments.map((d) => ({ value: d.id, label: d.name }))}
-        />
+        {isHr && (
+          <Select
+            allowClear
+            placeholder="Filter by department"
+            style={{ width: 220 }}
+            value={departmentId}
+            onChange={setDepartmentId}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+          />
+        )}
         <DatePicker.RangePicker
           value={range}
           onChange={(values) => {
@@ -256,9 +262,9 @@ export function ReportsPage() {
   const items = [
     ...(isHr || isExecutive || isManager
       ? [
-          { key: 'headcount', label: 'Headcount', children: <HeadcountTab /> },
-          { key: 'leave-utilization', label: 'Leave Utilization', children: <LeaveUtilizationTab /> },
-          { key: 'turnover', label: 'Turnover', children: <TurnoverTab /> },
+          { key: 'headcount', label: 'Headcount', children: <HeadcountTab isHr={isHr} /> },
+          { key: 'leave-utilization', label: 'Leave Utilization', children: <LeaveUtilizationTab isHr={isHr} /> },
+          { key: 'turnover', label: 'Turnover', children: <TurnoverTab isHr={isHr} /> },
         ]
       : []),
     ...(isPayrollOfficer || isExecutive
