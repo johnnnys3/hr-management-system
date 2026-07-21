@@ -6,9 +6,9 @@ import { getMyProfile } from '../../api/selfService'
 import type { Employee } from '../../api/types'
 
 export function MyTeamPage() {
-  const { data: me, error: meError } = useQuery({ queryKey: ['self-service', 'me'], queryFn: getMyProfile })
+  const { data: me, isLoading: isMeLoading, error: meError } = useQuery({ queryKey: ['self-service', 'me'], queryFn: getMyProfile })
 
-  const { data: reports = [], isLoading, error: reportsError } = useQuery({
+  const { data: reports = [], isLoading: isReportsLoading, error: reportsError } = useQuery({
     queryKey: ['reporting', 'direct-reports', me?.id],
     queryFn: () => listDirectReports(me?.id as number),
     enabled: me !== undefined,
@@ -30,7 +30,7 @@ export function MyTeamPage() {
       <Typography.Title level={3}>My Team</Typography.Title>
       <Table<Employee>
         rowKey="id"
-        loading={isLoading}
+        loading={isMeLoading || isReportsLoading}
         dataSource={reports}
         pagination={{ pageSize: 25 }}
         locale={{ emptyText: 'You have no direct reports.' }}
