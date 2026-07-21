@@ -1,5 +1,7 @@
-import { Layout, Menu, Typography } from 'antd'
+import { useQuery } from '@tanstack/react-query'
+import { Badge, Layout, Menu, Typography } from 'antd'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { listNotifications } from '../api/notifications'
 import { useAuth } from '../auth/AuthContext'
 
 const { Header, Content } = Layout
@@ -9,8 +11,24 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  const { data: unreadNotifications = [] } = useQuery({
+    queryKey: ['notifications', 'list', 'unread-count'],
+    queryFn: () => listNotifications({ read_at__isnull: true }),
+    refetchInterval: 30000,
+  })
+
   const items = [
     { key: '/', label: <Link to="/">Home</Link> },
+    {
+      key: '/notifications',
+      label: (
+        <Link to="/notifications">
+          <Badge count={unreadNotifications.length} size="small" offset={[8, 0]}>
+            <span style={{ color: 'inherit' }}>Notifications</span>
+          </Badge>
+        </Link>
+      ),
+    },
     { key: '/role-grant-requests', label: <Link to="/role-grant-requests">Role Grant Requests</Link> },
     ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer'].includes(g))
       ? [{ key: '/departments', label: <Link to="/departments">Departments</Link> }]
