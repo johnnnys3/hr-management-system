@@ -6,6 +6,7 @@ from employees.models import Employee
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
 from notifications.models import Notification
 from onboarding.models import OnboardingChecklist, OnboardingTask
+from recruitment.models import Candidate, CandidateApplication, JobPosting, JobRequisition
 
 from .helpers import user_with_role
 
@@ -52,6 +53,28 @@ class OnboardingChecklistListTests(APITestCase):
         self.client.force_authenticate(self.hr_officer)
 
         response = self.client.get('/api/onboarding-checklists/', {'employee_id': self.employee.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['id'] for row in response.data], [self.checklist.pk])
+
+    def test_filters_by_application_id(self):
+        requisition = JobRequisition.objects.create(
+            department=self.employee.department, job_title=self.employee.job_title, requested_by=self.hr_officer,
+            status=JobRequisition.STATUS_APPROVED,
+        )
+        posting = JobPosting.objects.create(
+            requisition=requisition, title='Backend Engineer', description='Build things.',
+            channel=JobPosting.CHANNEL_INTERNAL,
+        )
+        candidate = Candidate.objects.create(first_name='Ada', last_name='Lovelace', email='ada@example.com')
+        application = CandidateApplication.objects.create(
+            candidate=candidate, posting=posting, stage=CandidateApplication.STAGE_HIRED,
+        )
+        self.checklist.application = application
+        self.checklist.save(update_fields=['application'])
+        self.client.force_authenticate(self.hr_officer)
+
+        response = self.client.get('/api/onboarding-checklists/', {'application_id': application.pk})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([row['id'] for row in response.data], [self.checklist.pk])
