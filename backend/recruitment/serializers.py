@@ -62,7 +62,8 @@ class OfferLetterSerializer(serializers.ModelSerializer):
     class Meta:
         model = OfferLetter
         fields = [
-            'id', 'application', 'offered_salary', 'status', 'issued_at', 'decided_at', 'document_object_key',
+            'id', 'application', 'offered_salary', 'offered_pay_grade', 'status', 'issued_at', 'decided_at',
+            'document_object_key',
         ]
         read_only_fields = ['id', 'application', 'status', 'issued_at', 'decided_at', 'document_object_key']
 

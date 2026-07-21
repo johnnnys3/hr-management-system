@@ -176,10 +176,16 @@ export interface OfferLetter {
   id: number
   application: number
   offered_salary: string
+  offered_pay_grade: number | null
   status: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
   issued_at: string
   decided_at: string | null
   document_object_key: string | null
+}
+
+export interface PayGradeOption {
+  id: number
+  name: string
 }
 
 export interface OnboardingChecklist {
