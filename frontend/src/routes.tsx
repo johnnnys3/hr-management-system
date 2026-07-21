@@ -11,6 +11,8 @@ import { UserManagementPage } from './modules/rbac/UserManagementPage'
 import { DepartmentsPage } from './modules/departments/DepartmentsPage'
 import { EmployeesPage } from './modules/employees/EmployeesPage'
 import { EmployeeDetailPage } from './modules/employees/EmployeeDetailPage'
+import { RecruitmentPage } from './modules/recruitment/RecruitmentPage'
+import { CandidateDetailPage } from './modules/recruitment/CandidateDetailPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -40,6 +42,13 @@ export const router = createBrowserRouter([
                 children: [
                   { path: '/employees', element: <EmployeesPage /> },
                   { path: '/employees/:id', element: <EmployeeDetailPage /> },
+                ],
+              },
+              {
+                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator']} />,
+                children: [
+                  { path: '/recruitment', element: <RecruitmentPage /> },
+                  { path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> },
                 ],
               },
               { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
