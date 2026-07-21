@@ -10,7 +10,7 @@ import {
   UserDeleteOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Alert, Avatar, Card, Col, List, Row, Statistic, Typography } from 'antd'
+import { Alert, Avatar, Card, Col, List, Progress, Row, Statistic, Typography } from 'antd'
 import { ApiError } from '../../api/client'
 import { getDashboard } from '../../api/dashboard'
 import { useAuth } from '../../auth/AuthContext'
@@ -90,8 +90,6 @@ export function DashboardPage() {
 
   const remainingStats = data.aggregates
     ? [
-        { title: 'Leave Days Entitled', value: data.aggregates.leave_utilization.entitled_days },
-        { title: 'Leave Days Used', value: data.aggregates.leave_utilization.used_days },
         { title: 'Payroll Gross Pay', value: data.aggregates.payroll_cost.gross_pay },
         { title: 'Payroll Net Pay', value: data.aggregates.payroll_cost.net_pay },
         { title: 'Finalized Payslips', value: data.aggregates.payroll_summary.payslip_count },
@@ -99,6 +97,13 @@ export function DashboardPage() {
         { title: 'Finalized Payroll Net Pay', value: data.aggregates.payroll_summary.net_pay },
       ]
     : []
+
+  const leaveUtilization = data.aggregates?.leave_utilization
+  const leaveUtilizationPercent = leaveUtilization
+    ? leaveUtilization.entitled_days > 0
+      ? Math.round((leaveUtilization.used_days / leaveUtilization.entitled_days) * 100)
+      : 0
+    : null
 
   return (
     <div>
@@ -123,6 +128,26 @@ export function DashboardPage() {
 
       <Row gutter={[16, 16]}>
         <Col span={16}>
+          {leaveUtilizationPercent !== null && leaveUtilization && (
+            <Card style={{ ...tileStyle(0), marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                <Progress
+                  type="circle"
+                  percent={leaveUtilizationPercent}
+                  size={88}
+                  strokeColor="#3C8C5B"
+                />
+                <div>
+                  <Typography.Text strong style={{ fontSize: 16, display: 'block' }}>
+                    Leave Utilization
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    {leaveUtilization.used_days} of {leaveUtilization.entitled_days} entitled days used
+                  </Typography.Text>
+                </div>
+              </div>
+            </Card>
+          )}
           {remainingStats.length > 0 && (
             <Row gutter={[16, 16]}>
               {remainingStats.map((stat, i) => {
@@ -152,12 +177,26 @@ export function DashboardPage() {
               <List
                 dataSource={data.leave_balance}
                 locale={{ emptyText: 'No leave balance records.' }}
-                renderItem={(balance) => (
-                  <List.Item>
-                    {balance.period_start} – {balance.period_end}: {balance.used_days} / {balance.entitled_days} days
-                    used
-                  </List.Item>
-                )}
+                renderItem={(balance) => {
+                  const entitled = Number(balance.entitled_days)
+                  const used = Number(balance.used_days)
+                  const percent = entitled > 0 ? Math.round((used / entitled) * 100) : 0
+                  return (
+                    <List.Item>
+                      <div style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span>
+                            {balance.period_start} – {balance.period_end}
+                          </span>
+                          <span>
+                            {balance.used_days} / {balance.entitled_days} days used
+                          </span>
+                        </div>
+                        <Progress percent={percent} showInfo={false} strokeColor="#3C8C5B" />
+                      </div>
+                    </List.Item>
+                  )
+                }}
               />
             </Card>
           )}
