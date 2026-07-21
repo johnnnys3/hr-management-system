@@ -48,7 +48,10 @@ export const router = createBrowserRouter([
                 element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator']} />,
                 children: [
                   { path: '/recruitment', element: <RecruitmentPage /> },
-                  { path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> },
+                  {
+                    element: <ProtectedRoute requireGroup="Recruiter" />,
+                    children: [{ path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> }],
+                  },
                 ],
               },
               { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },

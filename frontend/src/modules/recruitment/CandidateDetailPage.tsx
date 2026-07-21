@@ -256,6 +256,7 @@ function ScheduleInterviewModal({
 function OfferPanel({ applicationId }: { applicationId: number }) {
   const queryClient = useQueryClient()
   const [issueOpen, setIssueOpen] = useState(false)
+  const [inFlightOfferIds, setInFlightOfferIds] = useState<Set<number>>(new Set())
   const { data: offers = [], isLoading } = useQuery({
     queryKey: ['recruitment', 'offers', applicationId],
     queryFn: () => listOffers(applicationId),
@@ -265,17 +266,28 @@ function OfferPanel({ applicationId }: { applicationId: number }) {
   const decisionMutation = useMutation({
     mutationFn: ({ id, decision }: { id: number; decision: 'accepted' | 'rejected' | 'withdrawn' }) =>
       decideOffer(id, decision),
+    onMutate: ({ id }) => {
+      setInFlightOfferIds((prev) => new Set(prev).add(id))
+    },
+    onSettled: (_, __, { id }) => {
+      setInFlightOfferIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    },
     onSuccess: invalidate,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Action failed.'),
   })
 
   const currentOffer = offers[0]
+  const canIssueOffer = !isLoading && (!currentOffer || currentOffer.status === 'rejected' || currentOffer.status === 'withdrawn')
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <Typography.Text strong>Offer</Typography.Text>
-        {!currentOffer && !isLoading && (
+        {canIssueOffer && (
           <Button size="small" onClick={() => setIssueOpen(true)}>
             Issue Offer
           </Button>
@@ -289,6 +301,7 @@ function OfferPanel({ applicationId }: { applicationId: number }) {
             <Space>
               <Button
                 size="small"
+                loading={inFlightOfferIds.has(currentOffer.id)}
                 onClick={() => decisionMutation.mutate({ id: currentOffer.id, decision: 'accepted' })}
               >
                 Accept
@@ -296,11 +309,12 @@ function OfferPanel({ applicationId }: { applicationId: number }) {
               <Button
                 size="small"
                 danger
+                loading={inFlightOfferIds.has(currentOffer.id)}
                 onClick={() => decisionMutation.mutate({ id: currentOffer.id, decision: 'rejected' })}
               >
                 Reject
               </Button>
-              <Button size="small" onClick={() => decisionMutation.mutate({ id: currentOffer.id, decision: 'withdrawn' })}>
+              <Button size="small" loading={inFlightOfferIds.has(currentOffer.id)} onClick={() => decisionMutation.mutate({ id: currentOffer.id, decision: 'withdrawn' })}>
                 Withdraw
               </Button>
             </Space>

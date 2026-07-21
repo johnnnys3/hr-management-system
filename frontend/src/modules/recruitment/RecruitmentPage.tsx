@@ -54,6 +54,7 @@ function RequisitionsTab() {
   const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const [createOpen, setCreateOpen] = useState(false)
+  const [inFlightRequisitionIds, setInFlightRequisitionIds] = useState<Set<number>>(new Set())
 
   const { data: departments = [] } = useDepartments()
   const { data: jobTitles = [] } = useJobTitles()
@@ -67,6 +68,16 @@ function RequisitionsTab() {
   const decisionMutation = useMutation({
     mutationFn: ({ id, decision }: { id: number; decision: 'approve' | 'reject' }) =>
       decision === 'approve' ? approveJobRequisition(id) : rejectJobRequisition(id),
+    onMutate: ({ id }) => {
+      setInFlightRequisitionIds((prev) => new Set(prev).add(id))
+    },
+    onSettled: (_, __, { id }) => {
+      setInFlightRequisitionIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    },
     onSuccess: invalidate,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Action failed.'),
   })
@@ -105,7 +116,7 @@ function RequisitionsTab() {
                       <Space>
                         <Button
                           size="small"
-                          loading={decisionMutation.isPending && decisionMutation.variables?.id === record.id}
+                          loading={inFlightRequisitionIds.has(record.id)}
                           onClick={() => decisionMutation.mutate({ id: record.id, decision: 'approve' })}
                         >
                           Approve
@@ -113,7 +124,7 @@ function RequisitionsTab() {
                         <Button
                           size="small"
                           danger
-                          loading={decisionMutation.isPending && decisionMutation.variables?.id === record.id}
+                          loading={inFlightRequisitionIds.has(record.id)}
                           onClick={() => decisionMutation.mutate({ id: record.id, decision: 'reject' })}
                         >
                           Reject
@@ -183,6 +194,7 @@ function NewRequisitionModal({
 function PostingsTab() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
+  const [inFlightPostingIds, setInFlightPostingIds] = useState<Set<number>>(new Set())
   const { data: postings = [], isLoading } = useQuery({
     queryKey: ['recruitment', 'postings'],
     queryFn: () => listJobPostings(),
@@ -196,6 +208,16 @@ function PostingsTab() {
 
   const publishMutation = useMutation({
     mutationFn: (id: number) => publishJobPosting(id),
+    onMutate: (id) => {
+      setInFlightPostingIds((prev) => new Set(prev).add(id))
+    },
+    onSettled: (_, __, id) => {
+      setInFlightPostingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    },
     onSuccess: invalidate,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Publish failed.'),
   })
@@ -226,7 +248,7 @@ function PostingsTab() {
               !record.published_at ? (
                 <Button
                   size="small"
-                  loading={publishMutation.isPending && publishMutation.variables === record.id}
+                  loading={inFlightPostingIds.has(record.id)}
                   onClick={() => publishMutation.mutate(record.id)}
                 >
                   Publish
