@@ -18,6 +18,7 @@ import { OnboardingChecklistPage } from './modules/onboarding/OnboardingChecklis
 import { NotificationsPage } from './modules/notifications/NotificationsPage'
 import { LeavePage } from './modules/leave/LeavePage'
 import { AuditLogPage } from './modules/audit/AuditLogPage'
+import { ReportsPage } from './modules/reports/ReportsPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -77,6 +78,12 @@ export const router = createBrowserRouter([
                   { path: '/users', element: <UserManagementPage /> },
                   { path: '/audit-log', element: <AuditLogPage /> },
                 ],
+              },
+              {
+                element: (
+                  <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer', 'Payroll Officer', 'Executive']} />
+                ),
+                children: [{ path: '/reports', element: <ReportsPage /> }],
               },
             ],
           },
