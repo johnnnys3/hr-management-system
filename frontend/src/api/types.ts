@@ -115,6 +115,73 @@ export interface ReportingRelationship {
   effective_from: string
 }
 
+export type RequisitionStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'closed'
+
+export interface JobRequisition {
+  id: number
+  department: number
+  job_title: number
+  requested_by: number
+  status: RequisitionStatus
+  approved_by: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface JobPosting {
+  id: number
+  requisition: number
+  title: string
+  description: string
+  channel: 'internal' | 'external'
+  published_at: string | null
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Candidate {
+  id: number
+  first_name: string
+  last_name: string
+  email: string
+  phone: string | null
+  resume_object_key: string | null
+  created_at: string
+}
+
+export type ApplicationStage = 'applied' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'
+
+export interface CandidateApplication {
+  id: number
+  candidate: number
+  posting: number
+  stage: ApplicationStage
+  applied_at: string
+  updated_at: string
+}
+
+export interface Interview {
+  id: number
+  application: number
+  interviewer_employee: number | null
+  scheduled_at: string
+  status: 'scheduled' | 'completed' | 'cancelled'
+  feedback: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OfferLetter {
+  id: number
+  application: number
+  offered_salary: string
+  status: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+  issued_at: string
+  decided_at: string | null
+  document_object_key: string | null
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number
