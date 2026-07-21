@@ -85,7 +85,10 @@ export const router = createBrowserRouter([
               },
               {
                 element: (
-                  <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer', 'Payroll Officer', 'Executive']} />
+                  <ProtectedRoute
+                    requireGroup={['HR Administrator', 'HR Officer', 'Payroll Officer', 'Executive']}
+                    allowManager
+                  />
                 ),
                 children: [{ path: '/reports', element: <ReportsPage /> }],
               },

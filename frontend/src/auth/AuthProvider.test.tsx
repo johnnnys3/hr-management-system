@@ -31,7 +31,7 @@ describe('AuthProvider', () => {
       id: 1,
       email: 'a@b.com',
       groups: [],
-      second_factor_enrollment_pending: false,
+      is_employee: true, is_manager: false, second_factor_enrollment_pending: false,
     })
 
     renderProvider()

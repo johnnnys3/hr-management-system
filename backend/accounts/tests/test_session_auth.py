@@ -104,6 +104,32 @@ class MeTests(APITestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_derived_roles_are_false_with_no_employee_record(self):
+        user = User.objects.create_user(email='noemployee@example.com', password='x')
+        self.client.force_authenticate(user)
+
+        response = self.client.get(ME_URL)
+
+        self.assertFalse(response.data['is_employee'])
+        self.assertFalse(response.data['is_manager'])
+
+    def test_derived_roles_reflect_employee_and_manager_status(self):
+        from leave.tests.helpers import make_manager_and_report
+
+        manager, report = make_manager_and_report()
+        manager_user = User.objects.create_user(email='manager@example.com', password='x', employee=manager)
+        report_user = User.objects.create_user(email='report@example.com', password='x', employee=report)
+
+        self.client.force_authenticate(manager_user)
+        manager_response = self.client.get(ME_URL)
+        self.assertTrue(manager_response.data['is_employee'])
+        self.assertTrue(manager_response.data['is_manager'])
+
+        self.client.force_authenticate(report_user)
+        report_response = self.client.get(ME_URL)
+        self.assertTrue(report_response.data['is_employee'])
+        self.assertFalse(report_response.data['is_manager'])
+
 
 class InactivityExpiryTests(APITestCase):
     def test_session_cookie_age_is_the_configured_inactivity_window(self):

@@ -23,12 +23,13 @@ export function LeavePage() {
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
   const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const isHr = isHrOfficer || isHrAdministrator
+  const isManager = me?.is_manager ?? false
 
   const items = [
     { key: 'requests', label: 'Requests', children: <RequestsTab /> },
     { key: 'balances', label: 'Balances', children: <BalancesTab /> },
     ...(isHr ? [{ key: 'types', label: 'Leave Types', children: <LeaveTypesTab /> }] : []),
-    ...(isHr ? [{ key: 'calendar', label: 'Calendar', children: <CalendarTab /> }] : []),
+    ...(isHr || isManager ? [{ key: 'calendar', label: 'Calendar', children: <CalendarTab /> }] : []),
   ]
 
   return (

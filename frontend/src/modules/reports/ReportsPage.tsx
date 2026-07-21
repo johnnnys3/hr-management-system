@@ -251,9 +251,10 @@ export function ReportsPage() {
   const isHr = me?.groups.some((g) => ['HR Administrator', 'HR Officer'].includes(g)) ?? false
   const isPayrollOfficer = me?.groups.includes('Payroll Officer') ?? false
   const isExecutive = me?.groups.includes('Executive') ?? false
+  const isManager = me?.is_manager ?? false
 
   const items = [
-    ...(isHr || isExecutive
+    ...(isHr || isExecutive || isManager
       ? [
           { key: 'headcount', label: 'Headcount', children: <HeadcountTab /> },
           { key: 'leave-utilization', label: 'Leave Utilization', children: <LeaveUtilizationTab /> },

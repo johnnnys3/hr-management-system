@@ -14,7 +14,7 @@ function renderPage(groups: string[]) {
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider
         value={{
-          me: { id: 1, email: 'hr@b.com', groups, second_factor_enrollment_pending: false },
+          me: { id: 1, email: 'hr@b.com', groups, is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
           isLoading: false,
           refetch: async () => {},
           logout: async () => {},

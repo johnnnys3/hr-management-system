@@ -11,13 +11,13 @@ import { LeavePage } from './LeavePage'
 // entire antd-rendered tree (icons included) and is orders of magnitude
 // slower than text matching in this jsdom environment.
 
-function renderPage(groups: string[]) {
+function renderPage(groups: string[], isManager = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider
         value={{
-          me: { id: 1, email: 'user@b.com', groups, second_factor_enrollment_pending: false },
+          me: { id: 1, email: 'user@b.com', groups, is_employee: true, is_manager: isManager, second_factor_enrollment_pending: false },
           isLoading: false,
           refetch: async () => {},
           logout: async () => {},
@@ -97,10 +97,11 @@ describe('LeavePage', () => {
       reason: null, status: 'approved', approved_by: 1, decided_at: '', created_at: '',
     })
 
-    renderPage([])
+    renderPage([], true)
     const user = userEvent.setup()
 
     expect(await screen.findByText('Approve')).toBeInTheDocument()
+    expect(screen.getByText('Calendar')).toBeInTheDocument()
     await user.click(screen.getByText('Approve'))
     expect(approveSpy).toHaveBeenCalledWith(12)
   })
