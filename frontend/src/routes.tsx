@@ -1,7 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
 import { ProtectedRoute } from './auth/ProtectedRoute'
-import { HomePage } from './modules/auth/HomePage'
+import { DashboardPage } from './modules/dashboard/DashboardPage'
 import { LoginPage } from './modules/auth/LoginPage'
 import { PasswordResetPage } from './modules/auth/PasswordResetPage'
 import { SecondFactorEnrollPage } from './modules/auth/SecondFactorEnrollPage'
@@ -31,7 +31,7 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: '/', element: <HomePage /> },
+              { path: '/', element: <DashboardPage /> },
               { path: '/notifications', element: <NotificationsPage /> },
               { path: '/leave', element: <LeavePage /> },
               { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },

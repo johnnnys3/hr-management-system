@@ -270,3 +270,18 @@ export interface LeaveRequest {
   decided_at: string | null
   created_at: string
 }
+
+export interface DashboardAggregates {
+  headcount: { total: number }
+  leave_utilization: { entitled_days: number; used_days: number }
+  turnover: { hires: number; terminations: number }
+  payroll_cost: { gross_pay: number; net_pay: number }
+  payroll_summary: { gross_pay: number; net_pay: number; payslip_count: number }
+}
+
+export interface DashboardData {
+  aggregates?: DashboardAggregates
+  leave_balance?: LeaveBalance[]
+  pending_tasks?: Notification[]
+  team?: { pending_leave_requests: number }
+}
