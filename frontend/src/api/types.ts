@@ -311,3 +311,45 @@ export interface PaginatedResponse<T> {
   previous: string | null
   results: T[]
 }
+
+export interface HeadcountReport {
+  aggregate: { total: number }
+  breakdown?: { department_id: number; department__name: string; count: number }[]
+}
+
+export interface LeaveUtilizationReport {
+  aggregate: { entitled_days: number; used_days: number }
+  breakdown?: { leave_type_id: number; leave_type__name: string; entitled_days: number; used_days: number }[]
+}
+
+export interface TurnoverReport {
+  aggregate: { hires: number; terminations: number }
+  breakdown?: {
+    hires_by_department: { department_id: number; department__name: string; count: number }[]
+    terminations_by_department: { employee__department_id: number; employee__department__name: string; count: number }[]
+  }
+}
+
+export interface PayrollCostReport {
+  aggregate: { gross_pay: number; net_pay: number }
+  breakdown?: { employee__department_id: number; employee__department__name: string; gross_pay: number; net_pay: number }[]
+}
+
+export interface PayrollSummaryReport {
+  aggregate: { gross_pay: number; net_pay: number; payslip_count: number }
+  breakdown?: { id: number; period_start: string; period_end: string; gross_pay: number; net_pay: number }[]
+}
+
+export type ReportType = 'headcount' | 'leave_utilization' | 'turnover' | 'payroll_cost' | 'payroll_summary'
+export type ReportExportStatus = 'pending' | 'complete' | 'failed'
+
+export interface ReportExportRecord {
+  id: number
+  report_type: ReportType
+  params: Record<string, unknown>
+  status: ReportExportStatus
+  download_url: string | null
+  failed_reason: string | null
+  generated_at: string | null
+  created_at: string
+}

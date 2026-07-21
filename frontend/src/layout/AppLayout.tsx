@@ -50,6 +50,9 @@ export function AppLayout() {
           { key: '/audit-log', label: <Link to="/audit-log">Audit Log</Link> },
         ]
       : []),
+    ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Payroll Officer', 'Executive'].includes(g))
+      ? [{ key: '/reports', label: <Link to="/reports">Reports</Link> }]
+      : []),
     { key: 'logout', label: 'Log out' },
   ]
 
