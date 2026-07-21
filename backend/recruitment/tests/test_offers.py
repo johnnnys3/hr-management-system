@@ -3,7 +3,7 @@
 from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
-from iam.roles import RECRUITER
+from iam.roles import HR_OFFICER, RECRUITER
 from recruitment.models import Candidate, CandidateApplication, JobPosting, JobRequisition, OfferLetter
 
 from .helpers import user_with_role
@@ -89,6 +89,30 @@ class OfferLetterTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_hr_officer_can_read_but_not_issue_or_decide_offers(self):
+        """HR Officer needs read access to reach an accepted offer and trigger
+        HRMS-BR-013 conversion (module 9), but has no write access here —
+        `docs/07-iam-rbac.md` §4.2 grants Recruiter, not HR Officer, C/U."""
+        self.client.force_authenticate(self.recruiter)
+        create_response = self.client.post(
+            f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '95000.00'},
+        )
+        offer_id = create_response.data['id']
+
+        hr_officer = user_with_role('hrofficer@example.com', HR_OFFICER)
+        self.client.force_authenticate(hr_officer)
+        read_response = self.client.get(f'/api/applications/{self.application.pk}/offer/')
+        issue_response = self.client.post(
+            f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '50000.00'},
+        )
+        decide_response = self.client.post(
+            f'/api/offers/{offer_id}/decide/', {'decision': OfferLetter.STATUS_ACCEPTED},
+        )
+
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(issue_response.status_code, 403)
+        self.assertEqual(decide_response.status_code, 403)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(f'/api/applications/{self.application.pk}/offer/')

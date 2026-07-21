@@ -29,14 +29,16 @@ const REQUISITION_STATUS_COLORS: Record<string, string> = {
 export function RecruitmentPage() {
   const { me } = useAuth()
   const isRecruiter = me?.groups.includes('Recruiter') ?? false
+  const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
+  const isHrOfficer = me?.groups.includes('HR Officer') ?? false
 
   const items = [
-    { key: 'requisitions', label: 'Requisitions', children: <RequisitionsTab /> },
-    ...(isRecruiter
-      ? [
-          { key: 'postings', label: 'Postings', children: <PostingsTab /> },
-          { key: 'candidates', label: 'Candidates', children: <CandidatesTab /> },
-        ]
+    ...(isRecruiter || isHrAdministrator
+      ? [{ key: 'requisitions', label: 'Requisitions', children: <RequisitionsTab /> }]
+      : []),
+    ...(isRecruiter ? [{ key: 'postings', label: 'Postings', children: <PostingsTab /> }] : []),
+    ...(isRecruiter || isHrOfficer
+      ? [{ key: 'candidates', label: 'Candidates', children: <CandidatesTab /> }]
       : []),
   ]
 
@@ -330,6 +332,8 @@ function NewPostingModal({
 function CandidatesTab() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { me } = useAuth()
+  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const { data: candidates = [], isLoading } = useQuery({
@@ -346,9 +350,11 @@ function CandidatesTab() {
           style={{ width: 260 }}
           onSearch={setSearch}
         />
-        <Button type="primary" onClick={() => setCreateOpen(true)}>
-          New Candidate
-        </Button>
+        {isRecruiter && (
+          <Button type="primary" onClick={() => setCreateOpen(true)}>
+            New Candidate
+          </Button>
+        )}
       </div>
       <Table<Candidate>
         rowKey="id"

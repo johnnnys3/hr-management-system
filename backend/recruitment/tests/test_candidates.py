@@ -2,7 +2,7 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
-from iam.roles import HR_ADMINISTRATOR, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
 from recruitment.models import Candidate
 
 from .helpers import user_with_role
@@ -20,6 +20,7 @@ class CandidateTests(APITestCase):
     def setUp(self):
         self.recruiter = user_with_role('recruiter@example.com', RECRUITER)
         self.hr_admin = user_with_role('hradmin@example.com', HR_ADMINISTRATOR)
+        self.hr_officer = user_with_role('hrofficer@example.com', HR_OFFICER)
 
     def test_recruiter_can_create_a_candidate_without_a_resume(self):
         self.client.force_authenticate(self.recruiter)
@@ -71,6 +72,17 @@ class CandidateTests(APITestCase):
         response = self.client.get(CANDIDATES_URL)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_hr_officer_can_read_but_not_create_candidates(self):
+        self.client.force_authenticate(self.hr_officer)
+
+        read_response = self.client.get(CANDIDATES_URL)
+        write_response = self.client.post(CANDIDATES_URL, {
+            'first_name': 'Grace', 'last_name': 'Hopper', 'email': 'grace2@example.com',
+        })
+
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(write_response.status_code, 403)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(CANDIDATES_URL)

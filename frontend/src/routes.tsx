@@ -13,6 +13,8 @@ import { EmployeesPage } from './modules/employees/EmployeesPage'
 import { EmployeeDetailPage } from './modules/employees/EmployeeDetailPage'
 import { RecruitmentPage } from './modules/recruitment/RecruitmentPage'
 import { CandidateDetailPage } from './modules/recruitment/CandidateDetailPage'
+import { OnboardingPage } from './modules/onboarding/OnboardingPage'
+import { OnboardingChecklistPage } from './modules/onboarding/OnboardingChecklistPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -45,14 +47,22 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator']} />,
+                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator', 'HR Officer']} />,
                 children: [
                   { path: '/recruitment', element: <RecruitmentPage /> },
                   {
-                    element: <ProtectedRoute requireGroup="Recruiter" />,
+                    element: <ProtectedRoute requireGroup={['Recruiter', 'HR Officer']} />,
                     children: [{ path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> }],
                   },
                 ],
+              },
+              {
+                element: <ProtectedRoute requireGroup={['HR Officer', 'HR Administrator', 'Recruiter']} />,
+                children: [{ path: '/onboarding/:id', element: <OnboardingChecklistPage /> }],
+              },
+              {
+                element: <ProtectedRoute requireGroup="HR Officer" />,
+                children: [{ path: '/onboarding', element: <OnboardingPage /> }],
               },
               { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
               { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },
