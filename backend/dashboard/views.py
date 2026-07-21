@@ -41,7 +41,7 @@ class DashboardView(APIView):
             # so it defaults to the trailing 365 days, a standard annual
             # turnover window.
             today = timezone.now().date()
-            turnover_period_start = today - timedelta(days=TURNOVER_WINDOW_DAYS)
+            turnover_period_start = today - timedelta(days=TURNOVER_WINDOW_DAYS - 1)
             return Response({'aggregates': {
                 'headcount': headcount_report('aggregate', user)['aggregate'],
                 'leave_utilization': leave_utilization_report('aggregate', user)['aggregate'],
