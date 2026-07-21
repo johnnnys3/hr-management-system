@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from iam.roles import is_employee, is_manager
+
 from .models import SecondFactorRecoveryRequest, User
 
 
@@ -10,11 +12,26 @@ class LoginSerializer(serializers.Serializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
+    """`docs/06-api-contracts.md` §4.2's `/api/auth/me/` row promises "the
+    caller's ... derived role set (Employee/Manager, `docs/07-iam-rbac.md`
+    §3)" alongside assigned groups — `is_employee`/`is_manager` close that
+    gap (found unimplemented via a client-side consequence: no frontend
+    module could route-gate Manager-specific UI, since nothing on this
+    endpoint said whether the caller held the role)."""
+
     groups = serializers.SlugRelatedField(many=True, read_only=True, slug_field='name')
+    is_employee = serializers.SerializerMethodField()
+    is_manager = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'groups']
+        fields = ['id', 'email', 'groups', 'is_employee', 'is_manager']
+
+    def get_is_employee(self, user):
+        return is_employee(user)
+
+    def get_is_manager(self, user):
+        return is_manager(user)
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

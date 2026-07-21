@@ -2,6 +2,8 @@ export interface Me {
   id: number
   email: string
   groups: string[]
+  is_employee: boolean
+  is_manager: boolean
   second_factor_enrollment_pending: boolean
 }
 
