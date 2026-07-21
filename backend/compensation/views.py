@@ -101,7 +101,7 @@ class PayGradeListCreateView(APIView):
     permission_classes = [CanAccessPayGrades]
 
     def get(self, request):
-        pay_grades = PayGrade.objects.order_by('salary_structure_id', 'name')
+        pay_grades = PayGrade.objects.select_related('salary_structure').order_by('salary_structure_id', 'name')
         serializer_class = (
             PayGradeOptionSerializer if request.user.groups.filter(name=RECRUITER).exists() else PayGradeSerializer
         )

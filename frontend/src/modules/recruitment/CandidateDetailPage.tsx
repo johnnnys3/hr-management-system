@@ -446,7 +446,7 @@ function IssueOfferModal({
           style={{ width: '100%' }}
           placeholder="Pay grade (optional)"
           allowClear
-          options={payGrades.map((g) => ({ label: g.name, value: g.id }))}
+          options={payGrades.map((g) => ({ label: `${g.name} (${g.salary_structure_name})`, value: g.id }))}
           value={offeredPayGrade}
           onChange={setOfferedPayGrade}
         />

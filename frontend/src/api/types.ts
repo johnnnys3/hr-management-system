@@ -186,6 +186,7 @@ export interface OfferLetter {
 export interface PayGradeOption {
   id: number
   name: string
+  salary_structure_name: string
 }
 
 export type NotificationCategory = 'pending_task' | 'request_update'
