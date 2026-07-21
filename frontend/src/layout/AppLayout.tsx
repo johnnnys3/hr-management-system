@@ -68,9 +68,18 @@ export function AppLayout() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center' }}>
-        <Typography.Title level={4} style={{ color: 'white', margin: '0 24px 0 0' }}>
+    <Layout style={{ minHeight: '100vh', background: '#F7F3EC' }}>
+      <Header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: 'transparent',
+          padding: '20px 24px 0',
+          height: 'auto',
+          lineHeight: 'normal',
+        }}
+      >
+        <Typography.Title level={4} style={{ margin: '0 24px 0 0' }}>
           HRMS
         </Typography.Title>
         <Menu
@@ -79,7 +88,7 @@ export function AppLayout() {
           selectedKeys={[location.pathname]}
           items={items}
           onClick={handleClick}
-          style={{ flex: 1 }}
+          style={{ flex: 1, borderRadius: 999, padding: '4px 8px' }}
         />
       </Header>
       <Content style={{ padding: 24 }}>
