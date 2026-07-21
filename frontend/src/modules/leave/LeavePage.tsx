@@ -143,7 +143,7 @@ function RequestsTab() {
               if (isHrOfficer) {
                 return (
                   <Space>
-                    <Button size="small" onClick={() => editForm.resetFields() || setEditing(record)}>
+                    <Button size="small" onClick={() => { editForm.resetFields(); setEditing(record); }}>
                       Correct
                     </Button>
                     <Button

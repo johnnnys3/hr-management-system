@@ -12,6 +12,7 @@ import { DepartmentsPage } from './modules/departments/DepartmentsPage'
 import { EmployeesPage } from './modules/employees/EmployeesPage'
 import { EmployeeDetailPage } from './modules/employees/EmployeeDetailPage'
 import { MyProfilePage } from './modules/employees/MyProfilePage'
+import { MyTeamPage } from './modules/employees/MyTeamPage'
 import { RecruitmentPage } from './modules/recruitment/RecruitmentPage'
 import { CandidateDetailPage } from './modules/recruitment/CandidateDetailPage'
 import { OnboardingPage } from './modules/onboarding/OnboardingPage'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
               { path: '/notifications', element: <NotificationsPage /> },
               { path: '/leave', element: <LeavePage /> },
               { path: '/my-profile', element: <MyProfilePage /> },
+              { path: '/my-team', element: <MyTeamPage /> },
               { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },
               {
                 element: (
