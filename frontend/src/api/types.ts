@@ -182,6 +182,27 @@ export interface OfferLetter {
   document_object_key: string | null
 }
 
+export interface OnboardingChecklist {
+  id: number
+  employee: number
+  application: number | null
+  started_at: string
+  completed_at: string | null
+}
+
+export type OnboardingTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
+
+export interface OnboardingTask {
+  id: number
+  checklist: number
+  name: string
+  is_required: boolean
+  status: OnboardingTaskStatus
+  completed_by: number | null
+  completed_at: string | null
+  created_at: string
+}
+
 export interface RoleGrantRequestRecord {
   id: number
   requester: number

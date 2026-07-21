@@ -5,17 +5,27 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as employeesApi from '../../api/employees'
 import * as recruitmentApi from '../../api/recruitment'
+import { AuthContext } from '../../auth/AuthContext'
 import { CandidateDetailPage } from './CandidateDetailPage'
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/recruitment/candidates/1']}>
-        <Routes>
-          <Route path="/recruitment/candidates/:id" element={<CandidateDetailPage />} />
-        </Routes>
-      </MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          me: { id: 1, email: 'recruiter@b.com', groups: ['Recruiter'], second_factor_enrollment_pending: false },
+          isLoading: false,
+          refetch: async () => {},
+          logout: async () => {},
+        }}
+      >
+        <MemoryRouter initialEntries={['/recruitment/candidates/1']}>
+          <Routes>
+            <Route path="/recruitment/candidates/:id" element={<CandidateDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }

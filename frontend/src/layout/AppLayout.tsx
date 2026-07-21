@@ -21,6 +21,9 @@ export function AppLayout() {
     ...(me?.groups.some((g) => ['Recruiter', 'HR Administrator'].includes(g))
       ? [{ key: '/recruitment', label: <Link to="/recruitment">Recruitment</Link> }]
       : []),
+    ...(me?.groups.includes('HR Officer')
+      ? [{ key: '/onboarding', label: <Link to="/onboarding">Onboarding</Link> }]
+      : []),
     { key: '/second-factor/recovery', label: <Link to="/second-factor/recovery">2FA Recovery</Link> },
     ...(me?.groups.includes('System Administrator')
       ? [{ key: '/users', label: <Link to="/users">Users</Link> }]
