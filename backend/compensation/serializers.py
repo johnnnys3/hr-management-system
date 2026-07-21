@@ -34,6 +34,15 @@ class PayGradeSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class PayGradeOptionSerializer(serializers.ModelSerializer):
+    """Blind-selection view of a pay grade for roles without compensation
+    access (Recruiter) — id and name only, no salary figures."""
+
+    class Meta:
+        model = PayGrade
+        fields = ['id', 'name']
+
+
 class CompensationRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompensationRecord

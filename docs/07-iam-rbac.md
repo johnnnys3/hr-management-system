@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.6 |
+| Version | 1.7 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -21,6 +21,7 @@
 | John Kessie | 2026-07-15 | §7.3 wording corrected on review. The privileged-grant constraint is restated as separating authenticated *identities* rather than *parties*, which the same section's enforcement boundary already established but which one sentence still contradicted. The Django audit-permission row is restated to say that `is_superuser` bypasses `has_perm()` without consulting a permission, so the row constrains ordinary users only; the guarantee remains the PostgreSQL grant | 1.4 |
 | John Kessie | 2026-07-15 | Re-based on SRS v1.1, in which HRMS-NFR-024 is a *shall*. §7.3: the credential-reset route is recorded as **closed** — a second factor the account-administering role can neither enrol nor reset means a password reset no longer yields authentication as a payroll user. The proxy-account route is **not** closed with it; the two remain one residual, now narrowed to a single opening — a credential reset against an approver outside HRMS-NFR-024's scope — and reduced from a property of the design to a deployment condition on the `iam.approve_role_grant` holder. The enforcement boundary is restated: the privileged-grant constraint separates *parties* rather than *identities* exactly where the approver holds a second factor. What HRMS-NFR-024 does not reach is stated: break-glass custody, the operational ceiling, and the roles the requirement covers. §8: the credential-reset item is resolved; the approver holder item gains the scope condition; the coverage of "administrators and payroll users" and the enrolment and recovery approver are recorded as new open items. §1.4 and §9 updated | 1.5 |
 | John Kessie | 2026-07-15 | §1.4: the `docs/01-srs.pdf` row is removed. The rendering was stale against SRS v1.1 and has been deleted from the repository on the project owner's decision; a related-documents table may not point at a file that does not exist. No design content changes | 1.6 |
+| John Kessie | 2026-07-21 | **Recruiter had no way to look up a pay grade id when issuing an offer (`docs/06-api-contracts.md` §4.6's `offered_pay_grade`, issue #98), since §4.2's "Salary structures, pay grades" row grants read only to HR Administrator, HR Officer, Payroll Officer.** §4.2's row is qualified: Recruiter gains a blind-selection read of pay grades (name only) for this purpose. §2.4's "Recruiter has no payroll or compensation access" (line 189) is narrowed to state the carve-out and why it does not defeat the split: Recruiter still cannot see `min_salary`/`max_salary`, cannot read salary structures, and holds no compensation write of any kind — the ghost-employee fraud path §2.4 closes runs through *defining* a pay grade and *creating an employee record*, neither of which this read touches. Owner-confirmed 2026-07-21 | 1.7 |
 
 ---
 
@@ -167,7 +168,7 @@ Legend: **C** create, **R** read, **U** update, **A** approve, **—** no access
 | Payslips (FR-028, FR-044) | — | — | — | — | C, R | — | — | R own |
 | Payroll processing (FR-035–046, FR-048) | — | — | — | — | C, R, U | — | — | — |
 | Payroll finalisation approval (FR-047, BR-008) | — | ‡ | ‡ | ‡ | ‡ | ‡ | — | — |
-| Salary structures, pay grades (FR-056–057) | — | C, R, U | R | — | R | — | — | — |
+| Salary structures, pay grades (FR-056–057) | — | C, R, U | R | R (pay grades only, name not figures — see §4.3) | R | — | — | — |
 | Assign employee to pay grade (§4.6) | — | — | C, R, U | — | — | — | — | — |
 | Compensation history (FR-058) | — | R | R | — | R | — | — | — |
 | Bonus cycles, allowances, benefits (FR-059–061) | — | C, R, U | R | — | R | — | — | R own |
@@ -186,7 +187,7 @@ Legend: **C** create, **R** read, **U** update, **A** approve, **—** no access
 
 **Executive is read-only and aggregate.** SRS §2.3.7 requires summarised reports, not full operational access. Executive reaches dashboards and analytics only, never an individual employee record or payslip. This satisfies HRMS-NFR-019 without exception.
 
-**Recruiter has no payroll or compensation access**, per SRS §2.3.3.
+**Recruiter has no payroll or compensation access**, per SRS §2.3.3 — with one narrow carve-out: Recruiter may read pay grade names (not `min_salary`/`max_salary`, not salary structures) to select `offered_pay_grade` when issuing an offer (`docs/06-api-contracts.md` §4.6). This is a blind selection, not compensation visibility, and does not reach either half of §2.4's fraud path — Recruiter still cannot define a pay grade or create an employee record.
 
 **Payroll Officer reads only the employee fields payroll requires** — identifiers, employment status, compensation, statutory numbers, bank details. Not recruitment records, not documents unrelated to payroll. HRMS-NFR-019 restricts payroll data to payroll users; the converse restriction applies equally.
 

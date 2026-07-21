@@ -20,6 +20,8 @@ from .models import (
     PayGrade,
     SalaryStructure,
 )
+from iam.roles import RECRUITER
+
 from .permissions import (
     CanAccessAllowanceTypes,
     CanAccessBenefitEnrollments,
@@ -28,6 +30,7 @@ from .permissions import (
     CanAccessBonusCycles,
     CanAccessCompensationRecords,
     CanAccessEmployeeAllowances,
+    CanAccessPayGrades,
     CanAccessSalaryFramework,
 )
 from .serializers import (
@@ -42,6 +45,7 @@ from .serializers import (
     CompensationRecordSerializer,
     EmployeeAllowanceCreateSerializer,
     EmployeeAllowanceSerializer,
+    PayGradeOptionSerializer,
     PayGradeSerializer,
     SalaryStructureSerializer,
 )
@@ -94,10 +98,14 @@ class SalaryStructureDetailView(APIView):
 class PayGradeListCreateView(APIView):
     """`GET, POST /api/pay-grades/`, `docs/06-api-contracts.md` §4.13."""
 
-    permission_classes = [CanAccessSalaryFramework]
+    permission_classes = [CanAccessPayGrades]
 
     def get(self, request):
-        return Response(PayGradeSerializer(PayGrade.objects.order_by('salary_structure_id', 'name'), many=True).data)
+        pay_grades = PayGrade.objects.order_by('salary_structure_id', 'name')
+        serializer_class = (
+            PayGradeOptionSerializer if request.user.groups.filter(name=RECRUITER).exists() else PayGradeSerializer
+        )
+        return Response(serializer_class(pay_grades, many=True).data)
 
     def post(self, request):
         serializer = PayGradeSerializer(data=request.data)

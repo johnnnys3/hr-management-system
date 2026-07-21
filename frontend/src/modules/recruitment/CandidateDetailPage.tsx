@@ -16,6 +16,7 @@ import {
   listInterviews,
   listJobPostings,
   listOffers,
+  listPayGradeOptions,
 } from '../../api/recruitment'
 import type { CandidateApplication, Interview } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
@@ -414,9 +415,11 @@ function IssueOfferModal({
   onCreated: () => void
 }) {
   const [offeredSalary, setOfferedSalary] = useState<number | null>(null)
+  const [offeredPayGrade, setOfferedPayGrade] = useState<number | null>(null)
+  const { data: payGrades = [] } = useQuery({ queryKey: ['recruitment', 'pay-grades'], queryFn: listPayGradeOptions })
 
   const mutation = useMutation({
-    mutationFn: () => createOffer(applicationId, String(offeredSalary)),
+    mutationFn: () => createOffer(applicationId, String(offeredSalary), offeredPayGrade),
     onSuccess: onCreated,
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Issue failed.'),
   })
@@ -431,13 +434,23 @@ function IssueOfferModal({
       okButtonProps={{ disabled: offeredSalary === null }}
       confirmLoading={mutation.isPending}
     >
-      <InputNumber
-        style={{ width: '100%' }}
-        placeholder="Offered salary"
-        min={0}
-        value={offeredSalary}
-        onChange={setOfferedSalary}
-      />
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <InputNumber
+          style={{ width: '100%' }}
+          placeholder="Offered salary"
+          min={0}
+          value={offeredSalary}
+          onChange={setOfferedSalary}
+        />
+        <Select
+          style={{ width: '100%' }}
+          placeholder="Pay grade (optional)"
+          allowClear
+          options={payGrades.map((g) => ({ label: g.name, value: g.id }))}
+          value={offeredPayGrade}
+          onChange={setOfferedPayGrade}
+        />
+      </Space>
     </Modal>
   )
 }

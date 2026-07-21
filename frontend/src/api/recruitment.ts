@@ -1,5 +1,9 @@
 import { apiFetch } from './client'
-import type { Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter } from './types'
+import type { Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter, PayGradeOption } from './types'
+
+export function listPayGradeOptions(): Promise<PayGradeOption[]> {
+  return apiFetch('/api/pay-grades/')
+}
 
 export function listJobRequisitions(status?: string): Promise<JobRequisition[]> {
   const suffix = status ? `?status=${status}` : ''
@@ -92,10 +96,14 @@ export function listOffers(applicationId: number): Promise<OfferLetter[]> {
   return apiFetch(`/api/applications/${applicationId}/offer/`)
 }
 
-export function createOffer(applicationId: number, offeredSalary: string): Promise<OfferLetter> {
+export function createOffer(
+  applicationId: number,
+  offeredSalary: string,
+  offeredPayGrade: number | null,
+): Promise<OfferLetter> {
   return apiFetch(`/api/applications/${applicationId}/offer/`, {
     method: 'POST',
-    body: { offered_salary: offeredSalary },
+    body: { offered_salary: offeredSalary, offered_pay_grade: offeredPayGrade },
   })
 }
 
