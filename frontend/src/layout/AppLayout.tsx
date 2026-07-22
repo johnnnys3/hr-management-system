@@ -34,7 +34,7 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { data: unreadNotifications = [] } = useQuery({
+  const { data: unreadNotificationsResponse } = useQuery({
     queryKey: ['notifications', 'list', 'unread-count'],
     queryFn: () => listNotifications({ read_at__isnull: true }),
     refetchInterval: 30000,
@@ -42,7 +42,7 @@ export function AppLayout() {
 
   const items: { key: string; label: string; badge?: number }[] = [
     { key: '/', label: 'Dashboard' },
-    { key: '/notifications', label: 'Notifications', badge: unreadNotifications.length },
+    { key: '/notifications', label: 'Notifications', badge: unreadNotificationsResponse?.count ?? 0 },
     { key: '/leave', label: 'Leave' },
     { key: '/my-profile', label: 'My Profile' },
     ...(me?.is_manager ? [{ key: '/my-team', label: 'My Team' }] : []),
@@ -115,7 +115,12 @@ export function AppLayout() {
           role="button"
           tabIndex={0}
           onClick={handleLogout}
-          onKeyDown={(e) => e.key === 'Enter' && handleLogout()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleLogout()
+            }
+          }}
           style={{
             fontSize: 14,
             color: 'rgba(0,0,0,0.45)',

@@ -3,6 +3,7 @@ import { Alert, Progress, Typography } from 'antd'
 import { ApiError } from '../../api/client'
 import { getDashboard } from '../../api/dashboard'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 
 const GREEN = '#2F6B4F'
 
@@ -11,15 +12,6 @@ function HeadlineStat({ label, value }: { label: string; value: number }) {
     <div>
       <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: '#111' }}>{value}</div>
-    </div>
-  )
-}
-
-function StripStat({ label, value, accent, last }: { label: string; value: string; accent?: boolean; last?: boolean }) {
-  return (
-    <div style={{ flex: 1, padding: '18px 24px', borderRight: last ? 'none' : '1px solid #ececec' }}>
-      <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: accent ? GREEN : '#111' }}>{value}</div>
     </div>
   )
 }
@@ -64,9 +56,18 @@ export function DashboardPage() {
         ...(leaveUtilizationPercent !== null
           ? [{ label: 'Leave Utilization', value: `${leaveUtilizationPercent}%`, accent: true }]
           : []),
-        { label: 'Payroll Gross Pay', value: String(data.aggregates.payroll_cost.gross_pay) },
-        { label: 'Payroll Net Pay', value: String(data.aggregates.payroll_cost.net_pay) },
-        { label: 'Finalized Payslips', value: String(data.aggregates.payroll_summary.payslip_count) },
+        {
+          label: 'Payroll Gross Pay',
+          value: `$${Number(data.aggregates.payroll_cost.gross_pay).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        },
+        {
+          label: 'Payroll Net Pay',
+          value: `$${Number(data.aggregates.payroll_cost.net_pay).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        },
+        {
+          label: 'Finalized Payslips',
+          value: Number(data.aggregates.payroll_summary.payslip_count).toLocaleString('en-US')
+        },
       ]
     : []
 
@@ -106,20 +107,7 @@ export function DashboardPage() {
         )}
       </div>
 
-      {stripStats.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            borderTop: '1px solid #ececec',
-            borderBottom: '1px solid #ececec',
-            marginBottom: 24,
-          }}
-        >
-          {stripStats.map((stat, i) => (
-            <StripStat key={stat.label} {...stat} last={i === stripStats.length - 1} />
-          ))}
-        </div>
-      )}
+      <StatStrip stats={stripStats} />
 
       {hasBottomSection && (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 40 }}>

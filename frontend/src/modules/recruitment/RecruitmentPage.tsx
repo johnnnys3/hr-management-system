@@ -34,7 +34,7 @@ export function RecruitmentPage() {
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
 
   const { data: requisitions = [] } = useQuery({
-    queryKey: ['recruitment', 'requisitions'],
+    queryKey: ['recruitment', 'requisitions', 'all'],
     queryFn: () => listJobRequisitions(),
     enabled: isRecruiter || isHrAdministrator,
   })
@@ -84,7 +84,7 @@ function RequisitionsTab() {
   const { data: departments = [] } = useDepartments()
   const { data: jobTitles = [] } = useJobTitles()
   const { data: requisitions = [], isLoading } = useQuery({
-    queryKey: ['recruitment', 'requisitions'],
+    queryKey: ['recruitment', 'requisitions', 'all'],
     queryFn: () => listJobRequisitions(),
   })
 
@@ -225,7 +225,7 @@ function PostingsTab() {
     queryFn: () => listJobPostings(),
   })
   const { data: requisitions = [] } = useQuery({
-    queryKey: ['recruitment', 'requisitions'],
+    queryKey: ['recruitment', 'requisitions', 'approved'],
     queryFn: () => listJobRequisitions('approved'),
   })
 

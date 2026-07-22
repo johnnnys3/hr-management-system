@@ -79,7 +79,7 @@ function HeadcountTab({ isHr }: { isHr: boolean }) {
       <StatStrip
         stats={[
           { label: 'Total Headcount', value: isLoading ? '—' : (data?.aggregate.total ?? 0) },
-          ...(isHr ? [{ label: 'Departments', value: departments.length }] : []),
+          ...(isHr ? [{ label: 'Departments (Filter Options)', value: departments.length }] : []),
         ]}
       />
       {departmentBreakdown.length > 0 && (
