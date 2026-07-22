@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'health.apps.HealthConfig',
     'audit.apps.AuditConfig',
     'mail.apps.MailConfig',
@@ -53,6 +54,7 @@ INSTALLED_APPS = [
     'compensation.apps.CompensationConfig',
     'payroll.apps.PayrollConfig',
     'reports.apps.ReportsConfig',
+    'contracts.apps.ContractsConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -245,4 +247,18 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# docs/03-tech-stack.md §9's contract-test tool (`docs/08-testing-plan.md`
+# §3.2). Title/description are cosmetic; nothing in the M18 contract-test
+# suite (contracts app) depends on them.
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'HRMS API',
+    'DESCRIPTION': (
+        'Generated from the live DRF views, serializers, and URLconf. '
+        'docs/06-api-contracts.md is the upstream contract this is checked against, not generated from.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
