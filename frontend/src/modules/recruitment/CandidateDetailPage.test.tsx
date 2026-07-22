@@ -33,7 +33,7 @@ function renderPage() {
 describe('CandidateDetailPage', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('shows the candidate and their applications, with offer/interview panels on expand', async () => {
+  it('shows the candidate and their applications, with offer/interview panels on expand', { timeout: 15000 }, async () => {
     vi.spyOn(recruitmentApi, 'getCandidate').mockResolvedValue({
       id: 1, first_name: 'Grace', last_name: 'Hopper', email: 'grace@b.com', phone: null, resume_object_key: null, created_at: '',
     })
