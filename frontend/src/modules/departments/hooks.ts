@@ -9,6 +9,10 @@ export function useDepartments(options?: { enabled?: boolean }) {
   })
 }
 
-export function useJobTitles() {
-  return useQuery({ queryKey: ['departments', 'job-titles'], queryFn: listJobTitles })
+export function useJobTitles(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['departments', 'job-titles'],
+    queryFn: listJobTitles,
+    enabled: options?.enabled ?? true,
+  })
 }

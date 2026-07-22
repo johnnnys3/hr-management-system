@@ -12,6 +12,7 @@ import {
 } from '../../api/onboarding'
 import type { OnboardingTask, OnboardingTaskStatus } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 import { TASK_STATUS_COLORS } from './constants'
 
 const NEXT_STATUS: Record<OnboardingTaskStatus, { label: string; status: OnboardingTaskStatus }[]> = {
@@ -86,7 +87,16 @@ export function OnboardingChecklistPage() {
         Started {new Date(checklist.started_at).toLocaleString()}
         {checklist.completed_at && ` · Completed ${new Date(checklist.completed_at).toLocaleString()}`}
       </Typography.Text>
-      <div style={{ marginTop: 24, marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginTop: 24 }}>
+        <StatStrip
+          stats={[
+            { label: 'Completed', value: tasks.filter((t) => t.status === 'completed').length },
+            { label: 'In Progress', value: tasks.filter((t) => t.status === 'in_progress').length },
+            { label: 'Pending', value: tasks.filter((t) => t.status === 'pending').length },
+          ]}
+        />
+      </div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Typography.Title level={5} style={{ margin: 0 }}>
           Tasks
         </Typography.Title>
@@ -96,44 +106,46 @@ export function OnboardingChecklistPage() {
           </Button>
         )}
       </div>
-      <Table<OnboardingTask>
-        rowKey="id"
-        loading={tasksLoading}
-        dataSource={tasks}
-        pagination={false}
-        columns={[
-          { title: 'Name', dataIndex: 'name' },
-          { title: 'Required', dataIndex: 'is_required', render: (v: boolean) => (v ? 'Yes' : 'No') },
-          {
-            title: 'Status',
-            dataIndex: 'status',
-            render: (s: OnboardingTaskStatus) => <Tag color={TASK_STATUS_COLORS[s]}>{s.replace('_', ' ')}</Tag>,
-          },
-          ...(isHrOfficer
-            ? [
-                {
-                  title: 'Actions',
-                  key: 'actions',
-                  render: (_: unknown, task: OnboardingTask) => (
-                    <>
-                      {NEXT_STATUS[task.status].map(({ label, status }) => (
-                        <Button
-                          key={status}
-                          size="small"
-                          style={{ marginRight: 8 }}
-                          loading={inFlightTaskIds.has(task.id)}
-                          onClick={() => statusMutation.mutate({ id: task.id, status })}
-                        >
-                          {label}
-                        </Button>
-                      ))}
-                    </>
-                  ),
-                },
-              ]
-            : []),
-        ]}
-      />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<OnboardingTask>
+          rowKey="id"
+          loading={tasksLoading}
+          dataSource={tasks}
+          pagination={false}
+          columns={[
+            { title: 'Name', dataIndex: 'name' },
+            { title: 'Required', dataIndex: 'is_required', render: (v: boolean) => (v ? 'Yes' : 'No') },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              render: (s: OnboardingTaskStatus) => <Tag color={TASK_STATUS_COLORS[s]}>{s.replace('_', ' ')}</Tag>,
+            },
+            ...(isHrOfficer
+              ? [
+                  {
+                    title: 'Actions',
+                    key: 'actions',
+                    render: (_: unknown, task: OnboardingTask) => (
+                      <>
+                        {NEXT_STATUS[task.status].map(({ label, status }) => (
+                          <Button
+                            key={status}
+                            size="small"
+                            style={{ marginRight: 8 }}
+                            loading={inFlightTaskIds.has(task.id)}
+                            onClick={() => statusMutation.mutate({ id: task.id, status })}
+                          >
+                            {label}
+                          </Button>
+                        ))}
+                      </>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </div>
       {addTaskOpen && (
         <AddTaskModal
           checklistId={checklistId}

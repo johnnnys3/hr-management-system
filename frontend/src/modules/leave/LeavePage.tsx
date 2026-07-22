@@ -16,6 +16,7 @@ import {
 } from '../../api/leave'
 import type { LeaveRequest } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 import { LEAVE_REQUEST_STATUS_COLORS } from './constants'
 
 export function LeavePage() {
@@ -25,17 +26,37 @@ export function LeavePage() {
   const isHr = isHrOfficer || isHrAdministrator
   const isManager = me?.is_manager ?? false
 
+  const { data: requests = [] } = useQuery({ queryKey: ['leave', 'requests'], queryFn: () => listLeaveRequests() })
+  const { data: balances = [] } = useQuery({ queryKey: ['leave', 'balances'], queryFn: listLeaveBalances })
+  const [activeKey, setActiveKey] = useState('requests')
+
   const items = [
-    { key: 'requests', label: 'Requests', children: <RequestsTab /> },
-    { key: 'balances', label: 'Balances', children: <BalancesTab /> },
-    ...(isHr ? [{ key: 'types', label: 'Leave Types', children: <LeaveTypesTab /> }] : []),
-    ...(isHr || isManager ? [{ key: 'calendar', label: 'Calendar', children: <CalendarTab /> }] : []),
+    { key: 'requests', label: 'Requests', content: <RequestsTab /> },
+    { key: 'balances', label: 'Balances', content: <BalancesTab /> },
+    ...(isHr ? [{ key: 'types', label: 'Leave Types', content: <LeaveTypesTab /> }] : []),
+    ...(isHr || isManager ? [{ key: 'calendar', label: 'Calendar', content: <CalendarTab /> }] : []),
   ]
 
   return (
     <div>
       <Typography.Title level={3}>Leave</Typography.Title>
-      <Tabs items={items} />
+      <Tabs
+        activeKey={activeKey}
+        onChange={setActiveKey}
+        items={items.map(({ key, label }) => ({ key, label }))}
+      />
+      <StatStrip
+        stats={[
+          { label: 'Pending', value: requests.filter((r) => r.status === 'pending').length },
+          { label: 'Approved', value: requests.filter((r) => r.status === 'approved').length },
+          { label: 'Rejected', value: requests.filter((r) => r.status === 'rejected').length },
+          {
+            label: 'Days Used YTD',
+            value: balances.reduce((sum, b) => sum + Number(b.used_days), 0),
+          },
+        ]}
+      />
+      {items.find((item) => item.key === activeKey)?.content}
     </div>
   )
 }
@@ -122,34 +143,63 @@ function RequestsTab() {
           New Request
         </Button>
       </div>
-      <Table<LeaveRequest>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={requests}
-        pagination={{ pageSize: 25 }}
-        columns={[
-          { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
-          { title: 'Start', dataIndex: 'start_date' },
-          { title: 'End', dataIndex: 'end_date' },
-          { title: 'Reason', dataIndex: 'reason' },
-          {
-            title: 'Status',
-            dataIndex: 'status',
-            render: (s: string) => <Tag color={LEAVE_REQUEST_STATUS_COLORS[s]}>{s}</Tag>,
-          },
-          {
-            title: 'Actions',
-            render: (_: unknown, record: LeaveRequest) => {
-              if (record.status !== 'pending') return null
-              if (isHrOfficer) {
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<LeaveRequest>
+          rowKey="id"
+          loading={isLoading}
+          dataSource={requests}
+          pagination={{ pageSize: 25 }}
+          columns={[
+            { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
+            { title: 'Start', dataIndex: 'start_date' },
+            { title: 'End', dataIndex: 'end_date' },
+            { title: 'Reason', dataIndex: 'reason' },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              render: (s: string) => <Tag color={LEAVE_REQUEST_STATUS_COLORS[s]}>{s}</Tag>,
+            },
+            {
+              title: 'Actions',
+              render: (_: unknown, record: LeaveRequest) => {
+                if (record.status !== 'pending') return null
+                if (isHrOfficer) {
+                  return (
+                    <Space>
+                      <Button size="small" onClick={() => { editForm.resetFields(); setEditing(record); }}>
+                        Correct
+                      </Button>
+                      <Button
+                        size="small"
+                        danger
+                        loading={inFlightIds.has(record.id)}
+                        onClick={() => decisionMutation.mutate({ id: record.id, action: 'cancel' })}
+                      >
+                        Cancel
+                      </Button>
+                    </Space>
+                  )
+                }
+                if (isHr) return null
                 return (
                   <Space>
-                    <Button size="small" onClick={() => { editForm.resetFields(); setEditing(record); }}>
-                      Correct
+                    <Button
+                      size="small"
+                      loading={inFlightIds.has(record.id)}
+                      onClick={() => decisionMutation.mutate({ id: record.id, action: 'approve' })}
+                    >
+                      Approve
                     </Button>
                     <Button
                       size="small"
                       danger
+                      loading={inFlightIds.has(record.id)}
+                      onClick={() => decisionMutation.mutate({ id: record.id, action: 'reject' })}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="small"
                       loading={inFlightIds.has(record.id)}
                       onClick={() => decisionMutation.mutate({ id: record.id, action: 'cancel' })}
                     >
@@ -157,38 +207,11 @@ function RequestsTab() {
                     </Button>
                   </Space>
                 )
-              }
-              if (isHr) return null
-              return (
-                <Space>
-                  <Button
-                    size="small"
-                    loading={inFlightIds.has(record.id)}
-                    onClick={() => decisionMutation.mutate({ id: record.id, action: 'approve' })}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="small"
-                    danger
-                    loading={inFlightIds.has(record.id)}
-                    onClick={() => decisionMutation.mutate({ id: record.id, action: 'reject' })}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    size="small"
-                    loading={inFlightIds.has(record.id)}
-                    onClick={() => decisionMutation.mutate({ id: record.id, action: 'cancel' })}
-                  >
-                    Cancel
-                  </Button>
-                </Space>
-              )
+              },
             },
-          },
-        ]}
-      />
+          ]}
+        />
+      </div>
 
       <Modal
         open={createOpen}
@@ -283,19 +306,21 @@ function BalancesTab() {
   }
 
   return (
-    <Table
-      rowKey="id"
-      loading={isLoading}
-      dataSource={balances}
-      pagination={{ pageSize: 25 }}
-      columns={[
-        { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
-        { title: 'Period Start', dataIndex: 'period_start' },
-        { title: 'Period End', dataIndex: 'period_end' },
-        { title: 'Entitled Days', dataIndex: 'entitled_days' },
-        { title: 'Used Days', dataIndex: 'used_days' },
-      ]}
-    />
+    <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+      <Table
+        rowKey="id"
+        loading={isLoading}
+        dataSource={balances}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
+          { title: 'Period Start', dataIndex: 'period_start' },
+          { title: 'Period End', dataIndex: 'period_end' },
+          { title: 'Entitled Days', dataIndex: 'entitled_days' },
+          { title: 'Used Days', dataIndex: 'used_days' },
+        ]}
+      />
+    </div>
   )
 }
 
@@ -313,17 +338,19 @@ function LeaveTypesTab() {
   }
 
   return (
-    <Table
-      rowKey="id"
-      loading={isLoading}
-      dataSource={leaveTypes}
-      pagination={{ pageSize: 25 }}
-      columns={[
-        { title: 'Name', dataIndex: 'name' },
-        { title: 'Requires Approval', dataIndex: 'requires_approval', render: (v: boolean) => (v ? 'Yes' : 'No') },
-        { title: 'Active', dataIndex: 'is_active', render: (v: boolean) => (v ? 'Yes' : 'No') },
-      ]}
-    />
+    <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+      <Table
+        rowKey="id"
+        loading={isLoading}
+        dataSource={leaveTypes}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'Name', dataIndex: 'name' },
+          { title: 'Requires Approval', dataIndex: 'requires_approval', render: (v: boolean) => (v ? 'Yes' : 'No') },
+          { title: 'Active', dataIndex: 'is_active', render: (v: boolean) => (v ? 'Yes' : 'No') },
+        ]}
+      />
+    </div>
   )
 }
 
@@ -345,16 +372,18 @@ function CalendarTab() {
   }
 
   return (
-    <Table
-      rowKey="id"
-      loading={isLoading}
-      dataSource={entries}
-      pagination={{ pageSize: 25 }}
-      columns={[
-        { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
-        { title: 'Start', dataIndex: 'start_date' },
-        { title: 'End', dataIndex: 'end_date' },
-      ]}
-    />
+    <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+      <Table
+        rowKey="id"
+        loading={isLoading}
+        dataSource={entries}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'Leave Type', dataIndex: 'leave_type', render: leaveTypeName },
+          { title: 'Start', dataIndex: 'start_date' },
+          { title: 'End', dataIndex: 'end_date' },
+        ]}
+      />
+    </div>
   )
 }

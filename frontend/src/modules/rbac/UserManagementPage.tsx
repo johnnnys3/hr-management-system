@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createUser, listUsers, updateUser } from '../../api/rbac'
 import { ApiError } from '../../api/client'
 import type { UserAccount } from '../../api/types'
+import { StatStrip } from '../../components/StatStrip'
 
 const USERS_QUERY_KEY = ['rbac', 'users']
 
@@ -22,26 +23,35 @@ export function UserManagementPage() {
           New User
         </Button>
       </div>
-      <Table
-        rowKey="id"
-        loading={isLoading}
-        dataSource={users}
-        pagination={{ pageSize: 25 }}
-        onRow={(record) => ({ onClick: () => setModalUser(record), style: { cursor: 'pointer' } })}
-        columns={[
-          { title: 'Email', dataIndex: 'email' },
-          {
-            title: 'Active',
-            dataIndex: 'is_active',
-            render: (active: boolean) => (active ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>),
-          },
-          {
-            title: 'Roles',
-            dataIndex: 'groups',
-            render: (groups: string[]) => groups.map((g) => <Tag key={g}>{g}</Tag>),
-          },
+      <StatStrip
+        stats={[
+          { label: 'Total Users', value: users.length },
+          { label: 'Active', value: users.filter((u) => u.is_active).length },
+          { label: 'Inactive', value: users.filter((u) => !u.is_active).length },
         ]}
       />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table
+          rowKey="id"
+          loading={isLoading}
+          dataSource={users}
+          pagination={{ pageSize: 25 }}
+          onRow={(record) => ({ onClick: () => setModalUser(record), style: { cursor: 'pointer' } })}
+          columns={[
+            { title: 'Email', dataIndex: 'email' },
+            {
+              title: 'Active',
+              dataIndex: 'is_active',
+              render: (active: boolean) => (active ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>),
+            },
+            {
+              title: 'Roles',
+              dataIndex: 'groups',
+              render: (groups: string[]) => groups.map((g) => <Tag key={g}>{g}</Tag>),
+            },
+          ]}
+        />
+      </div>
       {modalUser && (
         <UserFormModal
           user={modalUser === 'new' ? null : modalUser}

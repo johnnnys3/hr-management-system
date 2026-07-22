@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client'
 import { listDirectReports } from '../../api/reporting'
 import { getMyProfile } from '../../api/selfService'
 import type { Employee } from '../../api/types'
+import { StatStrip } from '../../components/StatStrip'
 
 export function MyTeamPage() {
   const { data: me, isLoading: isMeLoading, error: meError } = useQuery({ queryKey: ['self-service', 'me'], queryFn: getMyProfile })
@@ -28,19 +29,28 @@ export function MyTeamPage() {
   return (
     <div>
       <Typography.Title level={3}>My Team</Typography.Title>
-      <Table<Employee>
-        rowKey="id"
-        loading={isMeLoading || isReportsLoading}
-        dataSource={reports}
-        pagination={{ pageSize: 25 }}
-        locale={{ emptyText: 'You have no direct reports.' }}
-        columns={[
-          { title: 'Employee #', dataIndex: 'employee_number' },
-          { title: 'First Name', dataIndex: 'first_name' },
-          { title: 'Last Name', dataIndex: 'last_name' },
-          { title: 'Employment Status', dataIndex: 'employment_status' },
+      <StatStrip
+        stats={[
+          { label: 'Team Size', value: reports.length },
+          { label: 'Active', value: reports.filter((r) => r.employment_status === 'active').length },
+          { label: 'On Leave', value: reports.filter((r) => r.employment_status === 'on_leave').length },
         ]}
       />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<Employee>
+          rowKey="id"
+          loading={isMeLoading || isReportsLoading}
+          dataSource={reports}
+          pagination={{ pageSize: 25 }}
+          locale={{ emptyText: 'You have no direct reports.' }}
+          columns={[
+            { title: 'Employee #', dataIndex: 'employee_number' },
+            { title: 'First Name', dataIndex: 'first_name' },
+            { title: 'Last Name', dataIndex: 'last_name' },
+            { title: 'Employment Status', dataIndex: 'employment_status' },
+          ]}
+        />
+      </div>
     </div>
   )
 }

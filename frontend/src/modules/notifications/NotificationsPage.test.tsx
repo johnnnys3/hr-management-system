@@ -21,12 +21,17 @@ describe('NotificationsPage', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('defaults to unread, lets the user mark one read', async () => {
-    const listSpy = vi.spyOn(notificationsApi, 'listNotifications').mockResolvedValue([
-      {
-        id: 1, category: 'pending_task', channel: 'in_app', subject: 'New onboarding task', body: 'Sign contract.',
-        related_type: 'onboarding_task', related_id: 5, read_at: null, created_at: '2026-07-21T00:00:00Z',
-      },
-    ])
+    const listSpy = vi.spyOn(notificationsApi, 'listNotifications').mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 1, category: 'pending_task', channel: 'in_app', subject: 'New onboarding task', body: 'Sign contract.',
+          related_type: 'onboarding_task', related_id: 5, read_at: null, created_at: '2026-07-21T00:00:00Z',
+        },
+      ],
+    })
     const markReadSpy = vi.spyOn(notificationsApi, 'markNotificationRead').mockResolvedValue({
       id: 1, category: 'pending_task', channel: 'in_app', subject: 'New onboarding task', body: 'Sign contract.',
       related_type: 'onboarding_task', related_id: 5, read_at: '2026-07-21T01:00:00Z', created_at: '2026-07-21T00:00:00Z',
@@ -43,7 +48,12 @@ describe('NotificationsPage', () => {
   })
 
   it('switches to All and requests without the unread filter', async () => {
-    const listSpy = vi.spyOn(notificationsApi, 'listNotifications').mockResolvedValue([])
+    const listSpy = vi.spyOn(notificationsApi, 'listNotifications').mockResolvedValue({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    })
 
     renderPage()
     const user = userEvent.setup()

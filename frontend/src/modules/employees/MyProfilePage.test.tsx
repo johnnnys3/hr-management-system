@@ -4,13 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as employeesApi from '../../api/employees'
 import * as selfServiceApi from '../../api/selfService'
+import { AuthContext } from '../../auth/AuthContext'
 import { MyProfilePage } from './MyProfilePage'
 
-function renderPage() {
+function renderPage(groups: string[] = []) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MyProfilePage />
+      <AuthContext.Provider
+        value={{
+          me: { id: 1, email: 'ada@b.com', groups, is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
+          isLoading: false,
+          refetch: async () => {},
+          logout: async () => {},
+        }}
+      >
+        <MyProfilePage />
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }

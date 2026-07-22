@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { listNotifications, markNotificationRead } from '../../api/notifications'
 import type { Notification } from '../../api/types'
+import { StatStrip } from '../../components/StatStrip'
 
 const CATEGORY_LABELS: Record<string, string> = {
   pending_task: 'Pending task',
@@ -15,10 +16,19 @@ const NOTIFICATIONS_QUERY_KEY = ['notifications', 'list']
 export function NotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'unread'>('unread')
   const queryClient = useQueryClient()
-  const { data: notifications = [], isLoading, error } = useQuery({
+  const { data: notificationsResponse, isLoading, error } = useQuery({
     queryKey: [...NOTIFICATIONS_QUERY_KEY, filter],
     queryFn: () => listNotifications(filter === 'unread' ? { read_at__isnull: true } : {}),
   })
+
+  const { data: unreadResponse } = useQuery({
+    queryKey: [...NOTIFICATIONS_QUERY_KEY, 'unread'],
+    queryFn: () => listNotifications({ read_at__isnull: true }),
+  })
+
+  const notifications = notificationsResponse?.results ?? []
+  const unreadCount = unreadResponse?.count ?? 0
+  const unread = unreadResponse?.results ?? []
 
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
@@ -50,6 +60,13 @@ export function NotificationsPage() {
           ]}
         />
       </div>
+      <StatStrip
+        stats={[
+          { label: 'Unread', value: unreadCount },
+          { label: 'Pending Tasks', value: unread.filter((n) => n.category === 'pending_task').length },
+          { label: 'Request Updates', value: unread.filter((n) => n.category === 'request_update').length },
+        ]}
+      />
       <List<Notification>
         loading={isLoading}
         dataSource={notifications}

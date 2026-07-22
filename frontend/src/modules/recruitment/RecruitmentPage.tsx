@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 import { useDepartments, useJobTitles } from '../departments/hooks'
 import {
   approveJobRequisition,
@@ -32,20 +33,42 @@ export function RecruitmentPage() {
   const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
 
+  const { data: requisitions = [] } = useQuery({
+    queryKey: ['recruitment', 'requisitions', 'all'],
+    queryFn: () => listJobRequisitions(),
+    enabled: isRecruiter || isHrAdministrator,
+  })
+  const { data: candidates = [] } = useQuery({
+    queryKey: ['recruitment', 'candidates', undefined],
+    queryFn: () => listCandidates(),
+    enabled: isRecruiter || isHrOfficer,
+  })
+
   const items = [
     ...(isRecruiter || isHrAdministrator
-      ? [{ key: 'requisitions', label: 'Requisitions', children: <RequisitionsTab /> }]
+      ? [{ key: 'requisitions', label: 'Requisitions', content: <RequisitionsTab /> }]
       : []),
-    ...(isRecruiter ? [{ key: 'postings', label: 'Postings', children: <PostingsTab /> }] : []),
+    ...(isRecruiter ? [{ key: 'postings', label: 'Postings', content: <PostingsTab /> }] : []),
     ...(isRecruiter || isHrOfficer
-      ? [{ key: 'candidates', label: 'Candidates', children: <CandidatesTab /> }]
+      ? [{ key: 'candidates', label: 'Candidates', content: <CandidatesTab /> }]
       : []),
   ]
+  const [activeKey, setActiveKey] = useState(items[0]?.key)
 
   return (
     <div>
       <Typography.Title level={3}>Recruitment</Typography.Title>
-      <Tabs items={items} />
+      <Tabs activeKey={activeKey} onChange={setActiveKey} items={items.map(({ key, label }) => ({ key, label }))} />
+      <StatStrip
+        stats={[
+          {
+            label: 'Open Requisitions',
+            value: requisitions.filter((r) => r.status !== 'closed' && r.status !== 'rejected').length,
+          },
+          { label: 'Candidates', value: candidates.length },
+        ]}
+      />
+      {items.find((item) => item.key === activeKey)?.content}
     </div>
   )
 }
@@ -61,7 +84,7 @@ function RequisitionsTab() {
   const { data: departments = [] } = useDepartments()
   const { data: jobTitles = [] } = useJobTitles()
   const { data: requisitions = [], isLoading } = useQuery({
-    queryKey: ['recruitment', 'requisitions'],
+    queryKey: ['recruitment', 'requisitions', 'all'],
     queryFn: () => listJobRequisitions(),
   })
 
@@ -202,7 +225,7 @@ function PostingsTab() {
     queryFn: () => listJobPostings(),
   })
   const { data: requisitions = [] } = useQuery({
-    queryKey: ['recruitment', 'requisitions'],
+    queryKey: ['recruitment', 'requisitions', 'approved'],
     queryFn: () => listJobRequisitions('approved'),
   })
 
@@ -231,34 +254,36 @@ function PostingsTab() {
           New Posting
         </Button>
       </div>
-      <Table<JobPosting>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={postings}
-        pagination={{ pageSize: 25 }}
-        columns={[
-          { title: 'Title', dataIndex: 'title' },
-          { title: 'Channel', dataIndex: 'channel' },
-          {
-            title: 'Status',
-            render: (_: unknown, record: JobPosting) =>
-              record.published_at ? <Tag color="green">Published</Tag> : <Tag>Draft</Tag>,
-          },
-          {
-            title: 'Actions',
-            render: (_: unknown, record: JobPosting) =>
-              !record.published_at ? (
-                <Button
-                  size="small"
-                  loading={inFlightPostingIds.has(record.id)}
-                  onClick={() => publishMutation.mutate(record.id)}
-                >
-                  Publish
-                </Button>
-              ) : null,
-          },
-        ]}
-      />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<JobPosting>
+          rowKey="id"
+          loading={isLoading}
+          dataSource={postings}
+          pagination={{ pageSize: 25 }}
+          columns={[
+            { title: 'Title', dataIndex: 'title' },
+            { title: 'Channel', dataIndex: 'channel' },
+            {
+              title: 'Status',
+              render: (_: unknown, record: JobPosting) =>
+                record.published_at ? <Tag color="green">Published</Tag> : <Tag>Draft</Tag>,
+            },
+            {
+              title: 'Actions',
+              render: (_: unknown, record: JobPosting) =>
+                !record.published_at ? (
+                  <Button
+                    size="small"
+                    loading={inFlightPostingIds.has(record.id)}
+                    onClick={() => publishMutation.mutate(record.id)}
+                  >
+                    Publish
+                  </Button>
+                ) : null,
+            },
+          ]}
+        />
+      </div>
       {createOpen && (
         <NewPostingModal
           requisitions={requisitions}
@@ -356,19 +381,21 @@ function CandidatesTab() {
           </Button>
         )}
       </div>
-      <Table<Candidate>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={candidates}
-        pagination={{ pageSize: 25 }}
-        onRow={(record) => ({ onClick: () => navigate(`/recruitment/candidates/${record.id}`), style: { cursor: 'pointer' } })}
-        columns={[
-          { title: 'First Name', dataIndex: 'first_name' },
-          { title: 'Last Name', dataIndex: 'last_name' },
-          { title: 'Email', dataIndex: 'email' },
-          { title: 'Phone', dataIndex: 'phone', render: (p: string | null) => p ?? '—' },
-        ]}
-      />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<Candidate>
+          rowKey="id"
+          loading={isLoading}
+          dataSource={candidates}
+          pagination={{ pageSize: 25 }}
+          onRow={(record) => ({ onClick: () => navigate(`/recruitment/candidates/${record.id}`), style: { cursor: 'pointer' } })}
+          columns={[
+            { title: 'First Name', dataIndex: 'first_name' },
+            { title: 'Last Name', dataIndex: 'last_name' },
+            { title: 'Email', dataIndex: 'email' },
+            { title: 'Phone', dataIndex: 'phone', render: (p: string | null) => p ?? '—' },
+          ]}
+        />
+      </div>
       {createOpen && (
         <NewCandidateModal
           onClose={() => setCreateOpen(false)}

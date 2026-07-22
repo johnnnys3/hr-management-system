@@ -6,12 +6,20 @@ export interface NotificationListParams {
   read_at__isnull?: boolean
 }
 
-export function listNotifications(params: NotificationListParams = {}): Promise<Notification[]> {
+interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+export async function listNotifications(params: NotificationListParams = {}): Promise<PaginatedResponse<Notification>> {
   const query = new URLSearchParams()
   if (params.category) query.set('category', params.category)
   if (params.read_at__isnull !== undefined) query.set('read_at__isnull', String(params.read_at__isnull))
   const suffix = query.toString() ? `?${query.toString()}` : ''
-  return apiFetch(`/api/notifications/${suffix}`)
+  const response = await apiFetch<PaginatedResponse<Notification>>(`/api/notifications/${suffix}`)
+  return response
 }
 
 export function markNotificationRead(id: number): Promise<Notification> {

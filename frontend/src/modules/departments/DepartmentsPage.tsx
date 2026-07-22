@@ -11,44 +11,50 @@ import {
 } from '../../api/departments'
 import { ApiError } from '../../api/client'
 import type { Department, JobTitle } from '../../api/types'
+import { StatStrip } from '../../components/StatStrip'
 
 type NamedRecord = Department | JobTitle
 type FormValues = { name: string; is_active: boolean }
 
 export function DepartmentsPage() {
+  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'departments'], queryFn: listDepartments })
+  const [activeKey, setActiveKey] = useState('departments')
+
   return (
     <div>
       <Typography.Title level={3}>Departments</Typography.Title>
       <Tabs
+        activeKey={activeKey}
+        onChange={setActiveKey}
         items={[
-          {
-            key: 'departments',
-            label: 'Departments',
-            children: (
-              <ConfigTable
-                title="Department"
-                queryKey={['departments', 'departments']}
-                listFn={listDepartments}
-                createFn={createDepartment}
-                updateFn={updateDepartment}
-              />
-            ),
-          },
-          {
-            key: 'job-titles',
-            label: 'Job Titles',
-            children: (
-              <ConfigTable
-                title="Job Title"
-                queryKey={['departments', 'job-titles']}
-                listFn={listJobTitles}
-                createFn={createJobTitle}
-                updateFn={updateJobTitle}
-              />
-            ),
-          },
+          { key: 'departments', label: 'Departments' },
+          { key: 'job-titles', label: 'Job Titles' },
         ]}
       />
+      <StatStrip
+        stats={[
+          { label: 'Total Departments', value: departments.length },
+          { label: 'Active', value: departments.filter((d) => d.is_active).length },
+          { label: 'Retired', value: departments.filter((d) => !d.is_active).length },
+        ]}
+      />
+      {activeKey === 'departments' ? (
+        <ConfigTable
+          title="Department"
+          queryKey={['departments', 'departments']}
+          listFn={listDepartments}
+          createFn={createDepartment}
+          updateFn={updateDepartment}
+        />
+      ) : (
+        <ConfigTable
+          title="Job Title"
+          queryKey={['departments', 'job-titles']}
+          listFn={listJobTitles}
+          createFn={createJobTitle}
+          updateFn={updateJobTitle}
+        />
+      )}
     </div>
   )
 }
@@ -89,21 +95,23 @@ function ConfigTable({
           New {title}
         </Button>
       </div>
-      <Table<NamedRecord>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={records}
-        pagination={{ pageSize: 25 }}
-        onRow={(record) => ({ onClick: () => setModalRecord(record), style: { cursor: 'pointer' } })}
-        columns={[
-          { title: 'Name', dataIndex: 'name' },
-          {
-            title: 'Status',
-            dataIndex: 'is_active',
-            render: (active: boolean) => (active ? <Tag color="green">Active</Tag> : <Tag>Retired</Tag>),
-          },
-        ]}
-      />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<NamedRecord>
+          rowKey="id"
+          loading={isLoading}
+          dataSource={records}
+          pagination={{ pageSize: 25 }}
+          onRow={(record) => ({ onClick: () => setModalRecord(record), style: { cursor: 'pointer' } })}
+          columns={[
+            { title: 'Name', dataIndex: 'name' },
+            {
+              title: 'Status',
+              dataIndex: 'is_active',
+              render: (active: boolean) => (active ? <Tag color="green">Active</Tag> : <Tag>Retired</Tag>),
+            },
+          ]}
+        />
+      </div>
       {modalRecord && (
         <RecordFormModal
           title={title}

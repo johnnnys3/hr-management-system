@@ -1,14 +1,16 @@
-import { Alert, Button, Card, InputNumber, Space, Typography } from 'antd'
+import { Alert, Button, InputNumber, Space, Typography } from 'antd'
 import { useState } from 'react'
 import { decideSecondFactorRecovery, requestSecondFactorRecovery } from '../../api/auth'
 import { ApiError } from '../../api/client'
 
 export function SecondFactorRecoveryPage() {
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <div style={{ maxWidth: 520, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 32 }}>
       <RequestRecoveryForm />
-      <DecideRecoveryForm />
-    </Space>
+      <div style={{ borderTop: '1px solid #ececec', paddingTop: 24 }}>
+        <DecideRecoveryForm />
+      </div>
+    </div>
   )
 }
 
@@ -31,7 +33,10 @@ function RequestRecoveryForm() {
   }
 
   return (
-    <Card title="Lost your second factor?">
+    <div>
+      <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+        Lost your second factor?
+      </Typography.Title>
       {result && <Alert type="success" message={result} style={{ marginBottom: 16 }} />}
       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
       <Typography.Paragraph type="secondary">
@@ -40,7 +45,7 @@ function RequestRecoveryForm() {
       <Button type="primary" loading={submitting} onClick={handleSubmit}>
         Request second-factor reset
       </Button>
-    </Card>
+    </div>
   )
 }
 
@@ -68,7 +73,10 @@ function DecideRecoveryForm() {
   const isSubmitting = submittingAction !== null
 
   return (
-    <Card title="Decide a second-factor recovery request">
+    <div>
+      <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>
+        Decide a second-factor recovery request
+      </Typography.Title>
       {result && <Alert type="success" message={result} style={{ marginBottom: 16 }} />}
       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
       <Space>
@@ -95,6 +103,6 @@ function DecideRecoveryForm() {
           Deny
         </Button>
       </Space>
-    </Card>
+    </div>
   )
 }

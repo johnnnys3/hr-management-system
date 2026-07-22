@@ -10,7 +10,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ConfigProvider>
+        <ConfigProvider
+          theme={{
+            token: {
+              colorPrimary: '#2F6B4F',
+              colorBgLayout: '#FFFFFF',
+              borderRadius: 10,
+              fontFamily: 'inherit',
+            },
+          }}
+        >
           <RouterProvider router={router} />
         </ConfigProvider>
       </AuthProvider>
