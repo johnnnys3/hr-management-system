@@ -309,11 +309,15 @@ function DocumentsTab({ employeeId }: { employeeId: number }) {
     // unsolicited popup and block it. noopener/noreferrer are omitted here
     // since they'd drop the window reference this needs to set .location on.
     const placeholder = window.open('', '_blank')
+    if (!placeholder) {
+      message.error('Download blocked by your browser’s pop-up blocker. Please allow pop-ups for this site and try again.')
+      return
+    }
     try {
       const { url } = await getEmployeeDocumentDownloadUrl(employeeId, doc.id)
-      if (placeholder) placeholder.location.href = url
+      placeholder.location.href = url
     } catch (e) {
-      placeholder?.close()
+      placeholder.close()
       message.error(e instanceof ApiError ? e.message : 'Download failed.')
     }
   }
