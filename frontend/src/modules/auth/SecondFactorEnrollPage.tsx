@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Typography } from 'antd'
+import { Alert, Button, Typography } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { enrollSecondFactor } from '../../api/auth'
@@ -40,8 +40,10 @@ export function SecondFactorEnrollPage() {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 96 }}>
-      <Card style={{ width: 480 }}>
-        <Typography.Title level={3}>Set up two-factor authentication</Typography.Title>
+      <div style={{ width: 480 }}>
+        <Typography.Title level={3} style={{ marginTop: 0 }}>
+          Set up two-factor authentication
+        </Typography.Title>
         <Typography.Paragraph type="secondary">
           Your role requires two-factor authentication. Set it up now to continue.
         </Typography.Paragraph>
@@ -66,7 +68,7 @@ export function SecondFactorEnrollPage() {
             Start setup
           </Button>
         )}
-      </Card>
+      </div>
     </div>
   )
 }

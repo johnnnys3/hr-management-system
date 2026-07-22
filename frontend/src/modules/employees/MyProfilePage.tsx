@@ -3,8 +3,13 @@ import { Alert, Button, DatePicker, Form, Input, List, Table, Tabs, Typography, 
 import dayjs from 'dayjs'
 import { ApiError } from '../../api/client'
 import { getEmployeeDocumentDownloadUrl, listEmployeeDocuments, listEmploymentHistory } from '../../api/employees'
+import { listLeaveBalances } from '../../api/leave'
 import { getMyProfile, updateMyProfile } from '../../api/selfService'
 import type { Employee, EmployeeDocument } from '../../api/types'
+import { useAuth } from '../../auth/AuthContext'
+import { useDepartments, useJobTitles } from '../departments/hooks'
+
+const HR_CONFIG_GROUPS = ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer']
 
 function ProfileError({ error }: { error: unknown }) {
   return (
@@ -39,6 +44,11 @@ export function MyProfilePage() {
 function ProfileTab({ employee }: { employee: Employee }) {
   const queryClient = useQueryClient()
   const [form] = Form.useForm()
+  const { me } = useAuth()
+  const canSeeConfig = me?.groups.some((g) => HR_CONFIG_GROUPS.includes(g)) ?? false
+  const { data: departments = [] } = useDepartments({ enabled: canSeeConfig })
+  const { data: jobTitles = [] } = useJobTitles({ enabled: canSeeConfig })
+  const { data: balances = [] } = useQuery({ queryKey: ['leave', 'balances'], queryFn: listLeaveBalances })
 
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
@@ -49,43 +59,94 @@ function ProfileTab({ employee }: { employee: Employee }) {
     onError: (e) => message.error(e instanceof ApiError ? e.message : 'Failed to update profile.'),
   })
 
+  const departmentName = departments.find((d) => d.id === employee.department)?.name ?? employee.department
+  const jobTitleName = jobTitles.find((j) => j.id === employee.job_title)?.name ?? employee.job_title
+  const totalEntitled = balances.reduce((sum, b) => sum + Number(b.entitled_days), 0)
+  const totalUsed = balances.reduce((sum, b) => sum + Number(b.used_days), 0)
+
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      style={{ maxWidth: 480 }}
-      initialValues={{
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        date_of_birth: dayjs(employee.date_of_birth),
-      }}
-      onFinish={(values) =>
-        updateMutation.mutate({
-          first_name: values.first_name,
-          last_name: values.last_name,
-          date_of_birth: values.date_of_birth.format('YYYY-MM-DD'),
-        })
-      }
-    >
-      <Form.Item label="Employee Number">
-        <Input value={employee.employee_number} disabled />
-      </Form.Item>
-      <Form.Item name="first_name" label="First Name" rules={[{ required: true }]}>
-        <Input />
-      </Form.Item>
-      <Form.Item name="last_name" label="Last Name" rules={[{ required: true }]}>
-        <Input />
-      </Form.Item>
-      <Form.Item name="date_of_birth" label="Date of Birth" rules={[{ required: true }]}>
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
-      <Form.Item label="Employment Status">
-        <Input value={employee.employment_status} disabled />
-      </Form.Item>
-      <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
-        Save
-      </Button>
-    </Form>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, maxWidth: 900 }}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          first_name: employee.first_name,
+          last_name: employee.last_name,
+          date_of_birth: dayjs(employee.date_of_birth),
+        }}
+        onFinish={(values) =>
+          updateMutation.mutate({
+            first_name: values.first_name,
+            last_name: values.last_name,
+            date_of_birth: values.date_of_birth.format('YYYY-MM-DD'),
+          })
+        }
+      >
+        <Form.Item label="Employee Number">
+          <Input value={employee.employee_number} disabled />
+        </Form.Item>
+        <Form.Item name="first_name" label="First Name" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="last_name" label="Last Name" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="date_of_birth" label="Date of Birth" rules={[{ required: true }]}>
+          <DatePicker style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item label="Employment Status">
+          <Input value={employee.employment_status} disabled />
+        </Form.Item>
+        <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+          Save
+        </Button>
+      </Form>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 12 }}>At a Glance</div>
+        <div
+          style={{
+            padding: '12px 0',
+            borderBottom: '1px solid #f2f2f2',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 13,
+          }}
+        >
+          <span style={{ color: 'rgba(0,0,0,0.45)' }}>Department</span>
+          <span>{departmentName}</span>
+        </div>
+        <div
+          style={{
+            padding: '12px 0',
+            borderBottom: '1px solid #f2f2f2',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 13,
+          }}
+        >
+          <span style={{ color: 'rgba(0,0,0,0.45)' }}>Job Title</span>
+          <span>{jobTitleName}</span>
+        </div>
+        <div
+          style={{
+            padding: '12px 0',
+            borderBottom: '1px solid #f2f2f2',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 13,
+          }}
+        >
+          <span style={{ color: 'rgba(0,0,0,0.45)' }}>Hire Date</span>
+          <span>{employee.hire_date}</span>
+        </div>
+        <div style={{ padding: '12px 0', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+          <span style={{ color: 'rgba(0,0,0,0.45)' }}>Leave Balance</span>
+          <span>
+            {totalUsed} / {totalEntitled} days
+          </span>
+        </div>
+      </div>
+    </div>
   )
 }
 

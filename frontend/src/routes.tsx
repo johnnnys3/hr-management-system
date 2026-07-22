@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
+import { MinimalLayout } from './layout/MinimalLayout'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { DashboardPage } from './modules/dashboard/DashboardPage'
 import { LoginPage } from './modules/auth/LoginPage'
@@ -32,6 +33,13 @@ export const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          {
+            element: <MinimalLayout />,
+            children: [
+              { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
+              { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },
+            ],
+          },
           {
             element: <AppLayout />,
             children: [
@@ -74,8 +82,6 @@ export const router = createBrowserRouter([
                 element: <ProtectedRoute requireGroup="HR Officer" />,
                 children: [{ path: '/onboarding', element: <OnboardingPage /> }],
               },
-              { path: '/second-factor/enroll', element: <SecondFactorEnrollPage /> },
-              { path: '/second-factor/recovery', element: <SecondFactorRecoveryPage /> },
               {
                 element: <ProtectedRoute requireGroup="System Administrator" />,
                 children: [

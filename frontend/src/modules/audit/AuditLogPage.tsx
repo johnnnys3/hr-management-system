@@ -43,38 +43,40 @@ export function AuditLogPage() {
           options={Object.entries(AUDIT_LOG_CATEGORY_LABELS).map(([value, label]) => ({ value, label }))}
         />
       </div>
-      <Table<AuditLogEntry>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={data?.results ?? []}
-        pagination={{
-          current: page,
-          pageSize: 50,
-          total: data?.count ?? 0,
-          onChange: setPage,
-        }}
-        columns={[
-          { title: 'Occurred At', dataIndex: 'occurred_at', render: (v: string) => new Date(v).toLocaleString() },
-          {
-            title: 'Category',
-            dataIndex: 'category',
-            render: (c: string) => <Tag>{AUDIT_LOG_CATEGORY_LABELS[c] ?? c}</Tag>,
-          },
-          { title: 'Action', dataIndex: 'action' },
-          {
-            title: 'Target',
-            render: (_: unknown, record: AuditLogEntry) =>
-              record.target_type
-                ? `${record.target_type}${record.target_id == null ? '' : ` #${record.target_id}`}`
-                : '—',
-          },
-          { title: 'Actor', dataIndex: 'actor', render: (v: number | null) => v ?? '—' },
-        ]}
-        expandable={{
-          rowExpandable: (record) => !!record.detail,
-          expandedRowRender: (record) => <pre>{JSON.stringify(record.detail, null, 2)}</pre>,
-        }}
-      />
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<AuditLogEntry>
+          rowKey="id"
+          loading={isLoading}
+          dataSource={data?.results ?? []}
+          pagination={{
+            current: page,
+            pageSize: 50,
+            total: data?.count ?? 0,
+            onChange: setPage,
+          }}
+          columns={[
+            { title: 'Occurred At', dataIndex: 'occurred_at', render: (v: string) => new Date(v).toLocaleString() },
+            {
+              title: 'Category',
+              dataIndex: 'category',
+              render: (c: string) => <Tag>{AUDIT_LOG_CATEGORY_LABELS[c] ?? c}</Tag>,
+            },
+            { title: 'Action', dataIndex: 'action' },
+            {
+              title: 'Target',
+              render: (_: unknown, record: AuditLogEntry) =>
+                record.target_type
+                  ? `${record.target_type}${record.target_id == null ? '' : ` #${record.target_id}`}`
+                  : '—',
+            },
+            { title: 'Actor', dataIndex: 'actor', render: (v: number | null) => v ?? '—' },
+          ]}
+          expandable={{
+            rowExpandable: (record) => !!record.detail,
+            expandedRowRender: (record) => <pre>{JSON.stringify(record.detail, null, 2)}</pre>,
+          }}
+        />
+      </div>
     </div>
   )
 }

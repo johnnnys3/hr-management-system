@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Alert, DatePicker, Select, Space, Statistic, Table, Tabs, Typography } from 'antd'
 import dayjs from 'dayjs'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   getHeadcountReport,
   getLeaveUtilizationReport,
@@ -11,8 +11,17 @@ import {
 } from '../../api/reports'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 import { useDepartments } from '../departments/hooks'
 import { ExportControl } from './ExportControl'
+
+function ReportTableCard({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden', marginTop: 16 }}>
+      {children}
+    </div>
+  )
+}
 
 function ReportError({ error }: { error: unknown }) {
   return (
@@ -38,6 +47,20 @@ function HeadcountTab({ isHr }: { isHr: boolean }) {
 
   if (error) return <ReportError error={error} />
 
+  // The API breaks down by (department, employment_status) pairs, not by
+  // department alone — aggregate to per-department totals for display.
+  const byDepartment = new Map<number, { department_id: number; department__name: string; count: number }>()
+  for (const row of data?.breakdown ?? []) {
+    const existing = byDepartment.get(row.department_id)
+    if (existing) {
+      existing.count += row.count
+    } else {
+      byDepartment.set(row.department_id, { ...row })
+    }
+  }
+  const departmentBreakdown = [...byDepartment.values()]
+  const maxCount = Math.max(1, ...departmentBreakdown.map((row) => row.count))
+
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
@@ -53,18 +76,50 @@ function HeadcountTab({ isHr }: { isHr: boolean }) {
         )}
         <ExportControl reportType="headcount" params={{ department_id: effectiveDepartmentId }} />
       </Space>
-      <Statistic title="Total Headcount" value={data?.aggregate.total} loading={isLoading} />
-      {data?.breakdown && (
-        <Table
-          style={{ marginTop: 16 }}
-          rowKey="department_id"
-          dataSource={data.breakdown}
-          pagination={false}
-          columns={[
-            { title: 'Department', dataIndex: 'department__name' },
-            { title: 'Count', dataIndex: 'count' },
-          ]}
-        />
+      <StatStrip
+        stats={[
+          { label: 'Total Headcount', value: isLoading ? '—' : (data?.aggregate.total ?? 0) },
+          ...(isHr ? [{ label: 'Departments', value: departments.length }] : []),
+        ]}
+      />
+      {departmentBreakdown.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 48 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#111', marginBottom: 16 }}>
+              Headcount by Department
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {departmentBreakdown.map((row) => (
+                <div key={row.department_id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                    <span>{row.department__name}</span>
+                    <span style={{ color: '#111', fontWeight: 600 }}>{row.count}</span>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 4, background: '#f2f2f2', overflow: 'hidden' }}>
+                    <div
+                      style={{ height: '100%', width: `${(row.count / maxCount) * 100}%`, background: '#2F6B4F' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#111', marginBottom: 16 }}>Department Table</div>
+            <ReportTableCard>
+              <Table
+                rowKey="department_id"
+                dataSource={departmentBreakdown}
+                pagination={false}
+                showHeader
+                columns={[
+                  { title: 'Department', dataIndex: 'department__name' },
+                  { title: 'Count', dataIndex: 'count' },
+                ]}
+              />
+            </ReportTableCard>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -101,17 +156,18 @@ function LeaveUtilizationTab({ isHr }: { isHr: boolean }) {
         <Statistic title="Used Days" value={data?.aggregate.used_days} loading={isLoading} />
       </Space>
       {data?.breakdown && (
-        <Table
-          style={{ marginTop: 16 }}
-          rowKey="leave_type_id"
-          dataSource={data.breakdown}
-          pagination={false}
-          columns={[
-            { title: 'Leave Type', dataIndex: 'leave_type__name' },
-            { title: 'Entitled Days', dataIndex: 'entitled_days' },
-            { title: 'Used Days', dataIndex: 'used_days' },
-          ]}
-        />
+        <ReportTableCard>
+          <Table
+            rowKey="leave_type_id"
+            dataSource={data.breakdown}
+            pagination={false}
+            columns={[
+              { title: 'Leave Type', dataIndex: 'leave_type__name' },
+              { title: 'Entitled Days', dataIndex: 'entitled_days' },
+              { title: 'Used Days', dataIndex: 'used_days' },
+            ]}
+          />
+        </ReportTableCard>
       )}
     </div>
   )
@@ -163,26 +219,30 @@ function TurnoverTab({ isHr }: { isHr: boolean }) {
       </Space>
       {data?.breakdown && (
         <Space align="start" size="large" style={{ marginTop: 16 }}>
-          <Table
-            rowKey="department_id"
-            dataSource={data.breakdown.hires_by_department}
-            pagination={false}
-            title={() => 'Hires by Department'}
-            columns={[
-              { title: 'Department', dataIndex: 'department__name' },
-              { title: 'Count', dataIndex: 'count' },
-            ]}
-          />
-          <Table
-            rowKey="employee__department_id"
-            dataSource={data.breakdown.terminations_by_department}
-            pagination={false}
-            title={() => 'Terminations by Department'}
-            columns={[
-              { title: 'Department', dataIndex: 'employee__department__name' },
-              { title: 'Count', dataIndex: 'count' },
-            ]}
-          />
+          <ReportTableCard>
+            <Table
+              rowKey="department_id"
+              dataSource={data.breakdown.hires_by_department}
+              pagination={false}
+              title={() => 'Hires by Department'}
+              columns={[
+                { title: 'Department', dataIndex: 'department__name' },
+                { title: 'Count', dataIndex: 'count' },
+              ]}
+            />
+          </ReportTableCard>
+          <ReportTableCard>
+            <Table
+              rowKey="employee__department_id"
+              dataSource={data.breakdown.terminations_by_department}
+              pagination={false}
+              title={() => 'Terminations by Department'}
+              columns={[
+                { title: 'Department', dataIndex: 'employee__department__name' },
+                { title: 'Count', dataIndex: 'count' },
+              ]}
+            />
+          </ReportTableCard>
         </Space>
       )}
     </div>
@@ -207,17 +267,18 @@ function PayrollCostTab() {
         <Statistic title="Net Pay" value={data?.aggregate.net_pay} loading={isLoading} />
       </Space>
       {data?.breakdown && (
-        <Table
-          style={{ marginTop: 16 }}
-          rowKey="employee__department_id"
-          dataSource={data.breakdown}
-          pagination={false}
-          columns={[
-            { title: 'Department', dataIndex: 'employee__department__name' },
-            { title: 'Gross Pay', dataIndex: 'gross_pay' },
-            { title: 'Net Pay', dataIndex: 'net_pay' },
-          ]}
-        />
+        <ReportTableCard>
+          <Table
+            rowKey="employee__department_id"
+            dataSource={data.breakdown}
+            pagination={false}
+            columns={[
+              { title: 'Department', dataIndex: 'employee__department__name' },
+              { title: 'Gross Pay', dataIndex: 'gross_pay' },
+              { title: 'Net Pay', dataIndex: 'net_pay' },
+            ]}
+          />
+        </ReportTableCard>
       )}
     </div>
   )
@@ -242,18 +303,19 @@ function PayrollSummaryTab() {
         <Statistic title="Finalized Payslips" value={data?.aggregate.payslip_count} loading={isLoading} />
       </Space>
       {data?.breakdown && (
-        <Table
-          style={{ marginTop: 16 }}
-          rowKey="id"
-          dataSource={data.breakdown}
-          pagination={false}
-          columns={[
-            { title: 'Period Start', dataIndex: 'period_start' },
-            { title: 'Period End', dataIndex: 'period_end' },
-            { title: 'Gross Pay', dataIndex: 'gross_pay' },
-            { title: 'Net Pay', dataIndex: 'net_pay' },
-          ]}
-        />
+        <ReportTableCard>
+          <Table
+            rowKey="id"
+            dataSource={data.breakdown}
+            pagination={false}
+            columns={[
+              { title: 'Period Start', dataIndex: 'period_start' },
+              { title: 'Period End', dataIndex: 'period_end' },
+              { title: 'Gross Pay', dataIndex: 'gross_pay' },
+              { title: 'Net Pay', dataIndex: 'net_pay' },
+            ]}
+          />
+        </ReportTableCard>
       )}
     </div>
   )

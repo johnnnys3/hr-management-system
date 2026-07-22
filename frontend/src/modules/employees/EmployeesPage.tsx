@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client'
 import { createEmployee, listEmployees, type EmployeeListParams } from '../../api/employees'
 import type { Employee } from '../../api/types'
 import { useDepartments, useJobTitles } from '../departments/hooks'
+import { StatStrip } from '../../components/StatStrip'
 import { STATUS_COLORS } from './constants'
 
 const EMPLOYEES_QUERY_KEY = ['employees', 'list']
@@ -36,6 +37,14 @@ export function EmployeesPage() {
           New Employee
         </Button>
       </div>
+      <StatStrip
+        stats={[
+          { label: 'Total', value: employees.length },
+          { label: 'Active', value: employees.filter((e) => e.employment_status === 'active').length },
+          { label: 'On Leave', value: employees.filter((e) => e.employment_status === 'on_leave').length },
+          { label: 'Terminated', value: employees.filter((e) => e.employment_status === 'terminated').length },
+        ]}
+      />
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search
           placeholder="Search name or employee number"
@@ -72,36 +81,38 @@ export function EmployeesPage() {
           description={error instanceof ApiError ? error.message : 'An error occurred while loading the list.'}
         />
       ) : (
-        <Table<Employee>
-          rowKey="id"
-          loading={isLoading}
-          dataSource={employees}
-          pagination={{ pageSize: 25 }}
-          onRow={(record) => ({
-            onClick: () => navigate(`/employees/${record.id}`),
-            onKeyDown: (e) => {
-              if (e.key === 'Enter') {
-                navigate(`/employees/${record.id}`)
-              }
-            },
-            tabIndex: 0,
-            style: { cursor: 'pointer' },
-          })}
-          columns={[
-            { title: 'Employee #', dataIndex: 'employee_number' },
-            { title: 'First Name', dataIndex: 'first_name' },
-            { title: 'Last Name', dataIndex: 'last_name' },
-            { title: 'Department', dataIndex: 'department', render: departmentName },
-            { title: 'Job Title', dataIndex: 'job_title', render: jobTitleName },
-            {
-              title: 'Status',
-              dataIndex: 'employment_status',
-              render: (statusValue: string) => (
-                <Tag color={STATUS_COLORS[statusValue]}>{statusValue.replace('_', ' ')}</Tag>
-              ),
-            },
-          ]}
-        />
+        <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+          <Table<Employee>
+            rowKey="id"
+            loading={isLoading}
+            dataSource={employees}
+            pagination={{ pageSize: 25 }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/employees/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === 'Enter') {
+                  navigate(`/employees/${record.id}`)
+                }
+              },
+              tabIndex: 0,
+              style: { cursor: 'pointer' },
+            })}
+            columns={[
+              { title: 'Employee #', dataIndex: 'employee_number' },
+              { title: 'First Name', dataIndex: 'first_name' },
+              { title: 'Last Name', dataIndex: 'last_name' },
+              { title: 'Department', dataIndex: 'department', render: departmentName },
+              { title: 'Job Title', dataIndex: 'job_title', render: jobTitleName },
+              {
+                title: 'Status',
+                dataIndex: 'employment_status',
+                render: (statusValue: string) => (
+                  <Tag color={STATUS_COLORS[statusValue]}>{statusValue.replace('_', ' ')}</Tag>
+                ),
+              },
+            ]}
+          />
+        </div>
       )}
       {createOpen && (
         <CreateEmployeeModal

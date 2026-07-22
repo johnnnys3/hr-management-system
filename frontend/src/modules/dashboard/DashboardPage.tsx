@@ -1,59 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-  ArrowUpOutlined,
-  BankOutlined,
-  CalendarOutlined,
-  DollarOutlined,
-  FileDoneOutlined,
-  TeamOutlined,
-  UserAddOutlined,
-  UserDeleteOutlined,
-  UserOutlined,
-} from '@ant-design/icons'
-import { Alert, Avatar, Card, Col, List, Progress, Row, Statistic, Typography } from 'antd'
+import { Alert, Progress, Typography } from 'antd'
 import { ApiError } from '../../api/client'
 import { getDashboard } from '../../api/dashboard'
 import { useAuth } from '../../auth/AuthContext'
 
-// Card background cycles through this palette, matching the mockup's
-// mint/yellow/cream tile treatment. ponytail: fixed 3-color cycle, not a
-// theming system -- extend the array if more colors are ever wanted.
-const TILE_COLORS = ['#E7F0E4', '#FBF3D5', '#FFFFFF']
-const ICON_COLORS = ['#3C8C5B', '#B8952E', '#3C6E9C']
-
-function tileStyle(index: number) {
-  return {
-    background: TILE_COLORS[index % TILE_COLORS.length],
-    border: 'none',
-    boxShadow: '0 4px 16px rgba(30, 20, 0, 0.06)',
-  }
-}
-
-const STAT_ICONS: Record<string, typeof TeamOutlined> = {
-  Headcount: TeamOutlined,
-  Hires: UserAddOutlined,
-  Terminations: UserDeleteOutlined,
-  'Leave Days Entitled': CalendarOutlined,
-  'Leave Days Used': CalendarOutlined,
-  'Payroll Gross Pay': DollarOutlined,
-  'Payroll Net Pay': DollarOutlined,
-  'Finalized Payslips': FileDoneOutlined,
-  'Finalized Payroll Gross Pay': BankOutlined,
-  'Finalized Payroll Net Pay': BankOutlined,
-  'Team Pending Leave Requests': CalendarOutlined,
-}
+const GREEN = '#2F6B4F'
 
 function HeadlineStat({ label, value }: { label: string; value: number }) {
-  const Icon = STAT_ICONS[label] ?? ArrowUpOutlined
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <Avatar size={36} icon={<Icon />} style={{ background: '#111', flexShrink: 0 }} />
-      <div>
-        <Typography.Text strong style={{ fontSize: 28, lineHeight: 1, display: 'block' }}>
-          {value}
-        </Typography.Text>
-        <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 13 }}>{label}</div>
-      </div>
+    <div>
+      <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: '#111' }}>{value}</div>
+    </div>
+  )
+}
+
+function StripStat({ label, value, accent, last }: { label: string; value: string; accent?: boolean; last?: boolean }) {
+  return (
+    <div style={{ flex: 1, padding: '18px 24px', borderRight: last ? 'none' : '1px solid #ececec' }}>
+      <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: accent ? GREEN : '#111' }}>{value}</div>
     </div>
   )
 }
@@ -76,8 +42,6 @@ export function DashboardPage() {
     return null
   }
 
-  // Header-strip headline numbers, mockup style -- only real figures we
-  // actually have, up to three, no fabricated placeholders.
   const headlineStats = data.aggregates
     ? [
         { label: 'Headcount', value: data.aggregates.headcount.total },
@@ -88,16 +52,6 @@ export function DashboardPage() {
       ? [{ label: 'Team Pending Leave Requests', value: data.team.pending_leave_requests }]
       : []
 
-  const remainingStats = data.aggregates
-    ? [
-        { title: 'Payroll Gross Pay', value: data.aggregates.payroll_cost.gross_pay },
-        { title: 'Payroll Net Pay', value: data.aggregates.payroll_cost.net_pay },
-        { title: 'Finalized Payslips', value: data.aggregates.payroll_summary.payslip_count },
-        { title: 'Finalized Payroll Gross Pay', value: data.aggregates.payroll_summary.gross_pay },
-        { title: 'Finalized Payroll Net Pay', value: data.aggregates.payroll_summary.net_pay },
-      ]
-    : []
-
   const leaveUtilization = data.aggregates?.leave_utilization
   const leaveUtilizationPercent = leaveUtilization
     ? leaveUtilization.entitled_days > 0
@@ -105,20 +59,39 @@ export function DashboardPage() {
       : 0
     : null
 
+  const stripStats = data.aggregates
+    ? [
+        ...(leaveUtilizationPercent !== null
+          ? [{ label: 'Leave Utilization', value: `${leaveUtilizationPercent}%`, accent: true }]
+          : []),
+        { label: 'Payroll Gross Pay', value: String(data.aggregates.payroll_cost.gross_pay) },
+        { label: 'Payroll Net Pay', value: String(data.aggregates.payroll_cost.net_pay) },
+        { label: 'Finalized Payslips', value: String(data.aggregates.payroll_summary.payslip_count) },
+      ]
+    : []
+
+  const hasBottomSection = Boolean(data.leave_balance?.length || data.pending_tasks?.length)
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Avatar size={48} icon={<UserOutlined />} style={{ background: '#111' }} />
-          <div>
-            <Typography.Title level={3} style={{ margin: 0, lineHeight: 1.2 }}>
-              Good morning{me ? `, ${me.email.split('@')[0]}` : ''}
-            </Typography.Title>
-            <Typography.Text type="secondary">Here's what's happening today.</Typography.Text>
-          </div>
+    <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingBottom: 20,
+          borderBottom: '1px solid #ececec',
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <Typography.Title level={3} style={{ margin: 0, lineHeight: 1.3 }}>
+            Good morning{me ? `, ${me.email.split('@')[0]}` : ''}
+          </Typography.Title>
+          <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)' }}>Here's what's happening today.</div>
         </div>
         {headlineStats.length > 0 && (
-          <div style={{ display: 'flex', gap: 32 }}>
+          <div style={{ display: 'flex', gap: 36 }}>
             {headlineStats.map((stat) => (
               <HeadlineStat key={stat.label} label={stat.label} value={stat.value} />
             ))}
@@ -126,93 +99,80 @@ export function DashboardPage() {
         )}
       </div>
 
-      <Row gutter={[16, 16]}>
-        <Col span={16}>
-          {leaveUtilizationPercent !== null && leaveUtilization && (
-            <Card style={{ ...tileStyle(0), marginBottom: 16 }} styles={{ body: { padding: 20 } }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <Progress
-                  type="circle"
-                  percent={leaveUtilizationPercent}
-                  size={88}
-                  strokeColor="#3C8C5B"
-                />
-                <div>
-                  <Typography.Text strong style={{ fontSize: 16, display: 'block' }}>
-                    Leave Utilization
-                  </Typography.Text>
-                  <Typography.Text type="secondary">
-                    {leaveUtilization.used_days} of {leaveUtilization.entitled_days} entitled days used
-                  </Typography.Text>
-                </div>
-              </div>
-            </Card>
-          )}
-          {remainingStats.length > 0 && (
-            <Row gutter={[16, 16]}>
-              {remainingStats.map((stat, i) => {
-                const Icon = STAT_ICONS[stat.title] ?? ArrowUpOutlined
+      {stripStats.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            borderTop: '1px solid #ececec',
+            borderBottom: '1px solid #ececec',
+            marginBottom: 24,
+          }}
+        >
+          {stripStats.map((stat, i) => (
+            <StripStat key={stat.label} {...stat} last={i === stripStats.length - 1} />
+          ))}
+        </div>
+      )}
+
+      {hasBottomSection && (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 40 }}>
+          {data.leave_balance && data.leave_balance.length > 0 && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 12 }}>My Leave Balance</div>
+              {data.leave_balance.map((balance, i) => {
+                const entitled = Number(balance.entitled_days)
+                const used = Number(balance.used_days)
+                const percent = entitled > 0 ? Math.round((used / entitled) * 100) : 0
                 return (
-                  <Col span={12} key={stat.title}>
-                    <Card style={tileStyle(i)} styles={{ body: { padding: 20 } }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <Avatar
-                          size={40}
-                          icon={<Icon />}
-                          style={{ background: ICON_COLORS[i % ICON_COLORS.length] }}
-                        />
-                        <Statistic title={stat.title} value={stat.value} />
-                      </div>
-                    </Card>
-                  </Col>
+                  <div
+                    key={`${balance.period_start}-${balance.period_end}`}
+                    style={{
+                      padding: '14px 0',
+                      borderBottom: i === data.leave_balance!.length - 1 ? 'none' : '1px solid #f2f2f2',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        color: 'rgba(0,0,0,0.6)',
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span>
+                        {balance.period_start} – {balance.period_end}
+                      </span>
+                      <span>
+                        {balance.used_days} / {balance.entitled_days} days used
+                      </span>
+                    </div>
+                    <Progress percent={percent} showInfo={false} strokeColor={GREEN} size="small" />
+                  </div>
                 )
               })}
-            </Row>
+            </div>
           )}
-          {data.leave_balance && (
-            <Card
-              title="My Leave Balance"
-              style={{ marginTop: remainingStats.length > 0 ? 16 : 0, boxShadow: '0 4px 16px rgba(30, 20, 0, 0.06)' }}
-            >
-              <List
-                dataSource={data.leave_balance}
-                locale={{ emptyText: 'No leave balance records.' }}
-                renderItem={(balance) => {
-                  const entitled = Number(balance.entitled_days)
-                  const used = Number(balance.used_days)
-                  const percent = entitled > 0 ? Math.round((used / entitled) * 100) : 0
-                  return (
-                    <List.Item>
-                      <div style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span>
-                            {balance.period_start} – {balance.period_end}
-                          </span>
-                          <span>
-                            {balance.used_days} / {balance.entitled_days} days used
-                          </span>
-                        </div>
-                        <Progress percent={percent} showInfo={false} strokeColor="#3C8C5B" />
-                      </div>
-                    </List.Item>
-                  )
-                }}
-              />
-            </Card>
+          {data.pending_tasks && data.pending_tasks.length > 0 && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 12 }}>Pending Tasks</div>
+              {data.pending_tasks.map((task, i) => (
+                <div
+                  key={task.id}
+                  style={{
+                    fontSize: 13,
+                    color: 'rgba(0,0,0,0.6)',
+                    padding: '10px 0',
+                    borderBottom: i === data.pending_tasks!.length - 1 ? 'none' : '1px solid #f2f2f2',
+                  }}
+                >
+                  {task.subject}
+                </div>
+              ))}
+            </div>
           )}
-        </Col>
-        <Col span={8}>
-          {data.pending_tasks && (
-            <Card title="Pending Tasks" style={tileStyle(2)}>
-              <List
-                dataSource={data.pending_tasks}
-                locale={{ emptyText: 'No pending tasks.' }}
-                renderItem={(task) => <List.Item>{task.subject}</List.Item>}
-              />
-            </Card>
-          )}
-        </Col>
-      </Row>
+        </div>
+      )}
     </div>
   )
 }

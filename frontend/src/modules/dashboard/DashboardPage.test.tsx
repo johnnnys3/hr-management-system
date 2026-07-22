@@ -58,8 +58,6 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('42').length).toBeGreaterThan(0)
     expect(screen.getByText(/50[,.]?000/)).toBeInTheDocument()
     expect(screen.getByText(/40[,.]?000/)).toBeInTheDocument()
-    expect(screen.getByText(/45[,.]?000/)).toBeInTheDocument()
-    expect(screen.getByText(/35[,.]?000/)).toBeInTheDocument()
     expect(screen.queryByText('My Leave Balance')).not.toBeInTheDocument()
     expect(screen.queryByText('Pending Tasks')).not.toBeInTheDocument()
   })

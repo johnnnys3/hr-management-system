@@ -20,6 +20,7 @@ import {
 } from '../../api/recruitment'
 import type { CandidateApplication, Interview } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { StatStrip } from '../../components/StatStrip'
 import { HireDetailsFields } from '../onboarding/HireDetailsFields'
 
 const STAGE_COLORS: Record<string, string> = {
@@ -49,6 +50,8 @@ export function CandidateDetailPage() {
   })
   const { data: postings = [] } = useQuery({ queryKey: ['recruitment', 'postings'], queryFn: () => listJobPostings() })
 
+  const latestApplication = applications[0]
+
   if (isLoading) return null
   if (error || !candidate) {
     return (
@@ -66,6 +69,16 @@ export function CandidateDetailPage() {
         {candidate.first_name} {candidate.last_name}
       </Typography.Title>
       <Typography.Text type="secondary">{candidate.email}</Typography.Text>
+      {latestApplication && (
+        <div style={{ marginTop: 20 }}>
+          <StatStrip
+            stats={[
+              { label: 'Stage', value: latestApplication.stage },
+              { label: 'Applied', value: latestApplication.applied_at.slice(0, 10) },
+            ]}
+          />
+        </div>
+      )}
       <div style={{ marginTop: 24, marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Typography.Title level={5} style={{ margin: 0 }}>
           Applications
@@ -179,25 +192,27 @@ function InterviewsPanel({ applicationId }: { applicationId: number }) {
           </Button>
         )}
       </div>
-      <Table<Interview>
-        rowKey="id"
-        size="small"
-        loading={isLoading}
-        dataSource={interviews}
-        pagination={false}
-        columns={[
-          {
-            title: 'Interviewer',
-            dataIndex: 'interviewer_employee',
-            render: (id: number | null) => {
-              const employee = employees.find((e) => e.id === id)
-              return employee ? `${employee.first_name} ${employee.last_name}` : '—'
+      <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
+        <Table<Interview>
+          rowKey="id"
+          size="small"
+          loading={isLoading}
+          dataSource={interviews}
+          pagination={false}
+          columns={[
+            {
+              title: 'Interviewer',
+              dataIndex: 'interviewer_employee',
+              render: (id: number | null) => {
+                const employee = employees.find((e) => e.id === id)
+                return employee ? `${employee.first_name} ${employee.last_name}` : '—'
+              },
             },
-          },
-          { title: 'Scheduled At', dataIndex: 'scheduled_at' },
-          { title: 'Status', dataIndex: 'status' },
-        ]}
-      />
+            { title: 'Scheduled At', dataIndex: 'scheduled_at' },
+            { title: 'Status', dataIndex: 'status' },
+          ]}
+        />
+      </div>
       {scheduleOpen && (
         <ScheduleInterviewModal
           applicationId={applicationId}

@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { Alert, Button, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../../api/auth'
@@ -46,8 +46,11 @@ export function LoginPage() {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 96 }}>
-      <Card style={{ width: 360 }}>
-        <Typography.Title level={3}>Log in</Typography.Title>
+      <div style={{ width: 360 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#111', marginBottom: 24 }}>HRMS</div>
+        <Typography.Title level={3} style={{ marginTop: 0 }}>
+          Log in
+        </Typography.Title>
         {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
@@ -68,7 +71,7 @@ export function LoginPage() {
           </Form.Item>
         </Form>
         <Link to="/password-reset">Forgot your password?</Link>
-      </Card>
+      </div>
     </div>
   )
 }

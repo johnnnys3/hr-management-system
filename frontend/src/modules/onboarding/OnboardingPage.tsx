@@ -36,17 +36,24 @@ export function OnboardingPage() {
   })
 
   return (
-    <div style={{ maxWidth: 480 }}>
+    <div style={{ maxWidth: 820 }}>
       <Typography.Title level={3}>New Direct Hire</Typography.Title>
-      <Typography.Paragraph type="secondary">
+      <Typography.Paragraph type="secondary" style={{ maxWidth: 440 }}>
         Creates the employee record and starts an onboarding checklist. To hire from a recruitment application
         instead, use the Convert to Employee action on the candidate's offer.
       </Typography.Paragraph>
       <Form form={form} layout="vertical" onFinish={(values) => mutation.mutate(values)}>
-        <HireDetailsFields includeName />
-        <Button type="primary" htmlType="submit" loading={mutation.isPending}>
-          Convert
-        </Button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
+          <HireDetailsFields includeName grid />
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={mutation.isPending}
+            style={{ order: 7, justifySelf: 'start', alignSelf: 'end', marginBottom: 24 }}
+          >
+            Convert
+          </Button>
+        </div>
       </Form>
     </div>
   )

@@ -112,7 +112,7 @@ function ProfileTab({ employee }: { employee: Employee }) {
     <Form
       form={form}
       layout="vertical"
-      style={{ maxWidth: 480 }}
+      style={{ maxWidth: 900 }}
       initialValues={{
         first_name: employee.first_name,
         last_name: employee.last_name,
@@ -124,35 +124,41 @@ function ProfileTab({ employee }: { employee: Employee }) {
       }}
       onFinish={(values) => mutation.mutate(values)}
     >
-      <Form.Item label="Employee Number">
-        <Input value={employee.employee_number} disabled />
-      </Form.Item>
-      <Form.Item label="First Name" name="first_name" rules={[{ required: true }]}>
-        <Input />
-      </Form.Item>
-      <Form.Item label="Last Name" name="last_name" rules={[{ required: true }]}>
-        <Input />
-      </Form.Item>
-      <Form.Item label="Date of Birth" name="date_of_birth" rules={[{ required: true }]}>
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
-      <Form.Item label="Hire Date" name="hire_date" rules={[{ required: true }]}>
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
-      <Form.Item label="Department" name="department" rules={[{ required: true }]}>
-        <Select options={departments.map((d) => ({ label: d.name, value: d.id }))} />
-      </Form.Item>
-      <Form.Item label="Job Title" name="job_title" rules={[{ required: true }]}>
-        <Select options={jobTitles.map((j) => ({ label: j.name, value: j.id }))} />
-      </Form.Item>
-      <Form.Item label="Employment Status" name="employment_status" rules={[{ required: true }]}>
-        <Select
-          options={Object.keys(STATUS_COLORS).map((s) => ({ label: s.replace('_', ' '), value: s }))}
-        />
-      </Form.Item>
-      <Button type="primary" htmlType="submit" loading={mutation.isPending}>
-        Save
-      </Button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
+        <div>
+          <Form.Item label="Employee Number">
+            <Input value={employee.employee_number} disabled />
+          </Form.Item>
+          <Form.Item label="First Name" name="first_name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Last Name" name="last_name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Date of Birth" name="date_of_birth" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Hire Date" name="hire_date" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={mutation.isPending}>
+            Save
+          </Button>
+        </div>
+        <div>
+          <Form.Item label="Department" name="department" rules={[{ required: true }]}>
+            <Select options={departments.map((d) => ({ label: d.name, value: d.id }))} />
+          </Form.Item>
+          <Form.Item label="Job Title" name="job_title" rules={[{ required: true }]}>
+            <Select options={jobTitles.map((j) => ({ label: j.name, value: j.id }))} />
+          </Form.Item>
+          <Form.Item label="Employment Status" name="employment_status" rules={[{ required: true }]}>
+            <Select
+              options={Object.keys(STATUS_COLORS).map((s) => ({ label: s.replace('_', ' '), value: s }))}
+            />
+          </Form.Item>
+        </div>
+      </div>
     </Form>
   )
 }
