@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.8 |
+| Version | 1.9 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -25,6 +25,7 @@
 | John Kessie | 2026-07-21 | **§4.6's `/api/applications/{id}/offer/` row never documented `offered_pay_grade`, even though COMP-001 (PR #73) added `offer_letter.offered_pay_grade_id` as a real, client-settable FK into `pay_grade` — found via FRONTEND-RECRUIT-001's Issue Offer form having no field to set it (issue #98).** `backend/recruitment/serializers.py`'s `OfferLetterSerializer` gains `offered_pay_grade` (writable `PrimaryKeyRelatedField`, nullable per the model); §4.6's offer row documents it. Recruiter — the only role that issues offers — had no way to look up a valid pay grade id, since §4.13's `/api/pay-grades/` grants read only to HR Administrator, HR Officer, Payroll Officer per `docs/07-iam-rbac.md` §2.4's compensation-access split; §4.13's row is widened to grant Recruiter a blind-selection read (`id`/`name` only, no `min_salary`/`max_salary`), preserving §2.4's intent that Recruiter never sees salary figures. Owner-confirmed 2026-07-21 | 1.6 |
 | John Kessie | 2026-07-21 | **§4.10's Dashboard note said Executive's `aggregates` section returns `null` "until [module 17 Reports is built]" — Module 17 merged 2026-07-19 (PR #83), which deliberately left this wiring out of its own scope as a flagged follow-up (issue #100).** `backend/dashboard/views.py`'s Executive branch now calls `reports.services`' five report builders directly with `scope='aggregate'`, the same scope Executive resolves to at `/api/reports/*`, rather than round-tripping through those endpoints. Turnover has no caller-supplied period on this no-query-param endpoint; it defaults to the trailing 365 days, stated in the row's own note. §4.10's row updated to describe the real shape. No permission or visibility-rule content changes — Executive's access was already granted, only the placeholder is replaced | 1.7 |
 | John Kessie | 2026-07-21 | **§4.7 only exposed `GET /api/onboarding-checklists/{id}/` — there was no way to look up a checklist by `employee_id` or `application_id`, only by an id learned once, at `POST /api/onboarding/convert/`'s response — found building FRONTEND-ONBOARD-001, PR #97 (issue #101).** `/api/onboarding-checklists/` gains a `GET` list, filterable by `employee_id`/`application_id`, same shape as `/api/leave-requests/`'s `status`/`leave_type_id` filters. Same permission as the existing detail endpoint (HR Officer: R; HR Administrator, Recruiter: R). No new access granted, no schema change | 1.8 |
+| John Kessie | 2026-07-22 | **§4.12's `/api/leave-types/` row only granted HR Officer/HR Administrator read — a Manager viewing their team's leave requests gets a 403 resolving leave-type names, found live-testing FRONTEND-LEAVE-001 (issue #125).** `backend/leave/permissions.py`'s `CanAccessLeaveTypes` widened to also grant Manager read (`GET` only). Same shape as the Recruitment `IsRecruiter`/HR-Officer fix at v1.5. No schema or write-access change | 1.9 |
 
 ---
 
@@ -256,7 +257,7 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/leave-types/` | GET | HR Officer: R; HR Administrator: R | Organisation-wide reference data | |
+| `/api/leave-types/` | GET | HR Officer: R; HR Administrator: R; Manager: R (v1.9, fixes #125) | Organisation-wide reference data | |
 | `/api/leave-balances/` | GET | Employee: R own; Manager: R direct reports'; HR Officer, HR Administrator: R, U all (`docs/07-iam-rbac.md` §4.2) | `docs/07-iam-rbac.md` §5's Leave requests row (balances follow the same scope) | |
 | `/api/leave-requests/` | GET | Employee: R own; Manager: R direct reports'; HR Officer, HR Administrator: R all | `docs/07-iam-rbac.md` §5 | Filterable: `status`, `leave_type_id`, date range |
 | `/api/leave-requests/` | POST | Employee: C own (`docs/07-iam-rbac.md` §4.2's "C, R own" cell) | n/a | `employee_id` is fixed to the caller, not client-supplied — an Employee cannot request leave on another employee's behalf through this endpoint regardless of body content |
