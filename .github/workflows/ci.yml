@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reuses .env.example rather than hand-listing every variable again —
+      # placeholder secrets are fine here, this stack never leaves the CI
+      # runner and never holds real data (docs/02-project-plan.md §8.2's
+      # placeholder-data convention, applied to credentials rather than
+      # statutory rates).
+      - name: Build .env
+        run: |
+          cp .env.example .env
+          sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
+          sed -i "s/^TOTP_ENCRYPTION_KEY=.*/TOTP_ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')/" .env
+          sed -i "s/^POSTGRES_MIGRATION_PASSWORD=.*/POSTGRES_MIGRATION_PASSWORD=ci-migrate/" .env
+          sed -i "s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci-app/" .env
+          sed -i "s/^MINIO_ROOT_PASSWORD=.*/MINIO_ROOT_PASSWORD=ci-minio/" .env
+          sed -i "s/^MINIO_SECRET_KEY=.*/MINIO_SECRET_KEY=ci-minio/" .env
+
+      - name: Build images
+        run: docker compose build django django-migrate
+
+      - name: Start dependencies
+        run: docker compose up -d postgres redis-broker redis-cache minio minio-init mailpit
+
+      - name: Migrate
+        run: docker compose run --rm django-migrate
+
+      # The plain `django` service's Postgres role lacks CREATEDB
+      # (docs/07-iam-rbac.md §7.3's two-role split) — manage.py test must
+      # run as the migration role, per this project's established habit.
+      - name: Run backend tests
+        run: docker compose run --rm --entrypoint "" django-migrate python manage.py test
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # Bare `tsc --noEmit` is a silent no-op in this project — the root
+      # tsconfig has "files": [] and only builds through project references.
+      - run: npx tsc --noEmit -p tsconfig.app.json
+
+      - run: npm test
