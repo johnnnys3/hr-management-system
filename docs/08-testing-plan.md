@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.5's Dashboard renumbering (module 5 → 14; modules 6–14 → 5–13).** Module-numbered rows below are still v1.4. Reconcile at M5 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; module-numbered rows below still v1.4-numbered as 6 and 7).** Reconcile at M5 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-22 | **Reconciled to `docs/02-project-plan.md` v1.8, per the two rows above (both now resolved) plus the later v1.7 Dashboard-aggregates note.** §4's per-module table and §6.1's coverage matrix are renumbered and reordered to the current build order (Departments 5, Employee Management 6, Reporting Structure 7, Recruitment 8, Onboarding 9, Notification 10, Employee Self-Service 11, Manager Self-Service 12, Leave Management 13, Dashboard 14, Compensation and Benefits 15, Payroll 16, Reports 17); every in-prose cross-reference to a module number in §5 and §6 is corrected to match. No test obligation, tool selection, or control content changes — this is a pure renumbering, the same shape as DOC-007/008's reconciliation of `docs/04-system-architecture.md` and `docs/06-api-contracts.md`, which this document was the one left behind when those two were fixed. Filed as DOC-015 | 1.1 |
+| John Kessie | 2026-07-22 | **§7.1 and §9 still cited 2026-10-20 as the date TBD-016/TBD-017 stop blocking M18 — the pre-v1.9 figure.** `docs/02-project-plan.md` v1.9 moved this to 2026-11-05 when the frontend implementation batch was inserted before M18 (§8.1's TBD-016/017 rows both say so), but this document's own two citations were never updated — found immediately after DOC-015's module-numbering fix, while re-reading the same sections for anything else stale. Both corrected to 2026-11-05, with the superseded date and the reason kept in-line rather than silently dropped. No other content change. Filed as DOC-016 | 1.2 |
 
 ---
 
@@ -240,7 +241,7 @@ Modules 18 to 20 (Testing, UAT, Deployment) own no endpoint and no visibility ru
 
 ### 7.1 Response-Time and Load Requirements (HRMS-NFR-001 to HRMS-NFR-006)
 
-SRS §5.1 fixes these as 95th-percentile thresholds, measured at the application server boundary, over a rolling 60-minute window, at the concurrent load HRMS-NFR-006 states — **against a data volume (TBD-016) and, for HRMS-NFR-005, an elapsed-time threshold (TBD-017) neither of which this project can supply** (`docs/02-project-plan.md` §8.1: both "not resolvable by this project," blocking M18 Testing until 2026-10-20).
+SRS §5.1 fixes these as 95th-percentile thresholds, measured at the application server boundary, over a rolling 60-minute window, at the concurrent load HRMS-NFR-006 states — **against a data volume (TBD-016) and, for HRMS-NFR-005, an elapsed-time threshold (TBD-017) neither of which this project can supply** (`docs/02-project-plan.md` §8.1: both "not resolvable by this project," blocking M18 Testing until 2026-11-05, moved from 2026-10-20 at plan v1.9 by the frontend implementation batch).
 
 Two things can be built without either TBD, and this document specifies both so they are ready when the data arrives rather than designed from scratch at M18:
 
@@ -277,7 +278,7 @@ This document introduces one new open item and restates the ones from prior docu
 
 - **TBD-005 (final payroll statutory rates) and TBD-006 (bank transfer file format).** Open, not resolvable by this project (`docs/02-project-plan.md` §8.1, §8.2). M16's tests verify the calculation engine against the versioned rate-table structure and the bank-file interface, not against confirmed values or a confirmed format; "M16 completes as *calculation engine built, statutory correctness unverified*" (plan §8.2), and this document's module 16 row (§4) is built to that limit rather than around it.
 - **TBD-007 (HR approval workflows) and TBD-008 (leave policy rules).** Open, not resolvable by this project. HRMS-FR-068's "unless policy allows" condition (§4, row 13) cannot be given a concrete test until TBD-008 closes; the test asserts the mechanism against a documented provisional policy, per the pattern `docs/02-project-plan.md` §8.2 sets generally.
-- **TBD-016 and TBD-017 (organisation size, data volumes, payroll elapsed-time threshold).** Open, not resolvable by this project, blocking M18 Testing until 2026-10-20 per plan §8.1. §7.1 above builds the timing mechanism now and records every measurement against an invented dataset as a measurement of that dataset, not as evidence HRMS-NFR-001 to HRMS-NFR-005 are met, per plan §8.2's instruction.
+- **TBD-016 and TBD-017 (organisation size, data volumes, payroll elapsed-time threshold).** Open, not resolvable by this project, blocking M18 Testing until 2026-11-05 per plan §8.1 (moved from 2026-10-20 at v1.9 by the frontend implementation batch). §7.1 above builds the timing mechanism now and records every measurement against an invented dataset as a measurement of that dataset, not as evidence HRMS-NFR-001 to HRMS-NFR-005 are met, per plan §8.2's instruction.
 - **TBD-003 (hosting target).** Open by decision (ADR-0009). §7.2 above states no availability or backup test exists in this plan because both properties are deployment-dependent, not because they are out of scope.
 - **Plan §11 question 6 (what UAT means with no independent user) and question 7 (what Handover means with no recipient).** Both open. §8 above states what question 6 means for this document's own scope until the owner answers it; question 7 does not bear on this document and is not restated further here.
 
