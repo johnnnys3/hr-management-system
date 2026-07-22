@@ -304,10 +304,20 @@ function DocumentsTab({ employeeId }: { employeeId: number }) {
   })
 
   const handleDownload = async (doc: EmployeeDocument) => {
+    // Open the tab synchronously from the click handler, before the await —
+    // otherwise browsers can treat the post-await window.open as an
+    // unsolicited popup and block it. noopener/noreferrer are omitted here
+    // since they'd drop the window reference this needs to set .location on.
+    const placeholder = window.open('', '_blank')
+    if (!placeholder) {
+      message.error('Download blocked by your browser’s pop-up blocker. Please allow pop-ups for this site and try again.')
+      return
+    }
     try {
       const { url } = await getEmployeeDocumentDownloadUrl(employeeId, doc.id)
-      window.open(url, '_blank', 'noopener,noreferrer')
+      placeholder.location.href = url
     } catch (e) {
+      placeholder.close()
       message.error(e instanceof ApiError ? e.message : 'Download failed.')
     }
   }
