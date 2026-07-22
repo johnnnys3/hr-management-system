@@ -162,10 +162,12 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
+| `/api/auth/csrf/` | GET | None (pre-authentication) | n/a | Sets the `csrftoken` cookie via `ensure_csrf_cookie`, no response body. DRF's `SessionAuthentication.enforce_csrf` (§2 above) needs this cookie present before the SPA's first state-changing call; found undocumented by the `contracts` app's M18 contract-test suite, matching the view's own docstring ("should be folded into that document on review") |
 | `/api/auth/login/` | POST | None (pre-authentication) | n/a | Body: `email`, `password`. Uniform response on failure regardless of whether the account exists (`CONTEXT.md` "Deployment conditions" — a varying response discloses account existence). Emits `login_attempt` to `audit_log` |
 | `/api/auth/logout/` | POST | Authenticated | n/a | Invalidates the server-side session (ADR-0004) |
 | `/api/auth/me/` | GET | Authenticated | Own session only | Returns the caller's `user_account` fields, derived role set (Employee/Manager, `docs/07-iam-rbac.md` §3), and assigned groups — the SPA's one call for "who am I and what can I do," since no client-side token carries this the way a bearer token would elsewhere |
 | `/api/auth/password-reset/` | POST | None (pre-authentication) | n/a | Body: `email`. Uniform response regardless of send success (ADR-0011; `CONTEXT.md` "Deployment conditions"). Delivery is best-effort via mail dispatch; a failure is logged to application logs, never `audit_log` (ADR-0011) |
+| `/api/auth/password-reset/confirm/` | POST | None (pre-authentication) | n/a | Body: `uid`, `token`, `password`. Completes the reset the row above requests; found undocumented by the `contracts` app's M18 contract-test suite, matching the view's own docstring ("should be folded into that document on review"). `400` with `code: "validation_error"` on an invalid or expired link, `204` on success |
 | `/api/auth/second-factor/` | POST | Authenticated (self-enrolment only — HRMS-NFR-024: "enrollment shall be performed by the account holder") | Own `second_factor` row only; no endpoint lets one user enrol another's factor | Creates `second_factor` (`docs/05-database-schema.md` §4.2). Emits `second_factor_event` to `audit_log` |
 | `/api/auth/second-factor/recovery-requests/` | POST | Authenticated (self only, same reasoning as enrolment) | Own request only | Creates `second_factor_recovery_request` (pending). No matrix cell — mechanism `docs/07-iam-rbac.md` §7.3/§4.2 module 4 fixes directly |
 | `/api/auth/second-factor/recovery-requests/{id}/decide/` | POST | Holder of the deployment-designated recovery-approver permission (`docs/07-iam-rbac.md` §8 — deferred to deployment) | The approver must not administer the requester's credentials — an application-code eligibility check, not a queryset scope (`docs/05-database-schema.md` §4.2) | Body: `{"decision": "approved" \| "denied"}`. `approved`/`denied` sets `status`, `decided_at`, `approver_user_id` |
@@ -183,15 +185,18 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/employees/{id}/documents/` | GET | HR Officer: R; Employee: R own (`docs/07-iam-rbac.md` §4.2) | Employee: own only; HR Officer: all | |
 | `/api/employees/{id}/documents/` | POST | HR Officer: C (`docs/07-iam-rbac.md` §4.2) | n/a | Multipart upload. Server validates content type by inspection and size server-side (ADR-0007, `docs/05-database-schema.md` §4.5); `object_key` is generated, never taken from the client filename |
 | `/api/employees/{id}/documents/{doc_id}/download/` | GET | HR Officer: R; Employee: R own | Same as documents list | Returns a short-lived signed URL (ADR-0007 — the bucket is private, no document is served from a directly addressable URL), not the file bytes |
-| `/api/employees/{id}/emergency-contacts/` | GET, POST, PATCH | HR Officer: C, R, U (grouped under Employee records, HRMS-FR-007) | Same as `/api/employees/{id}/` | Maps to `emergency_contact` (`docs/05-database-schema.md` §4.5) |
+| `/api/employees/{id}/emergency-contacts/` | GET, POST | HR Officer: C, R (grouped under Employee records, HRMS-FR-007) | Same as `/api/employees/{id}/` | Maps to `emergency_contact` (`docs/05-database-schema.md` §4.5) |
+| `/api/employees/{id}/emergency-contacts/{contact_id}/` | PATCH | HR Officer: U | Same as `/api/employees/{id}/` | |
 
 ### 4.4 Module 5 — Departments and HR Configuration
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
 | `/api/departments/` | GET | HR Administrator: R; HR Officer, Recruiter, Payroll Officer: R (`docs/07-iam-rbac.md` §4.2's HR configuration row) | Organisation-wide; no per-role scoping — departments are reference data, not employee-scoped | |
-| `/api/departments/` | POST, PATCH | HR Administrator: C, U | n/a | `PATCH {"is_active": false}` retires rather than deletes (`docs/05-database-schema.md` §2.3) |
-| `/api/job-titles/` | GET, POST, PATCH | Same as departments (§4.2's HR configuration row groups them, `docs/05-database-schema.md` §4.4) | Same as departments | |
+| `/api/departments/` | POST | HR Administrator: C | n/a | |
+| `/api/departments/{id}/` | PATCH | HR Administrator: U | n/a | `PATCH {"is_active": false}` retires rather than deletes (`docs/05-database-schema.md` §2.3) |
+| `/api/job-titles/` | GET, POST | Same as departments (§4.2's HR configuration row groups them, `docs/05-database-schema.md` §4.4) | Same as departments | |
+| `/api/job-titles/{id}/` | PATCH | Same as departments | Same as departments | `PATCH {"is_active": false}` retires rather than deletes, same as departments |
 
 ### 4.5 Module 7 — Reporting Structure
 
@@ -205,14 +210,18 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/job-requisitions/` | GET, POST, PATCH | Recruiter: C, R, U; HR Administrator: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Administrator: read (`docs/07-iam-rbac.md` §5 — no explicit requisition row; inherits Recruitment module's "Recruiter: full, HR Administrator: read, others: none" from `docs/04-system-architecture.md` §4's module 8 row) | |
+| `/api/job-requisitions/` | GET, POST | Recruiter: C, R; HR Administrator: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Administrator: read (`docs/07-iam-rbac.md` §5 — no explicit requisition row; inherits Recruitment module's "Recruiter: full, HR Administrator: read, others: none" from `docs/04-system-architecture.md` §4's module 8 row) | |
+| `/api/job-requisitions/{id}/` | GET, PATCH | Recruiter: R, U; HR Administrator: R | Recruiter: full; HR Administrator: read | |
 | `/api/job-requisitions/{id}/approve/` | POST | HR Administrator: A (`docs/07-iam-rbac.md` §4.2's "Requisition approval" row) | n/a | Sets `status = 'approved'`, `approved_by`. Distinct endpoint per §2.9, since approval is a gated transition, not an ordinary field write |
 | `/api/job-requisitions/{id}/reject/` | POST | HR Administrator: A | n/a | Sets `status = 'rejected'` |
-| `/api/job-postings/` | GET, POST, PATCH | Recruiter: C, R, U; HR Officer: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Officer: read | `POST` requires `requisition.status = 'approved'` — enforced in application code, not a schema constraint (`docs/05-database-schema.md` §4.7 states no such check) |
+| `/api/job-postings/` | GET, POST | Recruiter: C, R; HR Officer: R (`docs/07-iam-rbac.md` §4.2) | Recruiter: full; HR Officer: read | `POST` requires `requisition.status = 'approved'` — enforced in application code, not a schema constraint (`docs/05-database-schema.md` §4.7 states no such check) |
+| `/api/job-postings/{id}/` | GET, PATCH | Recruiter: R, U; HR Officer: R | Recruiter: full; HR Officer: read | |
 | `/api/job-postings/{id}/publish/` | POST | Recruiter: U | n/a | Sets `published_at` |
-| `/api/candidates/` | GET, POST, PATCH | Recruiter: C, R, U; HR Officer: R | Recruiter: full; HR Officer: read | `email` is not unique at this layer either (`docs/05-database-schema.md` §4.7 — a candidate may apply more than once); this endpoint does not attempt to deduplicate candidates by email |
+| `/api/candidates/` | GET, POST | Recruiter: C, R; HR Officer: R | Recruiter: full; HR Officer: read | `email` is not unique at this layer either (`docs/05-database-schema.md` §4.7 — a candidate may apply more than once); this endpoint does not attempt to deduplicate candidates by email |
+| `/api/candidates/{id}/` | GET, PATCH | Recruiter: R, U; HR Officer: R | Recruiter: full; HR Officer: read | |
 | `/api/candidates/{id}/applications/` | GET, POST | Recruiter: C, R; HR Officer: R | Recruiter: full; HR Officer: read | Maps to `candidate_application` |
-| `/api/applications/{id}/interviews/` | GET, POST, PATCH | Recruiter: C, R, U; HR Officer: R | Recruiter: full; HR Officer: read | `interviewer_employee_id` may reference any employee, not only Recruiters — HRMS-FR-018 does not restrict who may interview, only who may schedule |
+| `/api/applications/{id}/interviews/` | GET, POST | Recruiter: C, R; HR Officer: R | Recruiter: full; HR Officer: read | `interviewer_employee_id` may reference any employee, not only Recruiters — HRMS-FR-018 does not restrict who may interview, only who may schedule |
+| `/api/applications/{id}/interviews/{interview_id}/` | PATCH | Recruiter: U | Recruiter: full | |
 | `/api/applications/{id}/offer/` | GET, POST | Recruiter: C, R; HR Officer: R | Recruiter: full; HR Officer: read | Creates `offer_letter`. Body accepts `offered_salary` and optional `offered_pay_grade` (FK into `pay_grade`). `document_object_key` is generated server-side once the offer is issued, same object-storage pattern as employee documents. HR Officer's read access exists so they can reach an accepted offer to trigger conversion (module 9) |
 | `/api/offers/{id}/decide/` | POST | Recruiter: U (records the candidate's decision on their behalf, since a candidate has no account — `CONTEXT.md`: "a candidate is not an employee," and this system has no candidate-facing portal per SRS scope) | n/a | Body: `{"decision": "accepted" \| "rejected" \| "withdrawn"}`. An `accepted` decision does not itself create an employee record — HRMS-BR-013 requires onboarding initiation as the conversion trigger, which is module 9's endpoint below, not this one |
 
@@ -223,7 +232,8 @@ Modules are numbered per `docs/04-system-architecture.md` §4. A module owning n
 | `/api/onboarding/convert/` | POST | HR Officer: C (`docs/07-iam-rbac.md` §4.2's Onboarding row) | n/a | Body: `{"application_id": ...}` or a direct-hire employee payload with no prior application. **This is the HRMS-BR-013 conversion point**: creates the `employee` row, then the `onboarding_checklist` row referencing it (`docs/05-database-schema.md` §4.8 — a checklist row cannot exist before the employee row it references). Atomic: a failure partway does not leave an `employee` row with no checklist |
 | `/api/onboarding-checklists/` | GET | HR Officer: R; HR Administrator, Recruiter: R (`docs/07-iam-rbac.md` §4.2) | Per role, same scoping as Employee Management's read | Filterable: `employee_id`, `application_id`. `POST /api/onboarding/convert/` returns the checklist id at creation time, but that was the only way to learn it (issue #101) — this endpoint lets a caller who only has an employee or application id look the checklist back up |
 | `/api/onboarding-checklists/{id}/` | GET | HR Officer: R; HR Administrator, Recruiter: R (`docs/07-iam-rbac.md` §4.2) | Per role, same scoping as Employee Management's read | |
-| `/api/onboarding-checklists/{id}/tasks/` | GET, POST, PATCH | HR Officer: C, R, U | Same as checklist | `PATCH {"status": "completed"}` sets `completed_by`, `completed_at` |
+| `/api/onboarding-checklists/{id}/tasks/` | GET, POST | HR Officer: C, R | Same as checklist | |
+| `/api/onboarding-checklists/{id}/tasks/{task_id}/` | PATCH | HR Officer: U | Same as checklist | `PATCH {"status": "completed"}` sets `completed_by`, `completed_at` |
 
 ### 4.8 Module 10 — Notification
 
@@ -238,7 +248,9 @@ No `POST` for creating a notification is exposed to a client: notifications are 
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/users/` | GET, POST, PATCH | System Administrator: C, R, U (`docs/07-iam-rbac.md` §4.2's "User accounts, roles, permissions" row) | System Administrator: all `user_account` rows; no other role reaches this endpoint | Creates/manages `user_account`. Does **not** expose employee, payroll, or compensation fields on any joined `employee` row — `docs/07-iam-rbac.md` §7.1: "the role receives no payroll, compensation, or employee record access." A `user_account.employee_id` is returned as an opaque foreign key, not an expanded employee object |
+| `/api/users/` | GET, POST | System Administrator: C, R (`docs/07-iam-rbac.md` §4.2's "User accounts, roles, permissions" row) | System Administrator: all `user_account` rows; no other role reaches this endpoint | Creates/manages `user_account`. Does **not** expose employee, payroll, or compensation fields on any joined `employee` row — `docs/07-iam-rbac.md` §7.1: "the role receives no payroll, compensation, or employee record access." A `user_account.employee_id` is returned as an opaque foreign key, not an expanded employee object |
+| `/api/users/{id}/` | PATCH | System Administrator: U | Same as `/api/users/` | |
+| `/api/role-grant-requests/` | GET | Any authenticated user | Own requests as requester, plus pending requests awaiting the caller's decision (mirrors `CanDecideRoleGrantRequest`'s eligibility) | Found undocumented by the `contracts` app's M18 contract-test suite — the view already implemented and cited this section; only the row was missing |
 | `/api/role-grant-requests/` | POST | Any authenticated user — requesting a grant carries no permission of its own; `docs/07-iam-rbac.md` §7.3 gates *effecting* the grant, not raising the request | Own request as requester; approver sees requests awaiting their decision | Body: `{"subject_user_id": ..., "role_id": ...}`. **Rejected at the database layer, not only application code, where `requester_user_id = subject_user_id`** (`docs/05-database-schema.md` §4.3's `CHECK` constraint carrying `docs/07-iam-rbac.md` §7.3's "self-grant is refused, not warned"). No matrix cell — this is IAM mechanism, gated by §7.3 directly, per §3's reading-guide note |
 | `/api/role-grant-requests/{id}/decide/` | POST | Holder of `iam.approve_role_grant`, and not the requester (`docs/07-iam-rbac.md` §7.3) — enforced by the same `CHECK (approver_user_id IS NULL OR approver_user_id <> requester_user_id)` constraint | Only requests where the caller is eligible to approve | Body: `{"decision": "approved" \| "refused"}`. A `decision` that would violate the constraint is rejected with `code: "self_approval_forbidden"` (§2.7) even if it somehow reached this endpoint, since the database constraint is the actual enforcement and this is defence in depth at the API layer |
 | `/api/audit-log/` (permission changes) | GET | Covered by §4.1's audit-log endpoint, filtered `?category=permission_change` | Same as §4.1 | Not a second endpoint |
@@ -271,18 +283,23 @@ Self-service is not a separate resource shape; it is a narrower read/write surfa
 
 | Endpoint | Method | Permission | Visibility | Notes |
 |---|---|---|---|---|
-| `/api/salary-structures/` | GET, POST, PATCH | HR Administrator: C, R, U; HR Officer, Payroll Officer: R (`docs/07-iam-rbac.md` §4.2) | Organisation-wide | |
+| `/api/salary-structures/` | GET, POST | HR Administrator: C, R; HR Officer, Payroll Officer: R (`docs/07-iam-rbac.md` §4.2) | Organisation-wide | |
+| `/api/salary-structures/{id}/` | PATCH | HR Administrator: U | Organisation-wide | |
 | `/api/pay-grades/` | GET, POST | HR Administrator: C, R, U; HR Officer, Payroll Officer: R; Recruiter: R (blind selection only) | Organisation-wide | Recruiter's `GET` returns `id`, `name`, and the parent salary structure's `name` (not its other fields) — no `min_salary`/`max_salary`, needed to populate `offered_pay_grade` on §4.6's Issue Offer form without granting the salary-figure visibility `docs/07-iam-rbac.md` §2.4 withholds from Recruiter. The structure name disambiguates pay grades that share a name across different structures — `PayGrade.name` is unique only within a `salary_structure`, not organisation-wide (issue #107) |
 | `/api/pay-grades/{id}/` | PATCH | HR Administrator: U | Organisation-wide | Listed under its own row rather than folded into the collection row above, to avoid implying a `PATCH` on `/api/pay-grades/` itself, which has no such method (issue #106) |
 | `/api/employees/{id}/compensation-records/` | GET | HR Administrator: R; HR Officer: R; Payroll Officer: R (`docs/07-iam-rbac.md` §4.2's Compensation history row) | Per role, Employee records scope | Returns the append-only history (`docs/05-database-schema.md` §3.4), most recent first; no employee self-read of their own compensation history is granted by §4.2's matrix — HRMS-FR-058 does not name Employee among the roles that read it, so `/api/employees/me/` (§4.3) does not expose this sub-resource |
 | `/api/employees/{id}/compensation-records/` | POST | HR Officer: C (§4.2's "Assign employee to pay grade" row — the transactional act, distinct from defining the pay grade framework itself, `docs/07-iam-rbac.md` §2.4) | n/a | **No client-facing `PATCH` or `DELETE` on an existing row exists on this endpoint.** A correction is a new `POST` with a later `effective_from`. That insert does perform one further, narrowly scoped write: it sets the prior current row's `is_superseded = true` and `effective_to`, server-side, within the same transaction — the two fields `docs/05-database-schema.md` §3.4 names as the append-only table's designed exception, "an in-band way to mark a row historical without ever rewriting the value it recorded." Every other column of that row (`base_salary`, `pay_grade_id`, `effective_from`) is never written again once inserted, and no endpoint accepts a request that would write them |
-| `/api/bonus-cycles/` | GET, POST, PATCH | HR Administrator: C, R, U; HR Officer, Payroll Officer: R (grouped under §4.2's "Bonus cycles, allowances, benefits" row) | Organisation-wide | |
+| `/api/bonus-cycles/` | GET, POST | HR Administrator: C, R; HR Officer, Payroll Officer: R (grouped under §4.2's "Bonus cycles, allowances, benefits" row) | Organisation-wide | |
+| `/api/bonus-cycles/{id}/` | PATCH | HR Administrator: U | Organisation-wide | |
 | `/api/bonus-cycles/{id}/awards/` | GET, POST | HR Administrator: C, R | Organisation-wide (HR); no employee self-read — §4.2 does not list Employee against this row the way it does allowances/benefits | |
-| `/api/allowance-types/` | GET, POST, PATCH | HR Administrator: C, R, U; HR Officer, Payroll Officer: R | Organisation-wide | Definitional half of "Allowance" (§4.16 below carries the computed-instance half onto `payslip_line`, per `docs/05-database-schema.md` §7's split) |
+| `/api/allowance-types/` | GET, POST | HR Administrator: C, R; HR Officer, Payroll Officer: R | Organisation-wide | Definitional half of "Allowance" (§4.16 below carries the computed-instance half onto `payslip_line`, per `docs/05-database-schema.md` §7's split) |
+| `/api/allowance-types/{id}/` | PATCH | HR Administrator: U | Organisation-wide | |
 | `/api/employees/{id}/allowances/` | GET | HR Administrator: R; HR Officer, Payroll Officer: R; Employee: R own (`docs/07-iam-rbac.md` §4.2's "R own" cell) | Employee: own; HR/Payroll: per role | Maps to `employee_allowance` — the per-employee assignment, still distinct from the payslip line amount computed from it |
 | `/api/employees/{id}/allowances/` | POST | HR Administrator: C | n/a | |
-| `/api/benefits/` | GET, POST, PATCH | HR Administrator: C, R, U; HR Officer, Payroll Officer: R | Organisation-wide | |
-| `/api/employees/{id}/benefit-enrollments/` | GET, POST, PATCH | HR Administrator: C, R, U; Employee: R own | Employee: own; HR: per role | `PATCH {"status": "cancelled"}` sets `cancelled_at` |
+| `/api/benefits/` | GET, POST | HR Administrator: C, R; HR Officer, Payroll Officer: R | Organisation-wide | |
+| `/api/benefits/{id}/` | PATCH | HR Administrator: U | Organisation-wide | |
+| `/api/employees/{id}/benefit-enrollments/` | GET, POST | HR Administrator: C, R; Employee: R own | Employee: own; HR: per role | |
+| `/api/employees/{id}/benefit-enrollments/{enrollment_id}/` | PATCH | HR Administrator: U | Employee: own; HR: per role | `PATCH {"status": "cancelled"}` sets `cancelled_at` |
 
 ### 4.14 Module 16 — Payroll
 

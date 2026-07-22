@@ -1,7 +1,7 @@
 from rest_framework.generics import ListAPIView
 
 from .models import AuditLog
-from .permissions import IsSystemAdministrator
+from .permissions import CanAccessEmployeeAuditHistory, IsSystemAdministrator
 from .serializers import AuditLogSerializer
 
 
@@ -22,3 +22,15 @@ class AuditLogListView(ListAPIView):
         if category:
             queryset = queryset.filter(category=category)
         return queryset
+
+
+class EmployeeAuditHistoryView(ListAPIView):
+    """`GET /api/employees/{id}/audit-history/`, `docs/06-api-contracts.md`
+    §4.1: a filtered read of `audit_log` where `target_type = 'employee'`
+    and `target_id = {id}` — not a second store (`CONTEXT.md`)."""
+
+    serializer_class = AuditLogSerializer
+    permission_classes = [CanAccessEmployeeAuditHistory]
+
+    def get_queryset(self):
+        return AuditLog.objects.filter(target_type='employee', target_id=self.kwargs['pk'])

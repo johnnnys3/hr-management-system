@@ -122,7 +122,9 @@ services:
   # role, then exits. The only place the migration role's credentials are
   # ever present — django, celery-worker, and celery-beat never see them.
   django-migrate:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     command: ["true"]
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -146,7 +148,9 @@ services:
         condition: service_healthy
 
   django:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     entrypoint: []
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
     environment:
@@ -164,7 +168,9 @@ services:
         condition: service_completed_successfully
 
   celery-worker:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     entrypoint: []
     command: celery -A config worker --loglevel info
     environment:
@@ -176,7 +182,9 @@ services:
         condition: service_healthy
 
   celery-beat:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     entrypoint: []
     command: celery -A config beat --loglevel info
     environment:
