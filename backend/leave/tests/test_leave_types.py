@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 
-from .helpers import make_employee, user_with_role
+from .helpers import make_employee, make_manager_and_report, user_with_role
 
 User = get_user_model()
 
@@ -22,6 +22,15 @@ class LeaveTypeListTests(APITestCase):
 
     def test_hr_administrator_can_read(self):
         self.client.force_authenticate(user_with_role('hra@example.com', HR_ADMINISTRATOR))
+
+        response = self.client.get(URL)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_manager_can_read(self):
+        manager, _ = make_manager_and_report()
+        user = User.objects.create_user(email='manager@example.com', password='x', employee=manager)
+        self.client.force_authenticate(user)
 
         response = self.client.get(URL)
 
