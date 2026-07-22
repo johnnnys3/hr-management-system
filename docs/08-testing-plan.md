@@ -131,7 +131,7 @@ This control has no test suite of its own; it is a review gate on pull requests 
 
 ## 4. Per-Module Test Obligations
 
-Modules are numbered per `docs/02-project-plan.md` §6.1 (v1.8 numbering, reconciled at DOC-015 — see the revision history above; `docs/04-system-architecture.md` §4 and `docs/06-api-contracts.md` §4 were already reconciled to this same v1.8 numbering at DOC-007 and DOC-008, this document was the one left behind). Modules 18 to 20 are process modules, own no endpoint (`docs/06-api-contracts.md` §4), and are not rows in this table; their obligations are §6 (UAT, end-to-end) and this document's own existence (M18's principal requirement is `docs/08-testing-plan.md` itself, per plan §6.1).
+Modules are numbered per `docs/02-project-plan.md` §6.1 (v1.8 numbering, reconciled at DOC-015 — see the revision history above; `docs/04-system-architecture.md` §4 and `docs/06-api-contracts.md` §4 were already reconciled to this same v1.8 numbering at DOC-007 and DOC-008, this document was the one left behind). Modules 18 to 20 are process modules, own no endpoint (`docs/06-api-contracts.md` §4), and are not rows in this table; their obligations are §6 (end-to-end testing) and §8 (UAT scope) and this document's own existence (M18's principal requirement is `docs/08-testing-plan.md` itself, per plan §6.1).
 
 | # | Module | Permission tests | Visibility tests | Contract tests | Functional/validation tests |
 |---|---|---|---|---|---|
