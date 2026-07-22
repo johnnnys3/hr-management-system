@@ -72,6 +72,13 @@ export function DashboardPage() {
 
   const hasBottomSection = Boolean(data.leave_balance?.length || data.pending_tasks?.length)
 
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
+
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto' }}>
       <div
@@ -86,7 +93,7 @@ export function DashboardPage() {
       >
         <div>
           <Typography.Title level={3} style={{ margin: 0, lineHeight: 1.3 }}>
-            Good morning{me ? `, ${me.email.split('@')[0]}` : ''}
+            {getGreeting()}{me ? `, ${me.email.split('@')[0]}` : ''}
           </Typography.Title>
           <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)' }}>Here's what's happening today.</div>
         </div>
