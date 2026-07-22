@@ -152,10 +152,11 @@ class ContractCoverageTests(TestCase):
                 concrete = concrete.replace('{}', placeholder_by_converter['str'])
             concrete = concrete.replace('{}', placeholder_by_converter['int'])
             response = self.client_probe.generic(method, concrete + '/')
-            if response.status_code in (404, 405):
+            if response.status_code in (404, 405) or response.status_code >= 500:
                 failures.append((path, method, response.status_code))
         self.assertEqual(
             failures, [],
-            f"These documented endpoints returned 404/405 on a live request "
-            f"(route missing or method not implemented at that URL): {failures}",
+            f"These documented endpoints either returned 404/405 on a live "
+            f"request (route missing or method not implemented at that URL) "
+            f"or crashed (5xx): {failures}",
         )

@@ -255,7 +255,10 @@ REST_FRAMEWORK = {
 # suite (contracts app) depends on them.
 SPECTACULAR_SETTINGS = {
     'TITLE': 'HRMS API',
-    'DESCRIPTION': 'docs/06-api-contracts.md is authoritative; this schema is generated from it, not the reverse.',
+    'DESCRIPTION': (
+        'Generated from the live DRF views, serializers, and URLconf. '
+        'docs/06-api-contracts.md is the upstream contract this is checked against, not generated from.'
+    ),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

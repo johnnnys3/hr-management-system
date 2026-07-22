@@ -32,6 +32,13 @@ class EmployeeAuditHistoryTests(APITestCase):
             target_type='employee', target_id=2,
         )
         AuditLog.objects.create(category=AuditLog.CATEGORY_LOGIN_ATTEMPT, action='login_success')
+        # Colliding target_id with a different target_type — the null-target
+        # row above is excluded by the id predicate alone, so this is the
+        # row that actually proves the target_type='employee' filter holds.
+        AuditLog.objects.create(
+            category=AuditLog.CATEGORY_RECORD_CHANGE, action='status_changed',
+            target_type='department', target_id=1,
+        )
 
     def _user_in_group(self, email, group_name):
         user = User.objects.create_user(email=email, password='irrelevant')
@@ -74,17 +81,18 @@ class EmployeeAuditHistoryTests(APITestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['target_id'], 1)
 
-    def test_not_a_second_store_excludes_non_employee_events(self):
-        """A `login_attempt` row with no `target_type` must never surface
-        here, even for an id that happens to match its pk — this endpoint
-        is a filtered read of the one log, not scoped by luck."""
+    def test_excludes_non_employee_targets_with_colliding_ids(self):
+        """A `department` row with `target_id=1` — the same id as the
+        employee under test — must never surface here; excluding it
+        requires the `target_type='employee'` filter to actually hold, not
+        just the id predicate (which the null-target `login_attempt` row
+        alone wouldn't prove)."""
         user = self._user_in_group('hra3@example.com', 'HR Administrator')
         self.client.force_authenticate(user)
 
         response = self.client.get(_url(1))
 
-        categories = {row['category'] for row in response.data['results']}
-        self.assertNotIn(AuditLog.CATEGORY_LOGIN_ATTEMPT, categories)
+        self.assertTrue(all(row['target_type'] == 'employee' for row in response.data['results']))
 
     def test_anonymous_is_denied(self):
         response = self.client.get(_url(1))
