@@ -1,312 +1,367 @@
-export interface Me {
-  id: number
-  email: string
-  groups: string[]
-  is_employee: boolean
-  is_manager: boolean
-  second_factor_enrollment_pending: boolean
-}
+import { z } from 'zod'
 
-export interface LoginSuccess {
-  id: number
-  email: string
-  groups: string[]
-  second_factor_enrollment_required?: boolean
-}
+// docs/08-testing-plan.md §3.3: a Zod schema per API resource, checked
+// against docs/06-api-contracts.md's documented shape by
+// src/api/types.test.ts. Schemas are the single source of truth — every
+// exported `type` below is derived via z.infer, not hand-duplicated, so
+// the shape can't drift between the two.
 
-export interface LoginSecondFactorRequired {
-  second_factor_required: true
-}
+export const MeSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  groups: z.array(z.string()),
+  is_employee: z.boolean(),
+  is_manager: z.boolean(),
+  second_factor_enrollment_pending: z.boolean(),
+})
+export type Me = z.infer<typeof MeSchema>
 
-export type LoginResponse = LoginSuccess | LoginSecondFactorRequired
+export const LoginSuccessSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  groups: z.array(z.string()),
+  second_factor_enrollment_required: z.boolean().optional(),
+})
+export type LoginSuccess = z.infer<typeof LoginSuccessSchema>
+
+export const LoginSecondFactorRequiredSchema = z.object({
+  second_factor_required: z.literal(true),
+})
+export type LoginSecondFactorRequired = z.infer<typeof LoginSecondFactorRequiredSchema>
+
+export const LoginResponseSchema = z.union([LoginSuccessSchema, LoginSecondFactorRequiredSchema])
+export type LoginResponse = z.infer<typeof LoginResponseSchema>
 
 export function isSecondFactorRequired(response: LoginResponse): response is LoginSecondFactorRequired {
   return 'second_factor_required' in response
 }
 
-export interface UserAccount {
-  id: number
-  email: string
-  is_active: boolean
-  groups: string[]
-  created_at: string
-  updated_at: string
+export const UserAccountSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  is_active: z.boolean(),
+  groups: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type UserAccount = z.infer<typeof UserAccountSchema>
+
+export const SecondFactorEnrollResponseSchema = z.object({
+  provisioning_uri: z.string(),
+})
+export type SecondFactorEnrollResponse = z.infer<typeof SecondFactorEnrollResponseSchema>
+
+export const SecondFactorRecoveryRequestRecordSchema = z.object({
+  id: z.number(),
+  status: z.enum(['pending', 'approved', 'denied']),
+  requested_at: z.string(),
+  decided_at: z.string().nullable(),
+})
+export type SecondFactorRecoveryRequestRecord = z.infer<typeof SecondFactorRecoveryRequestRecordSchema>
+
+export const DepartmentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type Department = z.infer<typeof DepartmentSchema>
+
+export const JobTitleSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type JobTitle = z.infer<typeof JobTitleSchema>
+
+export const EmploymentStatusSchema = z.enum(['active', 'on_leave', 'suspended', 'terminated', 'resigned', 'retired'])
+export type EmploymentStatus = z.infer<typeof EmploymentStatusSchema>
+
+export const EmployeeSchema = z.object({
+  id: z.number(),
+  employee_number: z.string(),
+  first_name: z.string(),
+  last_name: z.string(),
+  date_of_birth: z.string(),
+  department: z.number(),
+  job_title: z.number(),
+  employment_status: EmploymentStatusSchema,
+  hire_date: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type Employee = z.infer<typeof EmployeeSchema>
+
+export const EmploymentHistoryEntrySchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  event_type: z.enum(['hired', 'status_change', 'department_change', 'job_title_change', 'manager_change']),
+  effective_date: z.string(),
+  previous_value: z.record(z.string(), z.unknown()).nullable(),
+  new_value: z.record(z.string(), z.unknown()),
+  recorded_by: z.number().nullable(),
+  created_at: z.string(),
+})
+export type EmploymentHistoryEntry = z.infer<typeof EmploymentHistoryEntrySchema>
+
+export const EmployeeDocumentSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  document_type: z.string(),
+  file_name: z.string(),
+  content_type: z.string(),
+  size_bytes: z.number(),
+  uploaded_by: z.number().nullable(),
+  created_at: z.string(),
+})
+export type EmployeeDocument = z.infer<typeof EmployeeDocumentSchema>
+
+export const EmergencyContactSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  name: z.string(),
+  relationship: z.string(),
+  phone: z.string(),
+  email: z.string().nullable(),
+  is_primary: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type EmergencyContact = z.infer<typeof EmergencyContactSchema>
+
+export const ReportingRelationshipSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  manager_employee: z.number(),
+  effective_from: z.string(),
+})
+export type ReportingRelationship = z.infer<typeof ReportingRelationshipSchema>
+
+export const RequisitionStatusSchema = z.enum(['draft', 'pending_approval', 'approved', 'rejected', 'closed'])
+export type RequisitionStatus = z.infer<typeof RequisitionStatusSchema>
+
+export const JobRequisitionSchema = z.object({
+  id: z.number(),
+  department: z.number(),
+  job_title: z.number(),
+  requested_by: z.number(),
+  status: RequisitionStatusSchema,
+  approved_by: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type JobRequisition = z.infer<typeof JobRequisitionSchema>
+
+export const JobPostingSchema = z.object({
+  id: z.number(),
+  requisition: z.number(),
+  title: z.string(),
+  description: z.string(),
+  channel: z.enum(['internal', 'external']),
+  published_at: z.string().nullable(),
+  closed_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type JobPosting = z.infer<typeof JobPostingSchema>
+
+export const CandidateSchema = z.object({
+  id: z.number(),
+  first_name: z.string(),
+  last_name: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  resume_object_key: z.string().nullable(),
+  created_at: z.string(),
+})
+export type Candidate = z.infer<typeof CandidateSchema>
+
+export const ApplicationStageSchema = z.enum(['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'])
+export type ApplicationStage = z.infer<typeof ApplicationStageSchema>
+
+export const CandidateApplicationSchema = z.object({
+  id: z.number(),
+  candidate: z.number(),
+  posting: z.number(),
+  stage: ApplicationStageSchema,
+  applied_at: z.string(),
+  updated_at: z.string(),
+})
+export type CandidateApplication = z.infer<typeof CandidateApplicationSchema>
+
+export const InterviewSchema = z.object({
+  id: z.number(),
+  application: z.number(),
+  interviewer_employee: z.number().nullable(),
+  scheduled_at: z.string(),
+  status: z.enum(['scheduled', 'completed', 'cancelled']),
+  feedback: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type Interview = z.infer<typeof InterviewSchema>
+
+export const OfferLetterSchema = z.object({
+  id: z.number(),
+  application: z.number(),
+  offered_salary: z.string(),
+  offered_pay_grade: z.number().nullable(),
+  status: z.enum(['pending', 'accepted', 'rejected', 'withdrawn']),
+  issued_at: z.string(),
+  decided_at: z.string().nullable(),
+  document_object_key: z.string().nullable(),
+})
+export type OfferLetter = z.infer<typeof OfferLetterSchema>
+
+export const PayGradeOptionSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  salary_structure_name: z.string(),
+})
+export type PayGradeOption = z.infer<typeof PayGradeOptionSchema>
+
+export const NotificationCategorySchema = z.enum(['pending_task', 'request_update'])
+export type NotificationCategory = z.infer<typeof NotificationCategorySchema>
+
+export const NotificationSchema = z.object({
+  id: z.number(),
+  category: NotificationCategorySchema,
+  channel: z.enum(['in_app', 'email', 'both']),
+  subject: z.string(),
+  body: z.string(),
+  related_type: z.string().nullable(),
+  related_id: z.number().nullable(),
+  read_at: z.string().nullable(),
+  created_at: z.string(),
+})
+export type Notification = z.infer<typeof NotificationSchema>
+
+export const OnboardingChecklistSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  application: z.number().nullable(),
+  started_at: z.string(),
+  completed_at: z.string().nullable(),
+})
+export type OnboardingChecklist = z.infer<typeof OnboardingChecklistSchema>
+
+export const OnboardingTaskStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'skipped'])
+export type OnboardingTaskStatus = z.infer<typeof OnboardingTaskStatusSchema>
+
+export const OnboardingTaskSchema = z.object({
+  id: z.number(),
+  checklist: z.number(),
+  name: z.string(),
+  is_required: z.boolean(),
+  status: OnboardingTaskStatusSchema,
+  completed_by: z.number().nullable(),
+  completed_at: z.string().nullable(),
+  created_at: z.string(),
+})
+export type OnboardingTask = z.infer<typeof OnboardingTaskSchema>
+
+export const RoleGrantRequestRecordSchema = z.object({
+  id: z.number(),
+  requester: z.number(),
+  subject: z.number(),
+  role: z.number(),
+  status: z.enum(['pending', 'approved', 'refused']),
+  approver: z.number().nullable(),
+  requested_at: z.string(),
+  decided_at: z.string().nullable(),
+})
+export type RoleGrantRequestRecord = z.infer<typeof RoleGrantRequestRecordSchema>
+
+export const LeaveTypeSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  requires_approval: z.boolean(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type LeaveType = z.infer<typeof LeaveTypeSchema>
+
+export const LeaveBalanceSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  leave_type: z.number(),
+  period_start: z.string(),
+  period_end: z.string(),
+  entitled_days: z.string(),
+  used_days: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type LeaveBalance = z.infer<typeof LeaveBalanceSchema>
+
+export const LeaveRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'cancelled'])
+export type LeaveRequestStatus = z.infer<typeof LeaveRequestStatusSchema>
+
+export const LeaveRequestSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  leave_type: z.number(),
+  start_date: z.string(),
+  end_date: z.string(),
+  reason: z.string().nullable(),
+  status: LeaveRequestStatusSchema,
+  approved_by: z.number().nullable(),
+  decided_at: z.string().nullable(),
+  created_at: z.string(),
+})
+export type LeaveRequest = z.infer<typeof LeaveRequestSchema>
+
+export const DashboardAggregatesSchema = z.object({
+  headcount: z.object({ total: z.number() }),
+  leave_utilization: z.object({ entitled_days: z.number(), used_days: z.number() }),
+  turnover: z.object({ hires: z.number(), terminations: z.number() }),
+  payroll_cost: z.object({ gross_pay: z.number(), net_pay: z.number() }),
+  payroll_summary: z.object({ gross_pay: z.number(), net_pay: z.number(), payslip_count: z.number() }),
+})
+export type DashboardAggregates = z.infer<typeof DashboardAggregatesSchema>
+
+export const DashboardDataSchema = z.object({
+  aggregates: DashboardAggregatesSchema.optional(),
+  leave_balance: z.array(LeaveBalanceSchema).optional(),
+  pending_tasks: z.array(NotificationSchema).optional(),
+  team: z.object({ pending_leave_requests: z.number() }).optional(),
+})
+export type DashboardData = z.infer<typeof DashboardDataSchema>
+
+export const AuditLogCategorySchema = z.enum([
+  'login_attempt',
+  'record_change',
+  'payroll_action',
+  'approval',
+  'permission_change',
+  'second_factor_event',
+])
+export type AuditLogCategory = z.infer<typeof AuditLogCategorySchema>
+
+export const AuditLogEntrySchema = z.object({
+  id: z.number(),
+  actor: z.number().nullable(),
+  category: AuditLogCategorySchema,
+  target_type: z.string().nullable(),
+  target_id: z.number().nullable(),
+  action: z.string(),
+  detail: z.record(z.string(), z.unknown()).nullable(),
+  occurred_at: z.string(),
+})
+export type AuditLogEntry = z.infer<typeof AuditLogEntrySchema>
+
+export function paginatedResponseSchema<T extends z.ZodTypeAny>(item: T) {
+  return z.object({
+    count: z.number(),
+    next: z.string().nullable(),
+    previous: z.string().nullable(),
+    results: z.array(item),
+  })
 }
-
-export interface SecondFactorEnrollResponse {
-  provisioning_uri: string
-}
-
-export interface SecondFactorRecoveryRequestRecord {
-  id: number
-  status: 'pending' | 'approved' | 'denied'
-  requested_at: string
-  decided_at: string | null
-}
-
-export interface Department {
-  id: number
-  name: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface JobTitle {
-  id: number
-  name: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export type EmploymentStatus = 'active' | 'on_leave' | 'suspended' | 'terminated' | 'resigned' | 'retired'
-
-export interface Employee {
-  id: number
-  employee_number: string
-  first_name: string
-  last_name: string
-  date_of_birth: string
-  department: number
-  job_title: number
-  employment_status: EmploymentStatus
-  hire_date: string
-  created_at: string
-  updated_at: string
-}
-
-export interface EmploymentHistoryEntry {
-  id: number
-  employee: number
-  event_type: 'hired' | 'status_change' | 'department_change' | 'job_title_change' | 'manager_change'
-  effective_date: string
-  previous_value: Record<string, unknown> | null
-  new_value: Record<string, unknown>
-  recorded_by: number | null
-  created_at: string
-}
-
-export interface EmployeeDocument {
-  id: number
-  employee: number
-  document_type: string
-  file_name: string
-  content_type: string
-  size_bytes: number
-  uploaded_by: number | null
-  created_at: string
-}
-
-export interface EmergencyContact {
-  id: number
-  employee: number
-  name: string
-  relationship: string
-  phone: string
-  email: string | null
-  is_primary: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface ReportingRelationship {
-  id: number
-  employee: number
-  manager_employee: number
-  effective_from: string
-}
-
-export type RequisitionStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'closed'
-
-export interface JobRequisition {
-  id: number
-  department: number
-  job_title: number
-  requested_by: number
-  status: RequisitionStatus
-  approved_by: number | null
-  created_at: string
-  updated_at: string
-}
-
-export interface JobPosting {
-  id: number
-  requisition: number
-  title: string
-  description: string
-  channel: 'internal' | 'external'
-  published_at: string | null
-  closed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface Candidate {
-  id: number
-  first_name: string
-  last_name: string
-  email: string
-  phone: string | null
-  resume_object_key: string | null
-  created_at: string
-}
-
-export type ApplicationStage = 'applied' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'
-
-export interface CandidateApplication {
-  id: number
-  candidate: number
-  posting: number
-  stage: ApplicationStage
-  applied_at: string
-  updated_at: string
-}
-
-export interface Interview {
-  id: number
-  application: number
-  interviewer_employee: number | null
-  scheduled_at: string
-  status: 'scheduled' | 'completed' | 'cancelled'
-  feedback: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface OfferLetter {
-  id: number
-  application: number
-  offered_salary: string
-  offered_pay_grade: number | null
-  status: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
-  issued_at: string
-  decided_at: string | null
-  document_object_key: string | null
-}
-
-export interface PayGradeOption {
-  id: number
-  name: string
-  salary_structure_name: string
-}
-
-export type NotificationCategory = 'pending_task' | 'request_update'
-
-export interface Notification {
-  id: number
-  category: NotificationCategory
-  channel: 'in_app' | 'email' | 'both'
-  subject: string
-  body: string
-  related_type: string | null
-  related_id: number | null
-  read_at: string | null
-  created_at: string
-}
-
-export interface OnboardingChecklist {
-  id: number
-  employee: number
-  application: number | null
-  started_at: string
-  completed_at: string | null
-}
-
-export type OnboardingTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
-
-export interface OnboardingTask {
-  id: number
-  checklist: number
-  name: string
-  is_required: boolean
-  status: OnboardingTaskStatus
-  completed_by: number | null
-  completed_at: string | null
-  created_at: string
-}
-
-export interface RoleGrantRequestRecord {
-  id: number
-  requester: number
-  subject: number
-  role: number
-  status: 'pending' | 'approved' | 'refused'
-  approver: number | null
-  requested_at: string
-  decided_at: string | null
-}
-
-export interface LeaveType {
-  id: number
-  name: string
-  requires_approval: boolean
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface LeaveBalance {
-  id: number
-  employee: number
-  leave_type: number
-  period_start: string
-  period_end: string
-  entitled_days: string
-  used_days: string
-  created_at: string
-  updated_at: string
-}
-
-export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
-
-export interface LeaveRequest {
-  id: number
-  employee: number
-  leave_type: number
-  start_date: string
-  end_date: string
-  reason: string | null
-  status: LeaveRequestStatus
-  approved_by: number | null
-  decided_at: string | null
-  created_at: string
-}
-
-export interface DashboardAggregates {
-  headcount: { total: number }
-  leave_utilization: { entitled_days: number; used_days: number }
-  turnover: { hires: number; terminations: number }
-  payroll_cost: { gross_pay: number; net_pay: number }
-  payroll_summary: { gross_pay: number; net_pay: number; payslip_count: number }
-}
-
-export interface DashboardData {
-  aggregates?: DashboardAggregates
-  leave_balance?: LeaveBalance[]
-  pending_tasks?: Notification[]
-  team?: { pending_leave_requests: number }
-}
-
-export type AuditLogCategory =
-  | 'login_attempt'
-  | 'record_change'
-  | 'payroll_action'
-  | 'approval'
-  | 'permission_change'
-  | 'second_factor_event'
-
-export interface AuditLogEntry {
-  id: number
-  actor: number | null
-  category: AuditLogCategory
-  target_type: string | null
-  target_id: number | null
-  action: string
-  detail: Record<string, unknown> | null
-  occurred_at: string
-}
-
 export interface PaginatedResponse<T> {
   count: number
   next: string | null
@@ -314,44 +369,80 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
-export interface HeadcountReport {
-  aggregate: { total: number }
-  breakdown?: { department_id: number; department__name: string; count: number }[]
-}
+export const HeadcountReportSchema = z.object({
+  aggregate: z.object({ total: z.number() }),
+  breakdown: z.array(z.object({ department_id: z.number(), department__name: z.string(), count: z.number() })).optional(),
+})
+export type HeadcountReport = z.infer<typeof HeadcountReportSchema>
 
-export interface LeaveUtilizationReport {
-  aggregate: { entitled_days: number; used_days: number }
-  breakdown?: { leave_type_id: number; leave_type__name: string; entitled_days: number; used_days: number }[]
-}
+export const LeaveUtilizationReportSchema = z.object({
+  aggregate: z.object({ entitled_days: z.number(), used_days: z.number() }),
+  breakdown: z.array(
+    z.object({
+      leave_type_id: z.number(),
+      leave_type__name: z.string(),
+      entitled_days: z.number(),
+      used_days: z.number(),
+    }),
+  ).optional(),
+})
+export type LeaveUtilizationReport = z.infer<typeof LeaveUtilizationReportSchema>
 
-export interface TurnoverReport {
-  aggregate: { hires: number; terminations: number }
-  breakdown?: {
-    hires_by_department: { department_id: number; department__name: string; count: number }[]
-    terminations_by_department: { employee__department_id: number; employee__department__name: string; count: number }[]
-  }
-}
+export const TurnoverReportSchema = z.object({
+  aggregate: z.object({ hires: z.number(), terminations: z.number() }),
+  breakdown: z.object({
+    hires_by_department: z.array(z.object({ department_id: z.number(), department__name: z.string(), count: z.number() })),
+    terminations_by_department: z.array(
+      z.object({
+        employee__department_id: z.number(),
+        employee__department__name: z.string(),
+        count: z.number(),
+      }),
+    ),
+  }).optional(),
+})
+export type TurnoverReport = z.infer<typeof TurnoverReportSchema>
 
-export interface PayrollCostReport {
-  aggregate: { gross_pay: number; net_pay: number }
-  breakdown?: { employee__department_id: number; employee__department__name: string; gross_pay: number; net_pay: number }[]
-}
+export const PayrollCostReportSchema = z.object({
+  aggregate: z.object({ gross_pay: z.number(), net_pay: z.number() }),
+  breakdown: z.array(
+    z.object({
+      employee__department_id: z.number(),
+      employee__department__name: z.string(),
+      gross_pay: z.number(),
+      net_pay: z.number(),
+    }),
+  ).optional(),
+})
+export type PayrollCostReport = z.infer<typeof PayrollCostReportSchema>
 
-export interface PayrollSummaryReport {
-  aggregate: { gross_pay: number; net_pay: number; payslip_count: number }
-  breakdown?: { id: number; period_start: string; period_end: string; gross_pay: number; net_pay: number }[]
-}
+export const PayrollSummaryReportSchema = z.object({
+  aggregate: z.object({ gross_pay: z.number(), net_pay: z.number(), payslip_count: z.number() }),
+  breakdown: z.array(
+    z.object({
+      id: z.number(),
+      period_start: z.string(),
+      period_end: z.string(),
+      gross_pay: z.number(),
+      net_pay: z.number(),
+    }),
+  ).optional(),
+})
+export type PayrollSummaryReport = z.infer<typeof PayrollSummaryReportSchema>
 
-export type ReportType = 'headcount' | 'leave_utilization' | 'turnover' | 'payroll_cost' | 'payroll_summary'
-export type ReportExportStatus = 'pending' | 'complete' | 'failed'
+export const ReportTypeSchema = z.enum(['headcount', 'leave_utilization', 'turnover', 'payroll_cost', 'payroll_summary'])
+export type ReportType = z.infer<typeof ReportTypeSchema>
+export const ReportExportStatusSchema = z.enum(['pending', 'complete', 'failed'])
+export type ReportExportStatus = z.infer<typeof ReportExportStatusSchema>
 
-export interface ReportExportRecord {
-  id: number
-  report_type: ReportType
-  params: Record<string, unknown>
-  status: ReportExportStatus
-  download_url: string | null
-  failed_reason: string | null
-  generated_at: string | null
-  created_at: string
-}
+export const ReportExportRecordSchema = z.object({
+  id: z.number(),
+  report_type: ReportTypeSchema,
+  params: z.record(z.string(), z.unknown()),
+  status: ReportExportStatusSchema,
+  download_url: z.string().nullable(),
+  failed_reason: z.string().nullable(),
+  generated_at: z.string().nullable(),
+  created_at: z.string(),
+})
+export type ReportExportRecord = z.infer<typeof ReportExportRecordSchema>
