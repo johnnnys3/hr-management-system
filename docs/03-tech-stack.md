@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | John Kessie | July 2026 | Initial technology stack selection for HRMS | 1.0 |
 | John Kessie | July 2026 | Add §4.3 Mail Dispatch: SMTP backend, provider deferred per TBD-001, ADR-0011 | 1.1 |
+| John Kessie | 2026-07-23 | §9 corrected against actual repository state, found during a documentation audit: pytest-django and factory_boy were named here but never installed (`backend/requirements.txt` has neither); every backend test in the repository runs via Django's own `manage.py test`, and all fixtures across the suite are plain ORM `.create()`/`.bulk_create()` calls, not factories. This is the same species of defect §7.1 of the project plan has twice found elsewhere — a tool named early and never installed, undetected because nothing exercised the claim. §9 now records actual practice rather than original intent; no code change accompanies this revision. Filed as DOC-018 | 1.2 |
 
 ---
 
@@ -234,8 +235,8 @@ Recorded in ADR-0005.
 
 | Concern | Selection |
 |---|---|
-| Backend testing | pytest with pytest-django |
-| Test data | factory_boy |
+| Backend testing | Django's built-in test runner (`manage.py test`), built on `unittest` |
+| Test data | Plain ORM `.create()` / `.bulk_create()` calls, per-module |
 | Frontend unit testing | Vitest with React Testing Library |
 | End-to-end and browser testing | Playwright |
 | API schema generation | drf-spectacular |

@@ -4,6 +4,8 @@
 **Author:** John Kessie (via Claude)
 **Status:** Resolved 2026-07-19 — owner chose deliberate re-baseline; see `docs/02-project-plan.md` v1.9 revision history and DOC-011. **Batch position moved 2026-07-19 (v1.10):** now scheduled after M17 Reports and before M18 Testing, not after M14 Dashboard/before M15 Compensation and Benefits. End date, total effort, and construction order within the batch are unchanged — see v1.10's revision-history row.
 
+**SUPERSEDED 2026-07-23.** Found stale during a documentation audit: the frontend implementation batch this document hands off completed in full, plus the two modules (Compensation, Payroll) it never listed. `frontend/` now has 13 built modules and 20 routed pages with role-based gating (`frontend/src/routes.tsx`), not the untouched Vite scaffold §1 below describes. This document is kept as a historical record of the gap-discovery reasoning (relevant to the frontend-batch entries in `docs/02-project-plan.md`'s revision history) — do not read §1 or §4 below as current state. For current frontend state, read `frontend/src/routes.tsx` and `frontend/src/modules/` directly, or `docs/10-user-guide.md` for a per-role walkthrough.
+
 ## Purpose
 
 This document hands off the state of the frontend to whoever picks it up next (including a future session of this same agent). It is not a plan revision — it records what exists, what §6.1 of `docs/02-project-plan.md` says should exist, and the size of the gap between them. Resolving the gap (retroactive build vs. deliberate re-baseline) is a decision for the project owner, not made here.
