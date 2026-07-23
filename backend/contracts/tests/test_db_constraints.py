@@ -120,8 +120,12 @@ class HrmsDr005NonNegativeMoneyTests(TestCase):
         payroll_run = PayrollRun.objects.create(
             period_start=date(2031, 1, 1), period_end=date(2031, 1, 31), initiated_by=initiator,
         )
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Payslip.objects.create(payroll_run=payroll_run, employee=employee, gross_pay='-1.00', net_pay='0.00')
+        for gross_pay, net_pay in (('-1.00', '0.00'), ('0.00', '-1.00')):
+            with self.subTest(gross_pay=gross_pay, net_pay=net_pay):
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    Payslip.objects.create(
+                        payroll_run=payroll_run, employee=employee, gross_pay=gross_pay, net_pay=net_pay,
+                    )
 
     def test_payslip_line_amount_gte_0(self):
         employee = make_employee('DR5-5', 'A', 'One')
