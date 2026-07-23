@@ -100,7 +100,7 @@ jobs:
           echo "Caddy never became healthy" && exit 1
 
       - name: Seed E2E fixtures
-        run: docker compose run --rm --entrypoint "" django-migrate python manage.py seed_e2e_fixtures
+        run: docker compose run --rm -e ALLOW_E2E_FIXTURES=true --entrypoint "" django-migrate python manage.py seed_e2e_fixtures
 
       - uses: actions/setup-node@v4
         with:

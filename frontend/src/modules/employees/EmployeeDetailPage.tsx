@@ -507,7 +507,7 @@ function CompensationTab({ employeeId }: { employeeId: number }) {
     queryKey: ['compensation', 'records', employeeId],
     queryFn: () => listCompensationRecords(employeeId),
   })
-  const { data: payGrades = [] } = usePayGrades({ enabled: canAssign })
+  const { data: payGrades = [] } = usePayGrades()
 
   if (error) {
     return (

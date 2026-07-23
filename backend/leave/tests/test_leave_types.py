@@ -47,6 +47,7 @@ class LeaveTypeListTests(APITestCase):
         response = self.client.get(URL)
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 5)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(URL)

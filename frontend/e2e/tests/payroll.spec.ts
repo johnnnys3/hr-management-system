@@ -15,7 +15,7 @@ function isoDate(daysFromEpochBase: number): string {
 test('Payroll Officer initiates a run; a distinct approver approves and it finalizes with payslips (HRMS-BR-008)', async ({ page, context, baseURL }) => {
   // Unique period per run so repeated CI executions don't collide on the
   // (period_start, period_end) uniqueness constraint.
-  const offset = Math.floor(Date.now() / 1000) % 3000
+  const offset = Math.floor(Date.now() / 1000) % 100_000
   const periodStart = isoDate(offset)
   const periodEnd = isoDate(offset + 27)
 
@@ -30,7 +30,7 @@ test('Payroll Officer initiates a run; a distinct approver approves and it final
   await page.locator('.ant-picker-input input').nth(1).press('Enter')
   await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click()
 
-  const row = page.getByRole('row', { name: new RegExp(periodStart) })
+  const row = page.getByRole('row', { name: periodStart })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Calculate' }).click()
   await expect(row.getByText('calculated', { exact: true })).toBeVisible({ timeout: 15000 })
@@ -42,7 +42,7 @@ test('Payroll Officer initiates a run; a distinct approver approves and it final
   await loginAs(approverContext, baseURL!, 'e2e.payroll2@example.com', 'E2eTestpass123!', TOTP_SECRET)
   const approverPage = await approverContext.newPage()
   await approverPage.goto('/payroll')
-  const approverRow = approverPage.getByRole('row', { name: new RegExp(periodStart) })
+  const approverRow = approverPage.getByRole('row', { name: periodStart })
   await approverRow.getByRole('button', { name: 'Approve' }).click()
   await expect(approverRow.getByText('approved', { exact: true })).toBeVisible()
 

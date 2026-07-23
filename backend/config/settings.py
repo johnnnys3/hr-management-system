@@ -26,6 +26,10 @@ DEBUG = env_bool('DJANGO_DEBUG', False)
 
 ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 
+# Guards `seed_e2e_fixtures` (public, checked-in credentials) from ever
+# running against a real deployment. CI/local .env sets this explicitly.
+ALLOW_E2E_FIXTURES = env_bool('ALLOW_E2E_FIXTURES', False)
+
 
 # Application definition
 

@@ -53,17 +53,26 @@ export function PayrollPage() {
   const pollUntilSettled = async (id: number, fromStatus: string) => {
     setPollingIds((prev) => new Set(prev).add(id))
     const poll = async () => {
-      const run = await getPayrollRun(id)
-      if (run.status !== fromStatus) {
+      try {
+        const run = await getPayrollRun(id)
+        if (run.status !== fromStatus) {
+          setPollingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+          invalidate()
+          return
+        }
+        setTimeout(poll, 2000)
+      } catch (e) {
         setPollingIds((prev) => {
           const next = new Set(prev)
           next.delete(id)
           return next
         })
-        invalidate()
-        return
+        message.error(e instanceof ApiError ? e.message : 'Unable to refresh payroll run status.')
       }
-      setTimeout(poll, 2000)
     }
     void poll()
   }

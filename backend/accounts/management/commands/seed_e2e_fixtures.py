@@ -9,9 +9,10 @@ migration.
 """
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from accounts import totp
 from accounts.models import SecondFactor
@@ -21,17 +22,25 @@ from employees.models import Employee
 from reporting_structure.models import ReportingRelationship
 
 User = get_user_model()
-PASSWORD = 'E2eTestpass123!'
+PASSWORD = 'E2eTestpass123!'  # noqa: S105 — test-only, guarded below
 # HRMS-NFR-024 requires TOTP on every login for Payroll Officer/System
 # Administrator — fixed rather than random so frontend/e2e/helpers/totp.ts
 # can compute a matching code without reading it back out of the database.
-TOTP_SECRET = 'JBSWY3DPEHPK3PXP'
+TOTP_SECRET = 'JBSWY3DPEHPK3PXP'  # noqa: S105 — test-only, guarded below
 
 
 class Command(BaseCommand):
     help = 'Seed deterministic fixtures for the Playwright E2E suite. Test-only, idempotent.'
 
     def handle(self, *args, **options):
+        # The docstring alone is not a safeguard — a known password and
+        # TOTP secret must never be provisionable against a real
+        # deployment, so this fails loudly unless explicitly opted in.
+        if not getattr(settings, 'ALLOW_E2E_FIXTURES', False):
+            raise CommandError(
+                'Refusing to seed E2E fixtures (public, checked-in credentials): '
+                'set ALLOW_E2E_FIXTURES=true in the environment to confirm this is a throwaway CI/local stack.'
+            )
         department = Department.objects.get_or_create(name='E2E Engineering')[0]
         job_title = JobTitle.objects.get_or_create(name='E2E Engineer')[0]
 
