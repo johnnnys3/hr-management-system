@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -19,6 +19,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; module-numbered rows below still v1.4-numbered as 6 and 7).** Reconcile at M5 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-22 | **Reconciled to `docs/02-project-plan.md` v1.8, per the two rows above (both now resolved) plus the later v1.7 Dashboard-aggregates note.** §4's per-module table and §6.1's coverage matrix are renumbered and reordered to the current build order (Departments 5, Employee Management 6, Reporting Structure 7, Recruitment 8, Onboarding 9, Notification 10, Employee Self-Service 11, Manager Self-Service 12, Leave Management 13, Dashboard 14, Compensation and Benefits 15, Payroll 16, Reports 17); every in-prose cross-reference to a module number in §5 and §6 is corrected to match. No test obligation, tool selection, or control content changes — this is a pure renumbering, the same shape as DOC-007/008's reconciliation of `docs/04-system-architecture.md` and `docs/06-api-contracts.md`, which this document was the one left behind when those two were fixed. Filed as DOC-015 | 1.1 |
 | John Kessie | 2026-07-22 | **§7.1 and §9 still cited 2026-10-20 as the date TBD-016/TBD-017 stop blocking M18 — the pre-v1.9 figure.** `docs/02-project-plan.md` v1.9 moved this to 2026-11-05 when the frontend implementation batch was inserted before M18 (§8.1's TBD-016/017 rows both say so), but this document's own two citations were never updated — found immediately after DOC-015's module-numbering fix, while re-reading the same sections for anything else stale. Both corrected to 2026-11-05, with the superseded date and the reason kept in-line rather than silently dropped. No other content change. Filed as DOC-016 | 1.2 |
+| John Kessie | 2026-07-23 | **§3.6/§6's Playwright control is now built** (`frontend/e2e/`, wired into CI's `e2e` job on every push). Building it against the real deployed stack found two things this document's own scope note above (§6's "not built yet") didn't anticipate: (1) modules 15/16 (Compensation and Benefits, Payroll) had no client interface at all — an unresolved gap this document inherited unnoticed from the frontend-implementation batch (DOC-011/012), which never listed either module. Built now (`CompensationPage`, `PayrollPage`, an Employee-detail Compensation tab), since two of §6's eleven SRS sequences (Assign Employee to Pay Grade, Process Payroll) are un-drivable without them. (2) `CandidateApplication.stage` was never written by any endpoint despite Onboarding's conversion trigger (HRMS-BR-013) requiring `stage='offer'` — a real, previously-undiscovered defect (not a testing gap), fixed by advancing `stage` on offer issue. No change to §4's per-module obligations or §7's NFR treatment — those remain as before | 1.3 |
 
 ---
 

@@ -421,6 +421,14 @@ class OfferLetterListCreateView(APIView):
         try:
             with transaction.atomic():
                 offer = serializer.save(application=application)
+                # Issuing an offer is the recruiter's own act of moving the
+                # candidate to the offer stage — nothing else in this app
+                # ever advances `stage` (found via the E2E suite: onboarding's
+                # convert endpoint requires stage='offer' but no endpoint
+                # anywhere set it, making conversion permanently unreachable).
+                if application.stage != CandidateApplication.STAGE_OFFER:
+                    application.stage = CandidateApplication.STAGE_OFFER
+                    application.save(update_fields=['stage', 'updated_at'])
                 document_content = (
                     f'Offer Letter\nApplication: {application.pk}\nOffered salary: {offer.offered_salary}\n'
                     f'Issued at: {offer.issued_at.isoformat()}\n'

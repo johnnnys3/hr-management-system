@@ -23,7 +23,9 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { ApiError } from '../../api/client'
 import { changeManager, listDirectReports, listReportingRelationships } from '../../api/reporting'
+import { createCompensationRecord, listCompensationRecords } from '../../api/compensation'
 import { useDepartments, useJobTitles } from '../departments/hooks'
+import { usePayGrades } from '../compensation/hooks'
 import { STATUS_COLORS } from './constants'
 import {
   createEmergencyContact,
@@ -71,6 +73,7 @@ export function EmployeeDetailPage() {
           { key: 'history', label: 'Employment History', children: <HistoryTab employeeId={employeeId} /> },
           { key: 'documents', label: 'Documents', children: <DocumentsTab employeeId={employeeId} /> },
           { key: 'contacts', label: 'Emergency Contacts', children: <EmergencyContactsTab employeeId={employeeId} /> },
+          { key: 'compensation', label: 'Compensation', children: <CompensationTab employeeId={employeeId} /> },
         ]}
       />
     </div>
@@ -488,6 +491,124 @@ function ContactFormModal({
         </Form.Item>
         <Form.Item label="Primary" name="is_primary" valuePropName="checked">
           <Switch />
+        </Form.Item>
+      </Form>
+    </Modal>
+  )
+}
+
+function CompensationTab({ employeeId }: { employeeId: number }) {
+  const { me } = useAuth()
+  const queryClient = useQueryClient()
+  const canAssign = me?.groups.includes('HR Officer') ?? false
+  const [assignOpen, setAssignOpen] = useState(false)
+
+  const { data: records = [], isLoading, error } = useQuery({
+    queryKey: ['compensation', 'records', employeeId],
+    queryFn: () => listCompensationRecords(employeeId),
+  })
+  const { data: payGrades = [] } = usePayGrades()
+
+  if (error) {
+    return (
+      <Alert
+        type="error"
+        message="Failed to load compensation history"
+        description={error instanceof ApiError ? error.message : 'An error occurred while loading the list.'}
+      />
+    )
+  }
+
+  const payGradeName = (id: number | null) => (id ? payGrades.find((g) => g.id === id)?.name ?? id : '—')
+
+  return (
+    <div>
+      {canAssign && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Button type="primary" onClick={() => setAssignOpen(true)}>
+            Assign Pay Grade
+          </Button>
+        </div>
+      )}
+      <Table
+        rowKey="id"
+        loading={isLoading}
+        dataSource={records}
+        pagination={{ pageSize: 25 }}
+        columns={[
+          { title: 'Pay Grade', dataIndex: 'pay_grade', render: payGradeName },
+          { title: 'Base Salary', dataIndex: 'base_salary' },
+          { title: 'Effective From', dataIndex: 'effective_from' },
+          {
+            title: 'Status',
+            dataIndex: 'is_superseded',
+            render: (superseded: boolean) => (superseded ? <Tag>Superseded</Tag> : <Tag color="green">Current</Tag>),
+          },
+        ]}
+      />
+      {assignOpen && (
+        <AssignPayGradeModal
+          employeeId={employeeId}
+          payGrades={payGrades}
+          onClose={() => setAssignOpen(false)}
+          onAssigned={() => {
+            queryClient.invalidateQueries({ queryKey: ['compensation', 'records', employeeId] })
+            setAssignOpen(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+interface AssignPayGradeFormValues {
+  pay_grade: number
+  base_salary: number
+  effective_from: dayjs.Dayjs
+}
+
+function AssignPayGradeModal({
+  employeeId,
+  payGrades,
+  onClose,
+  onAssigned,
+}: {
+  employeeId: number
+  payGrades: { id: number; name: string }[]
+  onClose: () => void
+  onAssigned: () => void
+}) {
+  const [form] = Form.useForm<AssignPayGradeFormValues>()
+
+  const mutation = useMutation({
+    mutationFn: (values: AssignPayGradeFormValues) =>
+      createCompensationRecord(employeeId, {
+        pay_grade: values.pay_grade,
+        base_salary: String(values.base_salary),
+        effective_from: values.effective_from.format('YYYY-MM-DD'),
+      }),
+    onSuccess: onAssigned,
+    onError: (e) => message.error(e instanceof ApiError ? e.message : 'Assign failed.'),
+  })
+
+  return (
+    <Modal
+      open
+      title="Assign Pay Grade"
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      okText="Assign"
+      confirmLoading={mutation.isPending}
+    >
+      <Form form={form} layout="vertical" onFinish={(values) => mutation.mutate(values)}>
+        <Form.Item label="Pay Grade" name="pay_grade" rules={[{ required: true }]}>
+          <Select options={payGrades.map((g) => ({ label: g.name, value: g.id }))} />
+        </Form.Item>
+        <Form.Item label="Base Salary" name="base_salary" rules={[{ required: true }]}>
+          <Input type="number" min={0} />
+        </Form.Item>
+        <Form.Item label="Effective From" name="effective_from" rules={[{ required: true }]}>
+          <DatePicker style={{ width: '100%' }} />
         </Form.Item>
       </Form>
     </Modal>

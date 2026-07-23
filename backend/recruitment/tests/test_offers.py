@@ -38,6 +38,29 @@ class OfferLetterTests(APITestCase):
         self.assertIsNotNone(offer.document_object_key)
         self.assertTrue(offer.document_object_key.startswith(f'offer-letters/{offer.pk}/'))
 
+    def test_issuing_an_offer_advances_the_application_to_offer_stage(self):
+        """Nothing else in this app ever writes `stage` — found via the E2E
+        suite, since onboarding's convert endpoint (HRMS-BR-013) requires
+        `stage == 'offer'` but no endpoint set it, making conversion
+        permanently unreachable for any real application."""
+        self.assertEqual(self.application.stage, CandidateApplication.STAGE_APPLIED)
+        self.client.force_authenticate(self.recruiter)
+
+        self.client.post(f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '95000.00'})
+
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.stage, CandidateApplication.STAGE_OFFER)
+
+    def test_issuing_a_second_offer_does_not_error_on_an_already_advanced_stage(self):
+        self.client.force_authenticate(self.recruiter)
+        self.client.post(f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '95000.00'})
+
+        response = self.client.post(f'/api/applications/{self.application.pk}/offer/', {'offered_salary': '100000.00'})
+
+        self.assertEqual(response.status_code, 201)
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.stage, CandidateApplication.STAGE_OFFER)
+
     def test_negative_salary_is_rejected(self):
         self.client.force_authenticate(self.recruiter)
 
