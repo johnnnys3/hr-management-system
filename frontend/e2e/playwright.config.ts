@@ -9,8 +9,13 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0,
   reporter: 'list',
+  // CI's shared runner is measurably slower than local dev for these
+  // antd-heavy pages (the same resource-contention shape already found
+  // and documented for vitest, frontend/vitest.config.ts) — a bit more
+  // headroom on assertions than the 5s default.
+  expect: { timeout: 8000 },
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
     trace: 'retain-on-failure',

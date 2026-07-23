@@ -27,7 +27,16 @@ test.describe('Employee records (SRS §4.1)', () => {
 
     await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click()
 
-    await expect(page.getByLabel('Employee Number')).toHaveValue(employeeNumber)
+    // Create navigates to /employees/{id} — wait for that first, rather
+    // than asserting the field directly, so a slower CI runner's extra
+    // navigation latency doesn't race the assertion's own timeout.
+    await expect(page).toHaveURL(/\/employees\/\d+/)
+    // The Employee Number field has no `name` prop (it's display-only),
+    // so antd never sets a `for` attribute on its label — getByLabel
+    // can't resolve it. Located structurally instead.
+    await expect(
+      page.locator('.ant-form-item', { hasText: 'Employee Number' }).locator('input'),
+    ).toHaveValue(employeeNumber)
   })
 
   test('HR Officer updates employment status and employment_history carries the change (HRMS-FR-010)', async ({ page }) => {
