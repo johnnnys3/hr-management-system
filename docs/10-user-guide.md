@@ -27,7 +27,7 @@ Two consequences of writing it early, stated plainly rather than glossed over:
 - **It documents a system that has not yet passed UAT or been deployed.** Every workflow described below reflects the develop branch as of `a5eb078` (2026-07-23). Nothing here is a claim that the system is production-ready or organisationally accepted — that is exactly the open question `docs/02-project-plan.md` §11 question 6 records and this document does not resolve.
 - **This does not retire M7.** The plan's M7 milestone and its 2026-12-04 date are unchanged; this draft is issued for early review and will be revised, not superseded, when M19/M20 land — most likely to add a deployment/access-provisioning section once TBD-003 (hosting) resolves.
 
-This document answers SRS §2.6's nine named guides (System Administrator, HR Administrator, Employee self-service, Manager self-service, Payroll processing, Recruitment and onboarding, Leave management, Basic troubleshooting, FAQ) as sections of one file rather than nine separate files, matching `docs/02-project-plan.md` §7.1's single `docs/10-user-guide.md` deliverable. The optional tenth item — training videos — is out of scope, as the plan's own cost basis excludes it.
+This document answers SRS §2.6's nine named guides as sections of one file rather than nine separate files, matching `docs/02-project-plan.md` §7.1's single `docs/10-user-guide.md` deliverable: System Administrator (§10), HR Administrator (§4), Employee self-service (§2), Manager self-service (§3), Payroll processing (§6), Recruitment and onboarding (§7, §5.2), Leave management (§2.2, §3.2 — covered from each participant's side rather than as one merged section, since the workflow itself is role-specific), Basic troubleshooting (§9.1), and Frequently Asked Questions (§9.2). The optional tenth item — training videos — is out of scope, as the plan's own cost basis excludes it.
 
 **One gap worth naming rather than silently patching:** SRS §2.6 names no guide for the Executive role, and no guide for the HR Officer/Recruiter split `docs/07-iam-rbac.md` §2.4 draws within the "HR Administrator" user class. §5 and §7 below cover HR Officer and Recruiter as their own sections despite the SRS's grouping, since `docs/07-iam-rbac.md` treats them as separate roles with materially different permissions and a merged section would misdescribe access. §8 covers Executive on the same reasoning — every assigned role gets a section, regardless of how SRS §2.6 grouped the underlying user classes. This is a documentation completeness choice, not an SRS revision, and does not change §2.6 itself.
 
@@ -159,7 +159,7 @@ The most tightly scoped assigned role, by design (HRMS-NFR-019): reads only what
 
 ### 6.1 What you can do
 
-- Process payroll end to end (`/payroll`): create and calculate payroll runs, submit for approval, view statutory rates, generate payslips and the bank transfer file.
+- Process payroll end to end (`/payroll`): create and calculate payroll runs, submit for approval, view statutory rates, generate payslips and the bank transfer file. **Finalisation itself depends on an approver permission (`docs/07-iam-rbac.md` §4.4) that no role holds by default** — see §6.3 step 2 and §10.4.
 - Read the employee fields payroll needs — identifiers, employment status, compensation, statutory numbers, bank details — nothing else.
 - Read compensation structures and pay grades (read-only; HR Officer/Administrator own creating them).
 - Access payroll-cost reporting (`/reports`), scoped to payroll figures.
@@ -171,7 +171,7 @@ Payroll Officer is one of the roles HRMS-NFR-024 requires a second factor for. O
 ### 6.3 Common task: running payroll
 
 1. Go to **Payroll**, start a new run, and **Calculate**. PAYE and SSNIT Tiers 1–3 are computed against the current versioned statutory rate table.
-2. **Submit for approval.** Finalisation requires a second, distinct person's approval — you cannot approve your own run under any role combination you hold (§6.4).
+2. **Submit for approval.** Finalisation requires a second, distinct person's approval — you cannot approve your own run under any role combination you hold (§6.4). **`docs/07-iam-rbac.md` §4.4 deliberately does not fix which role holds this approval permission (`payroll.approve_payroll_run`), and per §10.4, no organisation has designated it yet.** Until a System Administrator grants that permission to a specific, distinct account, a submitted run has no eligible approver and step 3 cannot proceed — this is the system correctly refusing to guess who is trusted to approve, not a defect.
 3. Once approved, **Finalize**. This is atomic: payroll runs, payslips, and payslip lines commit together or not at all — there is no partially-finalised payroll state to recover from.
 4. Generate the bank transfer file and download payslips for distribution.
 
@@ -221,7 +221,19 @@ You never reach an individual employee record, an individual payslip, or any per
 
 ---
 
-## 9. Frequently Asked Questions
+## 9. Troubleshooting and FAQ
+
+### 9.1 Basic Troubleshooting
+
+**I don't see a screen or action I expect to have.** Check §1's role table and the section for your specific role — access is enforced per `docs/07-iam-rbac.md` §4.2's permission matrix, not by UI convention, so a missing screen almost always means the matrix doesn't grant it, not a bug. If you believe your role is wrong, request a correction through a System Administrator (§10.1), not by working around the missing screen.
+
+**A leave request, payroll run, or role grant doesn't show the outcome I expected.** Re-check whether the action requires a second, distinct approver (§3.2 leave, §6.3–6.4 payroll, §9.2's role-grant answer below) — several workflows in this system refuse to let the same identity both act and approve, by design, and the refusal is not an error state.
+
+**Something looks broken across the whole system, not one screen.** Check whether it reproduces for another role or account before assuming a personal account issue — and if you operate the stack yourself, see §10.7 for the current, named list of things that are known-incomplete rather than broken (undesignated approvers, unconfirmed statutory rates, undecided hosting).
+
+**None of the above explains it.** This document does not replace the project's own issue-tracking process (`docs/agents/issue-tracker.md`); file it there rather than working around it silently.
+
+### 9.2 Frequently Asked Questions
 
 **Why can't I see [some other employee's] information?**
 Row-level visibility is enforced per module regardless of what your role can otherwise do (`docs/07-iam-rbac.md` §4.1's two-layer model). Being allowed to view "employee records" as an action does not mean every row is visible to you — only the rows your role's visibility rule returns.

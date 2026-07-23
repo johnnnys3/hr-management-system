@@ -173,7 +173,7 @@ The SRS phases work into three groups (SRS §1.4, §2.2). The module build order
 | `docs/07-iam-rbac.md` | IAM and RBAC Design | **Complete** — accepted 2026-07-15. Out of order; see §5.3 |
 | `docs/08-testing-plan.md` | Testing Plan | Scheduled |
 | `docs/09-deployment-plan.md` | Deployment Plan | Scheduled, and constrained; see §8.3 |
-| `docs/10-user-guide.md` | User Guide | **Draft issued 2026-07-23, out of order** — see §5.3 and the document's own §0. M7's target date (below) is unchanged; this is a draft for early review, not early completion of M7 |
+| `docs/10-user-guide.md` | User Guide | **Draft issued 2026-07-23, out of order** — see §5.4 and the document's own §0. M7's target date (below) is unchanged; this is a draft for early review, not early completion of M7 |
 
 The confirmed document sequence is 04 → 05 → 06 → 07. Each depends on its predecessor: the schema is designed against the architecture, the API contracts against the schema, and the access control design against the API surface it gates.
 
