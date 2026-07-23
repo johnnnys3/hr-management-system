@@ -446,3 +446,66 @@ export const ReportExportRecordSchema = z.object({
   created_at: z.string(),
 })
 export type ReportExportRecord = z.infer<typeof ReportExportRecordSchema>
+
+export const SalaryStructureSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  effective_from: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type SalaryStructure = z.infer<typeof SalaryStructureSchema>
+
+export const PayGradeSchema = z.object({
+  id: z.number(),
+  salary_structure: z.number(),
+  name: z.string(),
+  min_salary: z.string(),
+  max_salary: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+export type PayGrade = z.infer<typeof PayGradeSchema>
+
+export const CompensationRecordSchema = z.object({
+  id: z.number(),
+  employee: z.number(),
+  pay_grade: z.number().nullable(),
+  base_salary: z.string(),
+  currency: z.string(),
+  effective_from: z.string(),
+  effective_to: z.string().nullable(),
+  is_superseded: z.boolean(),
+  recorded_by: z.number().nullable(),
+  created_at: z.string(),
+})
+export type CompensationRecord = z.infer<typeof CompensationRecordSchema>
+
+export const PayrollRunStatusSchema = z.enum(['draft', 'calculated', 'pending_approval', 'approved', 'finalized', 'failed'])
+export type PayrollRunStatus = z.infer<typeof PayrollRunStatusSchema>
+
+export const PayrollRunSchema = z.object({
+  id: z.number(),
+  period_start: z.string(),
+  period_end: z.string(),
+  status: PayrollRunStatusSchema,
+  initiated_by: z.number().nullable(),
+  approved_by: z.number().nullable(),
+  approved_at: z.string().nullable(),
+  finalized_at: z.string().nullable(),
+  created_at: z.string(),
+})
+export type PayrollRun = z.infer<typeof PayrollRunSchema>
+
+export const PayslipSchema = z.object({
+  id: z.number(),
+  payroll_run: z.number(),
+  employee: z.number(),
+  gross_pay: z.string(),
+  net_pay: z.string(),
+  currency: z.string(),
+  generated_at: z.string(),
+  object_key: z.string().nullable(),
+})
+export type Payslip = z.infer<typeof PayslipSchema>

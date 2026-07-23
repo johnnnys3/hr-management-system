@@ -36,14 +36,17 @@ class LeaveTypeListTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_employee_is_denied(self):
+    def test_employee_can_read(self):
+        """Employee is the one who names a leave type on their own New
+        Leave Request form, which this same reference data populates —
+        found silently broken (empty dropdown) building the E2E suite."""
         employee = make_employee('E-1', 'Grace', 'Hopper')
         user = User.objects.create_user(email='grace@example.com', password='x', employee=employee)
         self.client.force_authenticate(user)
 
         response = self.client.get(URL)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(URL)

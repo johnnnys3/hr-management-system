@@ -13,11 +13,14 @@ def _hr(user):
 class CanAccessLeaveTypes(BasePermission):
     """`GET /api/leave-types/`, `docs/06-api-contracts.md` §4.12: HR
     Officer, HR Administrator read; Manager also needs read to resolve
-    leave-type names on their team's requests (issue #125)."""
+    leave-type names on their team's requests (issue #125); Employee also
+    needs read since they are the one who names a leave type on the New
+    Leave Request form this same reference data populates (found building
+    the E2E suite — the form's own dropdown was silently empty for them)."""
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and (_hr(user) or is_manager(user)))
+        return bool(user and user.is_authenticated and (_hr(user) or is_manager(user) or is_employee(user)))
 
 
 class CanAccessLeaveBalances(BasePermission):

@@ -67,6 +67,10 @@ export function AppLayout() {
     me?.is_manager
       ? [{ key: '/reports', label: 'Reports' }]
       : []),
+    ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Payroll Officer'].includes(g))
+      ? [{ key: '/compensation', label: 'Compensation' }]
+      : []),
+    ...(me?.groups.includes('Payroll Officer') ? [{ key: '/payroll', label: 'Payroll' }] : []),
   ]
 
   const handleLogout = () => {

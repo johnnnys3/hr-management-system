@@ -22,6 +22,8 @@ import { NotificationsPage } from './modules/notifications/NotificationsPage'
 import { LeavePage } from './modules/leave/LeavePage'
 import { AuditLogPage } from './modules/audit/AuditLogPage'
 import { ReportsPage } from './modules/reports/ReportsPage'
+import { CompensationPage } from './modules/compensation/CompensationPage'
+import { PayrollPage } from './modules/payroll/PayrollPage'
 import { RouteErrorBoundary } from './routes/RouteErrorBoundary'
 
 export const router = createBrowserRouter([
@@ -97,6 +99,14 @@ export const router = createBrowserRouter([
                   />
                 ),
                 children: [{ path: '/reports', element: <ReportsPage /> }],
+              },
+              {
+                element: <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer', 'Payroll Officer']} />,
+                children: [{ path: '/compensation', element: <CompensationPage /> }],
+              },
+              {
+                element: <ProtectedRoute requireGroup="Payroll Officer" />,
+                children: [{ path: '/payroll', element: <PayrollPage /> }],
               },
             ],
           },
