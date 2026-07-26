@@ -34,6 +34,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     employee = models.OneToOneField(
         'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_account',
     )
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+    phone_verified_at = models.DateTimeField(null=True, blank=True)
+    phone_verification_code_hash = models.CharField(max_length=128, null=True, blank=True)
+    phone_verification_expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
