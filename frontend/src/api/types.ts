@@ -13,6 +13,7 @@ export const MeSchema = z.object({
   is_employee: z.boolean(),
   is_manager: z.boolean(),
   second_factor_enrollment_pending: z.boolean(),
+  phone_verified_at: z.string().nullable().optional(),
 })
 export type Me = z.infer<typeof MeSchema>
 
