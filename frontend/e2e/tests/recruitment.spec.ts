@@ -40,6 +40,10 @@ test.describe('Recruitment (SRS §4.2)', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click()
     await expect(page.getByText('draft').first()).toBeVisible()
 
+    // A dedicated HR Administrator account, distinct from reports.spec.ts's
+    // e2e.hra — different spec files run in parallel workers, and two
+    // contexts authenticating as the same account concurrently race badly
+    // enough to fail one or both tests.
     const hrAdminContext = await page.context().browser()!.newContext()
     await loginAs(hrAdminContext, baseURL!, 'e2e.hra2@example.com', 'E2eTestpass123!', HR_ADMIN_2_TOTP_SECRET)
     const hrAdminPage = await hrAdminContext.newPage()

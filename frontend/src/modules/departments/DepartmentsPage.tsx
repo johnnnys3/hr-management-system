@@ -11,6 +11,7 @@ import {
 } from '../../api/departments'
 import { ApiError } from '../../api/client'
 import type { Department, JobTitle } from '../../api/types'
+import { useAuth } from '../../auth/AuthContext'
 import { StatStrip } from '../../components/StatStrip'
 
 type NamedRecord = Department | JobTitle
@@ -72,6 +73,11 @@ function ConfigTable({
   createFn: (data: FormValues) => Promise<NamedRecord>
   updateFn: (id: number, data: Partial<FormValues>) => Promise<NamedRecord>
 }) {
+  const { me } = useAuth()
+  // HR configuration (departments, job titles) is HR Administrator's to
+  // create/update — docs/07-iam-rbac.md §4.2. Others (HR Officer,
+  // Recruiter, Payroll Officer) read only.
+  const canManage = me?.groups.includes('HR Administrator') ?? false
   const queryClient = useQueryClient()
   const { data: records = [], isLoading, error } = useQuery({ queryKey, queryFn: listFn })
   const [modalRecord, setModalRecord] = useState<NamedRecord | 'new' | null>(null)
@@ -90,18 +96,20 @@ function ConfigTable({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Button type="primary" onClick={() => setModalRecord('new')}>
-          New {title}
-        </Button>
-      </div>
+      {canManage && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Button type="primary" onClick={() => setModalRecord('new')}>
+            New {title}
+          </Button>
+        </div>
+      )}
       <div style={{ border: '1px solid #ececec', borderRadius: 10, overflow: 'hidden' }}>
         <Table<NamedRecord>
           rowKey="id"
           loading={isLoading}
           dataSource={records}
           pagination={{ pageSize: 25 }}
-          onRow={(record) => ({ onClick: () => setModalRecord(record), style: { cursor: 'pointer' } })}
+          onRow={canManage ? (record) => ({ onClick: () => setModalRecord(record), style: { cursor: 'pointer' } }) : undefined}
           columns={[
             { title: 'Name', dataIndex: 'name' },
             {

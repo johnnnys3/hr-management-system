@@ -25,7 +25,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import HR_OFFICER
+from iam.roles import HR_ADMINISTRATOR
 
 User = get_user_model()
 
@@ -59,7 +59,7 @@ class NfrTimingTests(APITestCase):
 
     def setUp(self):
         user = User.objects.create_user(email='nfr-timing@example.com', password='x')
-        user.groups.add(Group.objects.get(name=HR_OFFICER))
+        user.groups.add(Group.objects.get(name=HR_ADMINISTRATOR))
         self.client.force_authenticate(user)
 
     def _timed_get(self, url):

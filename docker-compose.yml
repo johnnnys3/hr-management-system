@@ -96,6 +96,12 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      # Report/payslip download URLs are presigned against MINIO_ENDPOINT_URL
+      # (http://minio:9000) — SigV4 binds the signature to that Host header,
+      # so the browser must reach the exact same host:port. Published here
+      # so it does; add "127.0.0.1 minio" to your host's /etc/hosts.
+      - "127.0.0.1:9000:9000"
     volumes:
       - minio_data:/data
     healthcheck:

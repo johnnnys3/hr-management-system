@@ -36,6 +36,10 @@ HR_ADMIN_TOTP_SECRET = 'KRSXG5CTMVRXEZLU'  # noqa: S105 — test-only, guarded b
 # hit accounts/totp.py's anti-replay check (a step can't be consumed
 # twice), failing the second login outright.
 HR_ADMIN_2_TOTP_SECRET = 'MFRGGZDFMZTWQ2LK'  # noqa: S105 — test-only, guarded below
+# A third — payroll.spec.ts (approver) and reports.spec.ts both need HR
+# Administrator too, and also run in parallel with each other and with
+# recruitment.spec.ts's use of the account above.
+HR_ADMIN_3_TOTP_SECRET = 'ONSWG4TFOQYTEMZU'  # noqa: S105 — test-only, guarded below
 SYSADMIN_TOTP_SECRET = 'JPTYNGFW62WOZ5HM'  # noqa: S105 — test-only, guarded below
 
 
@@ -81,6 +85,7 @@ class Command(BaseCommand):
         system_administrator = self._user('e2e.sysadmin@example.com', 'System Administrator')
         hr_administrator = self._user('e2e.hra@example.com', 'HR Administrator')
         hr_administrator_2 = self._user('e2e.hra2@example.com', 'HR Administrator')
+        hr_administrator_3 = self._user('e2e.hra3@example.com', 'HR Administrator')
         self._user('e2e.hro@example.com', 'HR Officer')
         self._user('e2e.recruiter@example.com', 'Recruiter')
         payroll_initiator = self._user('e2e.payroll1@example.com', 'Payroll Officer')
@@ -95,6 +100,7 @@ class Command(BaseCommand):
         self._enroll_second_factor(payroll_initiator, PAYROLL_TOTP_SECRET)
         self._enroll_second_factor(hr_administrator, HR_ADMIN_TOTP_SECRET)
         self._enroll_second_factor(hr_administrator_2, HR_ADMIN_2_TOTP_SECRET)
+        self._enroll_second_factor(hr_administrator_3, HR_ADMIN_3_TOTP_SECRET)
         self._enroll_second_factor(system_administrator, SYSADMIN_TOTP_SECRET)
         # Manager is a derived role (`iam.roles.is_manager`), never an
         # assigned group — this account's manager status comes entirely

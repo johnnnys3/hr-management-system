@@ -252,6 +252,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
 }
 
 # docs/03-tech-stack.md §9's contract-test tool (`docs/08-testing-plan.md`
