@@ -11,7 +11,7 @@ import audit.services
 from audit.models import AuditLog
 
 from .models import PayrollRun, Payslip, StatutoryRateTable
-from .permissions import CanAccessPayslips, IsPayrollOfficer, _payroll_officer, can_decide_payroll_run
+from .permissions import CanAccessPayslips, CanViewPayrollRuns, IsPayrollOfficer, _payroll_officer, can_decide_payroll_run
 from .serializers import (
     BankTransferFileSerializer,
     PayrollRunCreateSerializer,
@@ -34,9 +34,15 @@ class StatutoryRateTableListView(APIView):
 
 
 class PayrollRunListCreateView(APIView):
-    """`GET, POST /api/payroll-runs/`, `docs/06-api-contracts.md` §4.14."""
+    """`GET, POST /api/payroll-runs/`, `docs/06-api-contracts.md` §4.14.
+    Creating a run stays Payroll Officer-only; listing also needs to
+    reach whoever holds `approve_payroll_run` (§4.4), or an approver's
+    own Payroll page would never show them a run to act on."""
 
-    permission_classes = [IsPayrollOfficer]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsPayrollOfficer()]
+        return [CanViewPayrollRuns()]
 
     def get(self, request):
         queryset = PayrollRun.objects.order_by('-period_start')
@@ -78,9 +84,10 @@ class PayrollRunListCreateView(APIView):
 
 class PayrollRunDetailView(APIView):
     """`GET /api/payroll-runs/{id}/`, `docs/06-api-contracts.md` §4.14 —
-    the status-polling target for every async action below."""
+    the status-polling target for every async action below, including
+    the approver's own poll after calling approve/finalize."""
 
-    permission_classes = [IsPayrollOfficer]
+    permission_classes = [CanViewPayrollRuns]
 
     def get(self, request, pk):
         payroll_run = get_object_or_404(PayrollRun, pk=pk)

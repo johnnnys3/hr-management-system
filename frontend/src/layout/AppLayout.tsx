@@ -70,7 +70,9 @@ export function AppLayout() {
     ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Payroll Officer'].includes(g))
       ? [{ key: '/compensation', label: 'Compensation' }]
       : []),
-    ...(me?.groups.includes('Payroll Officer') ? [{ key: '/payroll', label: 'Payroll' }] : []),
+    ...(me?.groups.some((g) => ['Payroll Officer', 'HR Administrator'].includes(g))
+      ? [{ key: '/payroll', label: 'Payroll' }]
+      : []),
   ]
 
   const handleLogout = () => {

@@ -17,6 +17,20 @@ class IsPayrollOfficer(BasePermission):
         return bool(user and user.is_authenticated and _payroll_officer(user))
 
 
+class CanViewPayrollRuns(BasePermission):
+    """List/detail read access: Payroll Officer, or whoever holds the
+    deployment-granted `approve_payroll_run` permission (§4.4) — the
+    approver has to see runs awaiting their decision to act on them at
+    all, even though creating/calculating/submitting stays Payroll
+    Officer-only."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        return _payroll_officer(user) or can_decide_payroll_run(user, None)
+
+
 def can_decide_payroll_run(user, payroll_run):
     """`docs/07-iam-rbac.md` §4.4: `payroll.approve_payroll_run` is
     granted to no role by default — this design does not fix an
