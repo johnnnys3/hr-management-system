@@ -9,6 +9,7 @@ from rest_framework.test import APITestCase
 from iam.models import RoleGrantRequest
 from iam.roles import HR_ADMINISTRATOR, PAYROLL_OFFICER, RECRUITER, SYSTEM_ADMINISTRATOR
 
+
 User = get_user_model()
 
 REQUESTS_URL = '/api/role-grant-requests/'
@@ -21,6 +22,7 @@ def _decide_url(pk):
 class CreateRoleGrantRequestTests(APITestCase):
     def setUp(self):
         self.requester = User.objects.create_user(email='admin@example.com', password='x')
+        self.requester.groups.add(Group.objects.get(name=SYSTEM_ADMINISTRATOR))
         self.subject = User.objects.create_user(email='subject@example.com', password='x')
         self.payroll_officer = Group.objects.get(name=PAYROLL_OFFICER)
         self.recruiter = Group.objects.get(name=RECRUITER)
@@ -39,7 +41,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(self.subject.groups.filter(name='Some Other App Group').exists())
 
-    def test_authenticated_user_can_request_a_grant_for_another_user(self):
+    def test_system_administrator_can_request_a_grant_for_another_user(self):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
@@ -48,6 +50,17 @@ class CreateRoleGrantRequestTests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['status'], 'pending')
+
+    def test_non_system_administrator_cannot_request_a_grant(self):
+        non_admin = User.objects.create_user(email='not-admin@example.com', password='x')
+        self.client.force_authenticate(non_admin)
+
+        response = self.client.post(REQUESTS_URL, {
+            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+        })
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(RoleGrantRequest.objects.exists())
 
     def test_self_grant_is_refused_at_the_api_layer(self):
         self.client.force_authenticate(self.requester)
