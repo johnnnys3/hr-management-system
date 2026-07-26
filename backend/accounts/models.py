@@ -53,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.filter(name__in=SECOND_FACTOR_REQUIRED_GROUPS).exists()
 
 
-SECOND_FACTOR_REQUIRED_GROUPS = ['System Administrator', 'Payroll Officer']
+SECOND_FACTOR_REQUIRED_GROUPS = ['System Administrator', 'Payroll Officer', 'HR Administrator']
 
 
 class SecondFactor(models.Model):
