@@ -23,10 +23,20 @@ from reporting_structure.models import ReportingRelationship
 
 User = get_user_model()
 PASSWORD = 'E2eTestpass123!'  # noqa: S105 — test-only, guarded below
-# HRMS-NFR-024 requires TOTP on every login for Payroll Officer/System
-# Administrator — fixed rather than random so frontend/e2e/helpers/totp.ts
-# can compute a matching code without reading it back out of the database.
-TOTP_SECRET = 'JBSWY3DPEHPK3PXP'  # noqa: S105 — test-only, guarded below
+# HRMS-NFR-024 requires TOTP on every login for System Administrator,
+# Payroll Officer, and HR Administrator — fixed per account (not shared,
+# not random) so frontend/e2e/helpers/totp.ts can compute a matching code
+# for the right account without reading it back out of the database, and
+# so one account's code can't be reused to authenticate as another.
+PAYROLL_TOTP_SECRET = 'JBSWY3DPEHPK3PXP'  # noqa: S105 — test-only, guarded below
+HR_ADMIN_TOTP_SECRET = 'KRSXG5CTMVRXEZLU'  # noqa: S105 — test-only, guarded below
+# A second HR Administrator account, distinct from the one above — the
+# Playwright suite runs spec files in parallel workers, and two tests
+# authenticating as the same TOTP-gated account in the same 30s window
+# hit accounts/totp.py's anti-replay check (a step can't be consumed
+# twice), failing the second login outright.
+HR_ADMIN_2_TOTP_SECRET = 'MFRGGZDFMZTWQ2LK'  # noqa: S105 — test-only, guarded below
+SYSADMIN_TOTP_SECRET = 'JPTYNGFW62WOZ5HM'  # noqa: S105 — test-only, guarded below
 
 
 class Command(BaseCommand):
@@ -64,18 +74,28 @@ class Command(BaseCommand):
             defaults={'base_salary': '3000.00', 'effective_from': date(2024, 1, 1)},
         )
 
+        # System Administrator is deliberately never is_superuser
+        # (docs/07-iam-rbac.md §7.3 — that flag would make HRMS-NFR-019
+        # unenforceable), so it's seeded the same way as every other role:
+        # a plain user in the group, nothing more.
+        system_administrator = self._user('e2e.sysadmin@example.com', 'System Administrator')
+        hr_administrator = self._user('e2e.hra@example.com', 'HR Administrator')
+        hr_administrator_2 = self._user('e2e.hra2@example.com', 'HR Administrator')
         self._user('e2e.hro@example.com', 'HR Officer')
-        self._user('e2e.hra@example.com', 'HR Administrator')
         self._user('e2e.recruiter@example.com', 'Recruiter')
         payroll_initiator = self._user('e2e.payroll1@example.com', 'Payroll Officer')
-        payroll_approver = self._user('e2e.payroll2@example.com', 'Payroll Officer')
         # payroll.approve_payroll_run is granted to no role by default
         # (docs/07-iam-rbac.md §4.4 — deployment-deferred, same shape as
-        # iam.approve_role_grant); this is the distinct approver HRMS-BR-008
-        # requires, granted the permission directly, not via a group.
-        payroll_approver.user_permissions.add(Permission.objects.get(codename='approve_payroll_run'))
-        self._enroll_second_factor(payroll_initiator)
-        self._enroll_second_factor(payroll_approver)
+        # iam.approve_role_grant). This org's designated approver is HR
+        # Administrator, granted here at the group level since §4.4 leaves
+        # the choice of role to the organisation, not to one account.
+        Group.objects.get(name='HR Administrator').permissions.add(
+            Permission.objects.get(codename='approve_payroll_run'),
+        )
+        self._enroll_second_factor(payroll_initiator, PAYROLL_TOTP_SECRET)
+        self._enroll_second_factor(hr_administrator, HR_ADMIN_TOTP_SECRET)
+        self._enroll_second_factor(hr_administrator_2, HR_ADMIN_2_TOTP_SECRET)
+        self._enroll_second_factor(system_administrator, SYSADMIN_TOTP_SECRET)
         # Manager is a derived role (`iam.roles.is_manager`), never an
         # assigned group — this account's manager status comes entirely
         # from the ReportingRelationship row above naming it as a manager.
@@ -108,8 +128,8 @@ class Command(BaseCommand):
             user.groups.add(Group.objects.get(name=group_name))
         return user
 
-    def _enroll_second_factor(self, user):
+    def _enroll_second_factor(self, user, secret):
         SecondFactor.objects.update_or_create(
             user=user,
-            defaults={'secret_ref': totp.encrypt_secret(TOTP_SECRET), 'disabled_at': None},
+            defaults={'secret_ref': totp.encrypt_secret(secret), 'disabled_at': None},
         )

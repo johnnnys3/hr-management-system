@@ -105,7 +105,7 @@ export const router = createBrowserRouter([
                 children: [{ path: '/compensation', element: <CompensationPage /> }],
               },
               {
-                element: <ProtectedRoute requireGroup="Payroll Officer" />,
+                element: <ProtectedRoute requireGroup={['Payroll Officer', 'HR Administrator']} />,
                 children: [{ path: '/payroll', element: <PayrollPage /> }],
               },
             ],

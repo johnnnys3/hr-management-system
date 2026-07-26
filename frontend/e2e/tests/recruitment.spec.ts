@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { loginAs } from '../helpers/auth'
 
+// A dedicated HR Administrator account, distinct from payroll.spec.ts's
+// e2e.hra — different spec files run in parallel workers, and two tests
+// authenticating as the same TOTP-gated account in the same 30s window
+// hit the backend's anti-replay check (accounts/totp.py).
+const HR_ADMIN_2_TOTP_SECRET = 'MFRGGZDFMZTWQ2LK'
+
 // SRS §4.2: Create Job Requisition, Move Candidate to Offer Stage.
 test.describe('Recruitment (SRS §4.2)', () => {
   test('Recruiter creates a requisition with an approval status (HRMS-FR-014)', async ({ page, context, baseURL }) => {
@@ -35,7 +41,7 @@ test.describe('Recruitment (SRS §4.2)', () => {
     await expect(page.getByText('draft').first()).toBeVisible()
 
     const hrAdminContext = await page.context().browser()!.newContext()
-    await loginAs(hrAdminContext, baseURL!, 'e2e.hra@example.com', 'E2eTestpass123!')
+    await loginAs(hrAdminContext, baseURL!, 'e2e.hra2@example.com', 'E2eTestpass123!', HR_ADMIN_2_TOTP_SECRET)
     const hrAdminPage = await hrAdminContext.newPage()
     await hrAdminPage.goto('/recruitment')
     await hrAdminPage.getByRole('button', { name: 'Approve' }).first().click()
