@@ -25,7 +25,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'groups', 'is_employee', 'is_manager']
+        fields = ['id', 'email', 'groups', 'is_employee', 'is_manager', 'phone_verified_at']
 
     def get_is_employee(self, user):
         return is_employee(user)
