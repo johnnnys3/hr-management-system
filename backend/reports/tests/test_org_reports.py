@@ -3,7 +3,7 @@ from datetime import date
 from rest_framework.test import APITestCase
 
 from employees.models import Employee, EmploymentHistory
-from iam.roles import EXECUTIVE, HR_OFFICER
+from iam.roles import EXECUTIVE, HR_ADMINISTRATOR
 from leave.tests.helpers import annual_leave_type
 from reporting_structure.models import ReportingRelationship
 
@@ -15,8 +15,8 @@ class HeadcountReportTests(APITestCase):
         self.e1 = make_employee('E-1', 'Grace', 'Hopper')
         self.e2 = make_employee('E-2', 'Ada', 'Lovelace')
 
-    def test_hr_officer_gets_full_breakdown(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+    def test_hr_administrator_gets_full_breakdown(self):
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.get('/api/reports/headcount/')
 
@@ -39,7 +39,7 @@ class HeadcountReportTests(APITestCase):
         — an Executive who also holds HR Officer must not get the HR
         branch's full breakdown."""
         user = user_with_role('both@example.com', EXECUTIVE)
-        user.groups.add(user.groups.model.objects.get(name=HR_OFFICER))
+        user.groups.add(user.groups.model.objects.get(name=HR_ADMINISTRATOR))
         self.client.force_authenticate(user)
 
         response = self.client.get('/api/reports/headcount/')
@@ -72,7 +72,7 @@ class HeadcountReportTests(APITestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_department_filter_narrows_scope(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.get(f'/api/reports/headcount/?department_id={self.e1.department_id}')
 
@@ -89,8 +89,8 @@ class LeaveUtilizationReportTests(APITestCase):
             entitled_days='20.00', used_days='5.00',
         )
 
-    def test_hr_officer_gets_totals_and_breakdown(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+    def test_hr_administrator_gets_totals_and_breakdown(self):
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.get('/api/reports/leave-utilization/')
 
@@ -121,8 +121,8 @@ class TurnoverReportTests(APITestCase):
             effective_date=date(2026, 3, 15), new_value={'employment_status': Employee.STATUS_TERMINATED},
         )
 
-    def test_hr_officer_sees_hires_and_terminations_in_period(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+    def test_hr_administrator_sees_hires_and_terminations_in_period(self):
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.get('/api/reports/turnover/?period_start=2026-01-01&period_end=2026-06-30')
 
@@ -131,7 +131,7 @@ class TurnoverReportTests(APITestCase):
         self.assertEqual(response.data['aggregate']['terminations'], 1)
 
     def test_missing_period_is_rejected(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.get('/api/reports/turnover/')
 

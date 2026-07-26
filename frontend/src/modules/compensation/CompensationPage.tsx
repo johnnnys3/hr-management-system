@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { createPayGrade, createSalaryStructure } from '../../api/compensation'
 import type { PayGrade, SalaryStructure } from '../../api/types'
+import { useAuth } from '../../auth/AuthContext'
 import { StatStrip } from '../../components/StatStrip'
 import { usePayGrades, useSalaryStructures } from './hooks'
 
@@ -42,6 +43,8 @@ export function CompensationPage() {
 }
 
 function SalaryStructuresTab({ structures }: { structures: SalaryStructure[] }) {
+  const { me } = useAuth()
+  const canCreate = me?.groups.includes('HR Administrator') ?? false
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [form] = Form.useForm<{ name: string; description?: string; effective_from: dayjs.Dayjs }>()
@@ -58,11 +61,13 @@ function SalaryStructuresTab({ structures }: { structures: SalaryStructure[] }) 
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Button type="primary" onClick={() => setCreateOpen(true)}>
-          New Salary Structure
-        </Button>
-      </div>
+      {canCreate && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Button type="primary" onClick={() => setCreateOpen(true)}>
+            New Salary Structure
+          </Button>
+        </div>
+      )}
       <Table<SalaryStructure>
         rowKey="id"
         dataSource={structures}
@@ -100,6 +105,8 @@ function SalaryStructuresTab({ structures }: { structures: SalaryStructure[] }) 
 }
 
 function PayGradesTab({ payGrades, structures }: { payGrades: PayGrade[]; structures: SalaryStructure[] }) {
+  const { me } = useAuth()
+  const canCreate = me?.groups.includes('HR Administrator') ?? false
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [form] = Form.useForm<{ salary_structure: number; name: string; min_salary: number; max_salary: number }>()
@@ -123,11 +130,13 @@ function PayGradesTab({ payGrades, structures }: { payGrades: PayGrade[]; struct
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Button type="primary" onClick={() => setCreateOpen(true)}>
-          New Pay Grade
-        </Button>
-      </div>
+      {canCreate && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Button type="primary" onClick={() => setCreateOpen(true)}>
+            New Pay Grade
+          </Button>
+        </div>
+      )}
       <Table<PayGrade>
         rowKey="id"
         dataSource={payGrades}

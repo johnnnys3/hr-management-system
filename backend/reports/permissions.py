@@ -1,14 +1,14 @@
 from rest_framework.permissions import BasePermission
 
-from iam.roles import EXECUTIVE, HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, is_manager
+from iam.roles import EXECUTIVE, HR_ADMINISTRATOR, PAYROLL_OFFICER, is_manager
 
 
 def _in_group(user, name):
     return user.groups.filter(name=name).exists()
 
 
-def _is_hr(user):
-    return _in_group(user, HR_OFFICER) or _in_group(user, HR_ADMINISTRATOR)
+def _is_hr_administrator(user):
+    return _in_group(user, HR_ADMINISTRATOR)
 
 
 def _is_payroll_officer(user):
@@ -21,15 +21,16 @@ def _is_executive(user):
 
 class CanAccessOrgReports(BasePermission):
     """Headcount, leave-utilization, turnover — `docs/07-iam-rbac.md`
-    §4.2/`docs/06-api-contracts.md` §4.15: HR Officer, HR Administrator: R
-    (org-wide); Manager: R (team-level); Executive: R (aggregate only,
-    HRMS-NFR-019)."""
+    §4.2/`docs/06-api-contracts.md` §4.15: HR Administrator: R (org-wide);
+    Manager: R (team-level); Executive: R (aggregate only,
+    HRMS-NFR-019). HR Officer deliberately excluded — narrowed from the
+    original design on the project owner's decision."""
 
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        return _is_hr(user) or _is_executive(user) or is_manager(user)
+        return _is_hr_administrator(user) or _is_executive(user) or is_manager(user)
 
 
 class CanAccessPayrollReports(BasePermission):
@@ -54,7 +55,7 @@ def report_scope(user):
     short-circuit DASH-001 established for Dashboard."""
     if _is_executive(user):
         return 'aggregate'
-    if _is_hr(user):
+    if _is_hr_administrator(user):
         return 'full'
     if is_manager(user):
         return 'team'

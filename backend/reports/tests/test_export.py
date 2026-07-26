@@ -2,7 +2,7 @@ from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from audit.models import AuditLog
-from iam.roles import EXECUTIVE, HR_OFFICER, PAYROLL_OFFICER
+from iam.roles import EXECUTIVE, HR_ADMINISTRATOR, PAYROLL_OFFICER
 from payroll.models import PayrollRun
 from payroll.services import calculate_run
 
@@ -16,7 +16,7 @@ class ReportExportTests(APITestCase):
         make_employee('E-1', 'Grace', 'Hopper')
 
     def test_export_returns_202_and_job_id(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.post('/api/reports/headcount/export/')
 
@@ -24,7 +24,7 @@ class ReportExportTests(APITestCase):
         self.assertIn('id', response.data)
 
     def test_export_completes_and_poll_returns_download_url(self):
-        user = user_with_role('hr@example.com', HR_OFFICER)
+        user = user_with_role('hr@example.com', HR_ADMINISTRATOR)
         self.client.force_authenticate(user)
 
         create = self.client.post('/api/reports/headcount/export/')
@@ -40,26 +40,26 @@ class ReportExportTests(APITestCase):
         """§4.15: "Same permission as the corresponding report endpoint."
         Payroll cost export is Payroll-Officer/Executive only, an HR
         Officer must be denied even though they can export org reports."""
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.post('/api/reports/payroll-cost/export/')
 
         self.assertEqual(response.status_code, 403)
 
     def test_unknown_report_slug_is_404(self):
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.post('/api/reports/not-a-real-report/export/')
 
         self.assertEqual(response.status_code, 404)
 
     def test_poll_is_scoped_to_own_job_only(self):
-        owner = user_with_role('hr@example.com', HR_OFFICER)
+        owner = user_with_role('hr@example.com', HR_ADMINISTRATOR)
         self.client.force_authenticate(owner)
         create = self.client.post('/api/reports/headcount/export/')
         job_id = create.data['id']
 
-        other = user_with_role('other@example.com', HR_OFFICER)
+        other = user_with_role('other@example.com', HR_ADMINISTRATOR)
         self.client.force_authenticate(other)
         response = self.client.get(f'/api/report-exports/{job_id}/')
 
@@ -80,7 +80,7 @@ class ReportExportTests(APITestCase):
     def test_headcount_export_does_not_emit_audit_entry(self):
         """§4.15's note: only the export touching payroll cost emits an
         audit entry, not the other four report types."""
-        self.client.force_authenticate(user_with_role('hr@example.com', HR_OFFICER))
+        self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         self.client.post('/api/reports/headcount/export/')
 
@@ -103,7 +103,7 @@ class ReportExportTests(APITestCase):
         from ..tasks import run_report_export
 
         report_export = RE.objects.create(
-            report_type=RE.REPORT_HEADCOUNT, requested_by=user_with_role('hr2@example.com', HR_OFFICER),
+            report_type=RE.REPORT_HEADCOUNT, requested_by=user_with_role('hr2@example.com', HR_ADMINISTRATOR),
         )
         run_report_export(report_export)
         first_key = report_export.object_key

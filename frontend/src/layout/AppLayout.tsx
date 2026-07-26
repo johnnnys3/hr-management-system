@@ -63,8 +63,7 @@ export function AppLayout() {
           { key: '/audit-log', label: 'Audit Log' },
         ]
       : []),
-    ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Payroll Officer', 'Executive'].includes(g)) ||
-    me?.is_manager
+    ...(me?.groups.some((g) => ['HR Administrator', 'Payroll Officer', 'Executive'].includes(g)) || me?.is_manager
       ? [{ key: '/reports', label: 'Reports' }]
       : []),
     ...(me?.groups.some((g) => ['HR Administrator', 'HR Officer', 'Payroll Officer'].includes(g))
