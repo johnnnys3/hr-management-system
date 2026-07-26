@@ -197,6 +197,8 @@ Tables are grouped by the module that owns them, in `docs/04-system-architecture
 | last_login | TIMESTAMPTZ | NULL | |
 | phone_number | TEXT | NULL | E.164 format; verified delivery address, distinct from employee.phone (HR record) |
 | phone_verified_at | TIMESTAMPTZ | NULL | Set on successful phone verification; cleared whenever phone_number changes |
+| phone_verification_code_hash | TEXT | NULL | Hashed verification code (not plaintext); cleared after successful verification or expiry |
+| phone_verification_expires_at | TIMESTAMPTZ | NULL | Expiration timestamp; code expires five minutes after issuance |
 | created_at, updated_at | — | — | §2.4 |
 
 **`second_factor`.** HRMS-NFR-024's second factor. This document schemas the record of enrolment and its state; the cryptographic mechanism (TOTP, WebAuthn, or otherwise) is an implementation choice `docs/06-api-contracts.md` or a later ADR settles, not a decision this schema makes by naming a column `secret_ref`.

@@ -9,6 +9,7 @@ import secrets
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.cache import cache
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.encoding import force_bytes, force_str
@@ -22,6 +23,7 @@ logger = logging.getLogger('accounts')
 password_reset_token_generator = PasswordResetTokenGenerator()
 
 PHONE_CODE_TTL_SECONDS = 300
+PHONE_VERIFICATION_COOLDOWN_SECONDS = 60
 
 
 def request_password_reset(email):
@@ -72,8 +74,18 @@ def _generate_code():
 
 
 def request_phone_verification(user, phone_number):
-    """Always stores the new number and queues a code, clearing any prior
-    verification — a new number must be reverified before use (spec §4)."""
+    """Enforces cooldown/quota before storing the new number and queueing a
+    code. A new number must be reverified before use (spec §4). Rejected
+    requests do not modify user fields or send any message."""
+    # Atomic cooldown check keyed by both user and phone_number to prevent
+    # abuse via either dimension.
+    key = f'phone_verification:cooldown:{user.pk}:{phone_number}'
+    if cache.get(key):
+        return False
+
+    # Reserve cooldown slot atomically before generating code or sending SMS.
+    cache.set(key, 1, timeout=PHONE_VERIFICATION_COOLDOWN_SECONDS)
+
     code = _generate_code()
     user.phone_number = phone_number
     user.phone_verified_at = None
@@ -83,6 +95,7 @@ def request_phone_verification(user, phone_number):
         'phone_number', 'phone_verified_at', 'phone_verification_code_hash', 'phone_verification_expires_at',
     ])
     sms.services.send(to=phone_number, body=f'Your HRMS verification code is {code}')
+    return True
 
 
 def confirm_phone_verification(user, code):

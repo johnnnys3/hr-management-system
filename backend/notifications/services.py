@@ -25,22 +25,24 @@ import sms.services
 from .models import Notification, NotificationPreference
 
 
-def _sms_daily_cap_reached(user):
-    key = f'sms:count:{user.pk}:{timezone.now().date().isoformat()}'
-    count = cache.get(key, 0)
-    return count >= settings.SMS_DAILY_CAP_PER_USER
-
-
-def _increment_sms_count(user):
+def _reserve_sms_quota(user):
+    """Atomically reserve one SMS quota slot. Returns True if quota was
+    reserved successfully, False if the daily cap was already reached. This
+    must be called BEFORE enqueueing or sending the message to prevent
+    concurrent requests from exceeding SMS_DAILY_CAP_PER_USER."""
     key = f'sms:count:{user.pk}:{timezone.now().date().isoformat()}'
     tomorrow = timezone.now().date() + timezone.timedelta(days=1)
     midnight = timezone.make_aware(timezone.datetime.combine(tomorrow, timezone.datetime.min.time()))
     ttl = max(int((midnight - timezone.now()).total_seconds()), 1)
+
     try:
-        cache.incr(key)
+        new_count = cache.incr(key)
     except ValueError:
         # Key doesn't exist yet today — first SMS of the day for this user.
         cache.set(key, 1, timeout=ttl)
+        new_count = 1
+
+    return new_count <= settings.SMS_DAILY_CAP_PER_USER
 
 
 def send(*, recipient, category, channel, subject, body, related_type=None, related_id=None):
@@ -72,9 +74,8 @@ def send(*, recipient, category, channel, subject, body, related_type=None, rela
 
         if preference.sms_enabled and recipient.phone_verified_at is not None:
             def _send_sms():
-                if _sms_daily_cap_reached(recipient):
+                if not _reserve_sms_quota(recipient):
                     return
-                _increment_sms_count(recipient)
                 sms.services.send(to=recipient.phone_number, body=f'{subject}: {body}')
 
             transaction.on_commit(_send_sms)

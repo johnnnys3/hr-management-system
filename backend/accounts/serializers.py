@@ -45,11 +45,11 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class PhoneVerificationRequestSerializer(serializers.Serializer):
-    phone_number = serializers.RegexField(regex=r'^\+[1-9]\d{6,14}$')
+    phone_number = serializers.RegexField(regex=r'\A\+[1-9][0-9]{6,14}\Z')
 
 
 class PhoneVerificationConfirmSerializer(serializers.Serializer):
-    code = serializers.RegexField(regex=r'^\d{6}$')
+    code = serializers.RegexField(regex=r'\A[0-9]{6}\Z')
 
 
 class SecondFactorEnrollResponseSerializer(serializers.Serializer):
