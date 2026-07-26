@@ -3,13 +3,23 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as departmentsApi from '../../api/departments'
+import { AuthContext } from '../../auth/AuthContext'
 import { DepartmentsPage } from './DepartmentsPage'
 
-function renderPage() {
+function renderPage(groups: string[] = ['HR Administrator']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <DepartmentsPage />
+      <AuthContext.Provider
+        value={{
+          me: { id: 1, email: 'user@b.com', groups, is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
+          isLoading: false,
+          refetch: async () => {},
+          logout: async () => {},
+        }}
+      >
+        <DepartmentsPage />
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }

@@ -39,7 +39,8 @@ class ReportExportTests(APITestCase):
     def test_export_uses_same_permission_as_report_endpoint(self):
         """§4.15: "Same permission as the corresponding report endpoint."
         Payroll cost export is Payroll-Officer/Executive only, an HR
-        Officer must be denied even though they can export org reports."""
+        Administrator must be denied even though they can export org
+        reports."""
         self.client.force_authenticate(user_with_role('hr@example.com', HR_ADMINISTRATOR))
 
         response = self.client.post('/api/reports/payroll-cost/export/')

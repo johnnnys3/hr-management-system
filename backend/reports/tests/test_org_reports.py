@@ -3,7 +3,7 @@ from datetime import date
 from rest_framework.test import APITestCase
 
 from employees.models import Employee, EmploymentHistory
-from iam.roles import EXECUTIVE, HR_ADMINISTRATOR
+from iam.roles import EXECUTIVE, HR_ADMINISTRATOR, HR_OFFICER
 from leave.tests.helpers import annual_leave_type
 from reporting_structure.models import ReportingRelationship
 
@@ -36,8 +36,8 @@ class HeadcountReportTests(APITestCase):
 
     def test_executive_who_also_holds_hr_role_still_gets_aggregate_only(self):
         """The check-Executive-first short-circuit DASH-001 established
-        — an Executive who also holds HR Officer must not get the HR
-        branch's full breakdown."""
+        — an Executive who also holds HR Administrator must not get the
+        HR branch's full breakdown."""
         user = user_with_role('both@example.com', EXECUTIVE)
         user.groups.add(user.groups.model.objects.get(name=HR_ADMINISTRATOR))
         self.client.force_authenticate(user)
@@ -57,6 +57,16 @@ class HeadcountReportTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['aggregate']['total'], 1)
+
+    def test_hr_officer_is_denied(self):
+        """HR Officer's report access was removed per product decision
+        (docs/07-iam-rbac.md §4.2) — only HR Administrator, Executive,
+        and Manager reach org reports."""
+        self.client.force_authenticate(user_with_role('hro@example.com', HR_OFFICER))
+
+        response = self.client.get('/api/reports/headcount/')
+
+        self.assertEqual(response.status_code, 403)
 
     def test_employee_with_no_role_is_denied(self):
         user = user_with_role('emp@example.com', None, employee=self.e1)
