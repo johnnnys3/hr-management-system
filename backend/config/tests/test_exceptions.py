@@ -6,13 +6,18 @@ from config.exceptions import api_exception_handler
 
 class ApiExceptionHandlerTests(APITestCase):
     def test_preserves_an_already_valid_envelope(self):
-        exc = ValidationError({'error': {'code': 'x', 'message': 'm', 'fields': None}})
+        # `fields: {}` rather than `None` — DRF's ValidationError stringifies
+        # a bare `None` leaf into `ErrorDetail('None')` when constructing the
+        # exception from a raw dict, which would make this assert the wrong
+        # thing; an empty dict passes through unchanged and still proves the
+        # envelope was left alone.
+        exc = ValidationError({'error': {'code': 'x', 'message': 'm', 'fields': {}}})
         response = api_exception_handler(exc, {})
 
         error = response.data['error']
         self.assertEqual(str(error['code']), 'x')
         self.assertEqual(str(error['message']), 'm')
-        self.assertIsNone(error['fields'])
+        self.assertEqual(error['fields'], {})
 
     def test_field_validation_error_is_normalized(self):
         exc = ValidationError({'name': ['This field is required.']})
