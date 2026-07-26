@@ -66,6 +66,15 @@ class Command(BaseCommand):
 
         self._user('e2e.hro@example.com', 'HR Officer')
         self._user('e2e.hra@example.com', 'HR Administrator')
+        # A second HR Administrator account, distinct from the one above —
+        # reports.spec.ts and recruitment.spec.ts both need an HR
+        # Administrator, and different spec files run in parallel workers.
+        # CI saw an intermittent "no sessionid cookie" failure logging in
+        # as e2e.hra that a stale local image prevented reproducing
+        # deterministically; giving each spec its own account removes one
+        # plausible cause (two contexts authenticating as the same account
+        # at the same time) regardless of whether it was the actual one.
+        self._user('e2e.hra2@example.com', 'HR Administrator')
         self._user('e2e.recruiter@example.com', 'Recruiter')
         payroll_initiator = self._user('e2e.payroll1@example.com', 'Payroll Officer')
         payroll_approver = self._user('e2e.payroll2@example.com', 'Payroll Officer')
