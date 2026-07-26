@@ -239,6 +239,12 @@ export const NotificationSchema = z.object({
 })
 export type Notification = z.infer<typeof NotificationSchema>
 
+export const NotificationPreferenceSchema = z.object({
+  email_enabled: z.boolean(),
+  sms_enabled: z.boolean(),
+})
+export type NotificationPreference = z.infer<typeof NotificationPreferenceSchema>
+
 export const OnboardingChecklistSchema = z.object({
   id: z.number(),
   employee: z.number(),
