@@ -267,8 +267,13 @@ class DecideRoleGrantRequestTests(APITestCase):
 
         self.assertNotIn(permission, admin_group.permissions.all())
 
-    def test_hr_administrator_is_not_granted_approve_role_grant_by_default(self):
+    def test_hr_administrator_is_granted_approve_role_grant_by_default(self):
+        """`docs/07-iam-rbac.md` §7.3/§8 (amended 2026-07-27): the
+        deployment-configured approver defaults to HR Administrator, which
+        already satisfies HRMS-NFR-024's scope requirement for the role and
+        is not System Administrator — the migration in this task closes
+        what was previously an open deployment question."""
         hr_admin_group = Group.objects.get(name=HR_ADMINISTRATOR)
         permission = Permission.objects.get(codename='approve_role_grant')
 
-        self.assertNotIn(permission, hr_admin_group.permissions.all())
+        self.assertIn(permission, hr_admin_group.permissions.all())
