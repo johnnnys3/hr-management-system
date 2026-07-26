@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'health.apps.HealthConfig',
     'audit.apps.AuditConfig',
     'mail.apps.MailConfig',
+    'sms.apps.SmsConfig',
     'accounts.apps.AccountsConfig',
     'iam.apps.IamConfig',
     'departments.apps.DepartmentsConfig',
