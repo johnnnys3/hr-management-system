@@ -7,7 +7,7 @@ import { LoginPage } from './modules/auth/LoginPage'
 import { PasswordResetPage } from './modules/auth/PasswordResetPage'
 import { SecondFactorEnrollPage } from './modules/auth/SecondFactorEnrollPage'
 import { SecondFactorRecoveryPage } from './modules/auth/SecondFactorRecoveryPage'
-import { RoleGrantRequestsPage } from './modules/rbac/RoleGrantRequestsPage'
+import { AccessPage } from './modules/rbac/AccessPage'
 import { UserManagementPage } from './modules/rbac/UserManagementPage'
 import { DepartmentsPage } from './modules/departments/DepartmentsPage'
 import { EmployeesPage } from './modules/employees/EmployeesPage'
@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
               { path: '/leave', element: <LeavePage /> },
               { path: '/my-profile', element: <MyProfilePage /> },
               { path: '/my-team', element: <MyTeamPage /> },
-              { path: '/role-grant-requests', element: <RoleGrantRequestsPage /> },
+              { path: '/access', element: <AccessPage /> },
               {
                 element: (
                   <ProtectedRoute
