@@ -17,7 +17,7 @@
 - **Create:** `frontend/src/layout/useSidebarCollapse.ts` — hook wrapping `localStorage` persistence of collapse state.
 - **Create:** `frontend/src/layout/useSidebarCollapse.test.ts` — unit tests for the hook.
 - **Modify:** `frontend/src/layout/AppLayout.tsx` — replace horizontal header with `Sider` + slim `Header`, consuming `buildNavGroups` and `useSidebarCollapse`.
-- **Create:** `frontend/src/layout/AppLayout.test.tsx` — render test asserting per-role visible items/groups match today's behavior, group-hiding, collapse toggle, notification badge.
+- **Create:** `frontend/src/layout/AppLayout.test.tsx` — render test asserting per-role visible items/groups match today's behavior (including HR Officer, Recruiter, Executive, and complete manager-visible menu), group-hiding, collapse toggle (asserting rendered collapsed width), notification badge (verifying polling occurs at 30-second interval).
 
 ---
 
@@ -354,18 +354,57 @@ describe('AppLayout', () => {
     expect(screen.getByText('Audit Log')).toBeInTheDocument()
   })
 
-  it('renders the unread notification count as a badge', async () => {
-    renderLayout(makeMe())
-    expect(await screen.findByText('2')).toBeInTheDocument()
+  it('shows HR Officer visible items including Onboarding', async () => {
+    renderLayout(makeMe({ groups: ['HR Officer'] }))
+    await waitFor(() => expect(screen.getByText('People')).toBeInTheDocument())
+    expect(screen.getByText('Departments')).toBeInTheDocument()
+    expect(screen.getByText('Employees')).toBeInTheDocument()
+    expect(screen.getByText('Recruitment')).toBeInTheDocument()
+    expect(screen.getByText('Onboarding')).toBeInTheDocument()
+    expect(screen.getByText('Compensation')).toBeInTheDocument()
   })
 
-  it('toggles collapse state and persists it', async () => {
-    const user = userEvent.setup()
+  it('shows Recruiter visible items without Employees or Compensation', async () => {
+    renderLayout(makeMe({ groups: ['Recruiter'] }))
+    await waitFor(() => expect(screen.getByText('People')).toBeInTheDocument())
+    expect(screen.getByText('Departments')).toBeInTheDocument()
+    expect(screen.getByText('Recruitment')).toBeInTheDocument()
+    expect(screen.queryByText('Employees')).not.toBeInTheDocument()
+    expect(screen.queryByText('Payroll & Compensation')).not.toBeInTheDocument()
+  })
+
+  it('shows Executive visible Reports', async () => {
+    renderLayout(makeMe({ groups: ['Executive'] }))
+    await waitFor(() => expect(screen.getByText('Payroll & Compensation')).toBeInTheDocument())
+    expect(screen.getByText('Reports')).toBeInTheDocument()
+  })
+
+  it('shows complete manager-visible menu including My Team and Reports', async () => {
+    renderLayout(makeMe({ is_manager: true }))
+    await waitFor(() => expect(screen.getByText('People')).toBeInTheDocument())
+    expect(screen.getByText('My Team')).toBeInTheDocument()
+    expect(screen.getByText('Payroll & Compensation')).toBeInTheDocument()
+    expect(screen.getByText('Reports')).toBeInTheDocument()
+  })
+
+  it('renders the unread notification count as a badge and polls at 30-second interval', async () => {
+    vi.useFakeTimers()
     renderLayout(makeMe())
+    expect(await screen.findByText('2')).toBeInTheDocument()
+    vi.advanceTimersByTime(30000)
+    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument())
+    vi.useRealTimers()
+  })
+
+  it('toggles collapse state, persists it, and renders collapsed width of 64', async () => {
+    const user = userEvent.setup()
+    const { container } = renderLayout(makeMe())
     await screen.findByText('Dashboard')
     const trigger = screen.getByRole('button', { name: /collapse sidebar/i })
     await user.click(trigger)
     expect(window.localStorage.getItem('hrms.sidebar.collapsed')).toBe('true')
+    const sider = container.querySelector('.ant-layout-sider')
+    expect(sider).toHaveStyle({ width: '64px' })
   })
 })
 ```
@@ -480,13 +519,24 @@ export function AppLayout() {
       >
         <div style={{ fontSize: 18, fontWeight: 700, color: '#111' }}>HRMS</div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 20 }}>
-          <Link to="/notifications" style={{ color: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center' }}>
+          <Link to="/notifications" aria-label="Notifications" style={{ color: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center' }}>
             <Badge count={unreadNotificationsResponse?.count ?? 0} size="small">
               <BellOutlined style={{ fontSize: 18 }} />
             </Badge>
           </Link>
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <div role="button" tabIndex={0} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-haspopup="true"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.currentTarget.click()
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+            >
               <UserOutlined />
               <span style={{ fontSize: 14 }}>{me?.email}</span>
             </div>
@@ -524,17 +574,19 @@ Ant Design's built-in `Sider` collapse trigger does not carry the accessible nam
           trigger={null}
           theme="light"
           width={220}
+          collapsedWidth={64}
           style={{ borderRight: '1px solid #ececec', position: 'relative' }}
         >
           <Menu mode="inline" selectedKeys={[location.pathname]} items={menuItems} style={{ borderRight: 'none' }} />
           <button
             type="button"
-            aria-label="collapse sidebar"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
             onClick={() => setCollapsed(!collapsed)}
             style={{
               position: 'absolute',
               bottom: 12,
-              left: collapsed ? 20 : 190,
+              left: collapsed ? 18 : 190,
               border: '1px solid #ececec',
               borderRadius: 6,
               background: '#fff',

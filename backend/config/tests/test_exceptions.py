@@ -1,6 +1,5 @@
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.test import APITestCase
-from rest_framework.views import exception_handler
 
 from config.exceptions import api_exception_handler
 
@@ -13,6 +12,7 @@ class ApiExceptionHandlerTests(APITestCase):
         error = response.data['error']
         self.assertEqual(str(error['code']), 'x')
         self.assertEqual(str(error['message']), 'm')
+        self.assertIsNone(error['fields'])
 
     def test_field_validation_error_is_normalized(self):
         exc = ValidationError({'name': ['This field is required.']})
@@ -44,4 +44,4 @@ class ApiExceptionHandlerTests(APITestCase):
         self.assertTrue(response.data['error']['message'])
 
     def test_unhandled_exception_returns_none(self):
-        self.assertIsNone(exception_handler(Exception('boom'), {}))
+        self.assertIsNone(api_exception_handler(Exception('boom'), {}))
