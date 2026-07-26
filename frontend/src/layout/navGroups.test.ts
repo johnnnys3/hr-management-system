@@ -15,11 +15,9 @@ function makeMe(overrides: Partial<Me> = {}): Me {
 }
 
 describe('buildNavGroups', () => {
-  it('returns My Work and Admin (Role Grant Requests only) for a plain employee', () => {
+  it('shows only My Work for a plain employee (no Access item at all)', () => {
     const groups = buildNavGroups(makeMe())
-    expect(groups.map((g) => g.label)).toEqual(['My Work', 'Admin'])
-    expect(groups[0].items.map((i) => i.key)).toEqual(['/', '/notifications', '/leave', '/my-profile'])
-    expect(groups[1].items.map((i) => i.key)).toEqual(['/role-grant-requests'])
+    expect(groups.map((g) => g.label)).toEqual(['My Work'])
   })
 
   it('adds My Team to People for a manager', () => {
@@ -36,10 +34,25 @@ describe('buildNavGroups', () => {
     expect(payroll?.items.map((i) => i.key)).toEqual(expect.arrayContaining(['/compensation', '/reports']))
   })
 
-  it('adds Users and Audit Log to Admin for System Administrator, alongside Role Grant Requests', () => {
+  it('shows Grant Access (not Access Approvals) for System Administrator, alongside Users and Audit Log', () => {
     const groups = buildNavGroups(makeMe({ groups: ['System Administrator'] }))
     const admin = groups.find((g) => g.label === 'Admin')
-    expect(admin?.items.map((i) => i.key)).toEqual(['/role-grant-requests', '/users', '/audit-log'])
+    expect(admin?.items.map((i) => i.key)).toEqual(['/access', '/users', '/audit-log'])
+    expect(admin?.items.find((i) => i.key === '/access')?.label).toEqual('Grant Access')
+  })
+
+  it('shows Access Approvals (not Grant Access) for HR Administrator', () => {
+    const groups = buildNavGroups(makeMe({ groups: ['HR Administrator'] }))
+    const admin = groups.find((g) => g.label === 'Admin')
+    expect(admin?.items.map((i) => i.key)).toEqual(['/access'])
+    expect(admin?.items.find((i) => i.key === '/access')?.label).toEqual('Access Approvals')
+  })
+
+  it('shows one combined Access item, not two, for a user holding both roles', () => {
+    const groups = buildNavGroups(makeMe({ groups: ['System Administrator', 'HR Administrator'] }))
+    const admin = groups.find((g) => g.label === 'Admin')
+    expect(admin?.items.filter((i) => i.key === '/access')).toHaveLength(1)
+    expect(admin?.items.find((i) => i.key === '/access')?.label).toEqual('Access')
   })
 
   it('adds Payroll to Payroll & Compensation for Payroll Officer', () => {

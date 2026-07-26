@@ -52,8 +52,25 @@ export function buildNavGroups(me: Me | null, unreadNotifications = 0): NavGroup
       : []),
   ]
 
+  const canGrantAccess = me.groups.includes('System Administrator')
+  // Proxy for the `iam.approve_role_grant` permission, which the frontend
+  // has no general mechanism to query directly — correct given the
+  // migration in backend/iam/migrations/0003_... defaults that permission
+  // to this group. Revisit if a deployment ever assigns the permission
+  // elsewhere (docs/07-iam-rbac.md §8).
+  const canApproveAccess = me.groups.includes('HR Administrator')
+
+  let accessLabel: string | null = null
+  if (canGrantAccess && canApproveAccess) {
+    accessLabel = 'Access'
+  } else if (canGrantAccess) {
+    accessLabel = 'Grant Access'
+  } else if (canApproveAccess) {
+    accessLabel = 'Access Approvals'
+  }
+
   const admin: NavItem[] = [
-    { key: '/role-grant-requests', label: 'Role Grant Requests', icon: 'SafetyCertificateOutlined' },
+    ...(accessLabel ? [{ key: '/access', label: accessLabel, icon: 'SafetyCertificateOutlined' }] : []),
     ...(me.groups.includes('System Administrator')
       ? [
           { key: '/users', label: 'Users', icon: 'UsergroupAddOutlined' },
