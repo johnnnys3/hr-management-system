@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'health.apps.HealthConfig',
     'audit.apps.AuditConfig',
     'mail.apps.MailConfig',
+    'sms.apps.SmsConfig',
     'accounts.apps.AccountsConfig',
     'iam.apps.IamConfig',
     'departments.apps.DepartmentsConfig',
@@ -191,6 +192,13 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', False)
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'hrms@localhost')
+
+
+# SMS dispatch — Twilio (docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md §3)
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_FROM_NUMBER = os.environ.get('TWILIO_FROM_NUMBER', '')
+SMS_DAILY_CAP_PER_USER = int(os.environ.get('SMS_DAILY_CAP_PER_USER', '20'))
 
 
 # Delivery-failure logging (ADR-0011): application logs, never audit_log —

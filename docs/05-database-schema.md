@@ -137,6 +137,15 @@ Two concerns, per `docs/04-system-architecture.md` §3, are not confined to one 
 
 Visibility is `recipient_user_id = current user`, per `docs/04-system-architecture.md` §4's row for module 10 ("Employee/Manager: own notifications only"). No separate visibility rule is stated for it in §5 below: the predicate is a single equality, not a queryset traversal, and does not need the pattern §3.3 states for the modules that do.
 
+**`notification_preference`.** SRS §3.4's SMS channel: one row per user, recording which delivery channels the user has opted into.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| user_id | BIGINT | FK → user_account, ON DELETE RESTRICT, UNIQUE | One preference row per user |
+| email_enabled | BOOLEAN | NOT NULL, DEFAULT true | |
+| sms_enabled | BOOLEAN | NOT NULL, DEFAULT false | Requires user_account.phone_verified_at to be set for SMS to actually send |
+
 ### 3.3 The Derived-Role Columns
 
 `docs/07-iam-rbac.md` §3 fixes two roles as derived rather than granted: **Employee**, from holding an employee record whose employment status permits access, and **Manager**, from having direct reports. `docs/04-system-architecture.md` §3.3 states that both derivations depend on module 6 and module 7 "existing with the right columns before any module can compute them" and names this a constraint on this document, not a choice it is free to make differently. This section is where that constraint is discharged.
@@ -186,6 +195,10 @@ Tables are grouped by the module that owns them, in `docs/04-system-architecture
 | employee_id | BIGINT | FK → employee, ON DELETE SET NULL, UNIQUE, NULL | Nullable and unique: at most one user account per employee, and a user with no employee record is valid (`CONTEXT.md`) |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true | Deactivation, not deletion (§2.3) |
 | last_login | TIMESTAMPTZ | NULL | |
+| phone_number | TEXT | NULL | E.164 format; verified delivery address, distinct from employee.phone (HR record) |
+| phone_verified_at | TIMESTAMPTZ | NULL | Set on successful phone verification; cleared whenever phone_number changes |
+| phone_verification_code_hash | TEXT | NULL | Hashed verification code (not plaintext); cleared after successful verification or expiry |
+| phone_verification_expires_at | TIMESTAMPTZ | NULL | Expiration timestamp; code expires five minutes after issuance |
 | created_at, updated_at | — | — | §2.4 |
 
 **`second_factor`.** HRMS-NFR-024's second factor. This document schemas the record of enrolment and its state; the cryptographic mechanism (TOTP, WebAuthn, or otherwise) is an implementation choice `docs/06-api-contracts.md` or a later ADR settles, not a decision this schema makes by naming a column `secret_ref`.

@@ -8,6 +8,7 @@ import { getMyProfile, updateMyProfile } from '../../api/selfService'
 import type { Employee, EmployeeDocument } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { useDepartments, useJobTitles } from '../departments/hooks'
+import { NotificationPreferencesTab } from './NotificationPreferencesTab'
 
 const HR_CONFIG_GROUPS = ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer']
 
@@ -31,6 +32,7 @@ export function MyProfilePage() {
     { key: 'profile', label: 'Profile', children: <ProfileTab employee={employee} /> },
     { key: 'history', label: 'Employment History', children: <EmploymentHistoryTab employeeId={employee.id} /> },
     { key: 'documents', label: 'Documents', children: <DocumentsTab employeeId={employee.id} /> },
+    { key: 'notifications', label: 'Notifications', children: <NotificationPreferencesTab /> },
   ]
 
   return (

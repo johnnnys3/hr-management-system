@@ -5,17 +5,25 @@ response is uniform regardless of whether the address exists or whether the
 send succeeds — a varying response is an enumeration oracle.
 """
 import logging
+import secrets
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.cache import cache
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.encoding import force_bytes, force_str
 
 import mail.services
+import sms.services
 from .models import User
 
 logger = logging.getLogger('accounts')
 
 password_reset_token_generator = PasswordResetTokenGenerator()
+
+PHONE_CODE_TTL_SECONDS = 300
+PHONE_VERIFICATION_COOLDOWN_SECONDS = 60
 
 
 def request_password_reset(email):
@@ -58,4 +66,51 @@ def confirm_password_reset(uid, token, new_password):
 
     user.set_password(new_password)
     user.save(update_fields=['password'])
+    return True
+
+
+def _generate_code():
+    return f'{secrets.randbelow(1_000_000):06d}'
+
+
+def request_phone_verification(user, phone_number):
+    """Enforces cooldown/quota before storing the new number and queueing a
+    code. A new number must be reverified before use (spec §4). Rejected
+    requests do not modify user fields or send any message."""
+    # Atomic cooldown check keyed by both user and phone_number to prevent
+    # abuse via either dimension.
+    key = f'phone_verification:cooldown:{user.pk}:{phone_number}'
+    if cache.get(key):
+        return False
+
+    # Reserve cooldown slot atomically before generating code or sending SMS.
+    cache.set(key, 1, timeout=PHONE_VERIFICATION_COOLDOWN_SECONDS)
+
+    code = _generate_code()
+    user.phone_number = phone_number
+    user.phone_verified_at = None
+    user.phone_verification_code_hash = make_password(code)
+    user.phone_verification_expires_at = timezone.now() + timezone.timedelta(seconds=PHONE_CODE_TTL_SECONDS)
+    user.save(update_fields=[
+        'phone_number', 'phone_verified_at', 'phone_verification_code_hash', 'phone_verification_expires_at',
+    ])
+    sms.services.send(to=phone_number, body=f'Your HRMS verification code is {code}')
+    return True
+
+
+def confirm_phone_verification(user, code):
+    """Returns True if the code matched and was not expired."""
+    if (
+        user.phone_verification_code_hash is None
+        or user.phone_verification_expires_at is None
+        or timezone.now() > user.phone_verification_expires_at
+    ):
+        return False
+    if not check_password(code, user.phone_verification_code_hash):
+        return False
+
+    user.phone_verified_at = timezone.now()
+    user.phone_verification_code_hash = None
+    user.phone_verification_expires_at = None
+    user.save(update_fields=['phone_verified_at', 'phone_verification_code_hash', 'phone_verification_expires_at'])
     return True

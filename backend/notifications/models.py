@@ -39,3 +39,21 @@ class Notification(models.Model):
     class Meta:
         db_table = 'notification'
         ordering = ['-created_at']
+
+
+class NotificationPreference(models.Model):
+    """`notification_preference`, `docs/05-database-schema.md` (added by
+    docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md §5).
+    Self only — a user's own delivery preference, not an HR-administered
+    fact, so no visibility-rule matrix cell applies (same reasoning as
+    `Notification` itself, above).
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notification_preference',
+    )
+    email_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'notification_preference'

@@ -25,7 +25,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'groups', 'is_employee', 'is_manager']
+        fields = ['id', 'email', 'groups', 'is_employee', 'is_manager', 'phone_verified_at']
 
     def get_is_employee(self, user):
         return is_employee(user)
@@ -42,6 +42,14 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
     password = serializers.CharField(trim_whitespace=False)
+
+
+class PhoneVerificationRequestSerializer(serializers.Serializer):
+    phone_number = serializers.RegexField(regex=r'\A\+[1-9][0-9]{6,14}\Z')
+
+
+class PhoneVerificationConfirmSerializer(serializers.Serializer):
+    code = serializers.RegexField(regex=r'\A[0-9]{6}\Z')
 
 
 class SecondFactorEnrollResponseSerializer(serializers.Serializer):

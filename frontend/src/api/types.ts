@@ -13,6 +13,7 @@ export const MeSchema = z.object({
   is_employee: z.boolean(),
   is_manager: z.boolean(),
   second_factor_enrollment_pending: z.boolean(),
+  phone_verified_at: z.string().nullable().optional(),
 })
 export type Me = z.infer<typeof MeSchema>
 
@@ -238,6 +239,12 @@ export const NotificationSchema = z.object({
   created_at: z.string(),
 })
 export type Notification = z.infer<typeof NotificationSchema>
+
+export const NotificationPreferenceSchema = z.object({
+  email_enabled: z.boolean(),
+  sms_enabled: z.boolean(),
+})
+export type NotificationPreference = z.infer<typeof NotificationPreferenceSchema>
 
 export const OnboardingChecklistSchema = z.object({
   id: z.number(),

@@ -8,4 +8,5 @@ gunicorn>=22.0,<23.0
 pyotp>=2.9,<3.0
 cryptography>=43.0,<44.0
 reportlab>=4.2,<4.3
+twilio>=9.3,<10.0
 drf-spectacular>=0.28,<0.29
