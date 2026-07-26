@@ -13,6 +13,7 @@ from celery import shared_task
 from django.conf import settings
 from requests.exceptions import ConnectionError, Timeout
 from twilio.base.exceptions import TwilioRestException
+from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client
 
 logger = logging.getLogger('sms')
@@ -21,8 +22,16 @@ MAX_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 60
 
 
+TWILIO_HTTP_TIMEOUT_SECONDS = 10
+
+
 def _twilio_client():
-    return Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+    # Unbounded by default — a stalled provider would otherwise pin a Celery
+    # worker indefinitely instead of hitting our own retry/give-up logic.
+    return Client(
+        settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN,
+        http_client=TwilioHttpClient(timeout=TWILIO_HTTP_TIMEOUT_SECONDS),
+    )
 
 
 def _masked(number):

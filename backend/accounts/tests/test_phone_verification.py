@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -10,6 +11,7 @@ from accounts.models import User
 
 class PhoneVerificationRequestTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(email='a@example.com', password='x')
         self.client = APIClient()
         self.client.force_authenticate(self.user)
@@ -43,6 +45,15 @@ class PhoneVerificationRequestTests(TestCase):
         anon_client = APIClient()
         response = anon_client.post('/api/auth/phone/', {'phone_number': '+15559998888'}, format='json')
         self.assertEqual(response.status_code, 401)
+
+    @patch('accounts.services.sms.services.send')
+    def test_second_request_within_cooldown_is_rate_limited(self, sms_send):
+        self.client.post('/api/auth/phone/', {'phone_number': '+15559998888'}, format='json')
+
+        response = self.client.post('/api/auth/phone/', {'phone_number': '+15559998888'}, format='json')
+
+        self.assertEqual(response.status_code, 429)
+        sms_send.assert_called_once()
 
 
 class PhoneVerificationConfirmTests(TestCase):

@@ -33,3 +33,13 @@ class SendSmsTaskTests(TestCase):
     def test_masked_number_keeps_last_two_digits(self):
         from sms.tasks import _masked
         self.assertEqual(_masked('+15559998888'), '***88')
+
+    @override_settings(TWILIO_ACCOUNT_SID='AC123', TWILIO_AUTH_TOKEN='secret')
+    def test_twilio_client_is_built_with_a_bounded_timeout(self):
+        from sms.tasks import TWILIO_HTTP_TIMEOUT_SECONDS, _twilio_client
+
+        with patch('sms.tasks.Client') as mock_client_cls, patch('sms.tasks.TwilioHttpClient') as mock_http_cls:
+            _twilio_client()
+
+        mock_http_cls.assert_called_once_with(timeout=TWILIO_HTTP_TIMEOUT_SECONDS)
+        mock_client_cls.assert_called_once_with('AC123', 'secret', http_client=mock_http_cls.return_value)

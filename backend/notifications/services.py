@@ -35,12 +35,12 @@ def _reserve_sms_quota(user):
     midnight = timezone.make_aware(timezone.datetime.combine(tomorrow, timezone.datetime.min.time()))
     ttl = max(int((midnight - timezone.now()).total_seconds()), 1)
 
-    try:
-        new_count = cache.incr(key)
-    except ValueError:
-        # Key doesn't exist yet today — first SMS of the day for this user.
-        cache.set(key, 1, timeout=ttl)
-        new_count = 1
+    # `add` is atomic (set-if-not-exists) — unlike the prior get/incr/set
+    # sequence, two concurrent first-SMS-of-the-day callers can't both
+    # observe "key missing" and both initialise it, silently granting an
+    # extra slot. Only one `add` wins; every caller then increments safely.
+    cache.add(key, 0, timeout=ttl)
+    new_count = cache.incr(key)
 
     return new_count <= settings.SMS_DAILY_CAP_PER_USER
 

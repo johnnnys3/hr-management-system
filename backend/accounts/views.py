@@ -209,7 +209,12 @@ class PhoneVerificationRequestView(APIView):
     def post(self, request):
         serializer = PhoneVerificationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        services.request_phone_verification(request.user, serializer.validated_data['phone_number'])
+        sent = services.request_phone_verification(request.user, serializer.validated_data['phone_number'])
+        if not sent:
+            return Response(
+                {'error': {'code': 'rate_limited', 'message': 'Please wait before requesting another code.'}},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         return Response(status=status.HTTP_202_ACCEPTED)
 
 
