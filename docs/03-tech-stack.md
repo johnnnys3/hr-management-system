@@ -17,6 +17,7 @@
 | John Kessie | July 2026 | Initial technology stack selection for HRMS | 1.0 |
 | John Kessie | July 2026 | Add §4.3 Mail Dispatch: SMTP backend, provider deferred per TBD-001, ADR-0011 | 1.1 |
 | John Kessie | 2026-07-23 | §9 corrected against actual repository state, found during a documentation audit: pytest-django and factory_boy were named here but never installed (`backend/requirements.txt` has neither); every backend test in the repository runs via Django's own `manage.py test`, and all fixtures across the suite are plain ORM `.create()`/`.bulk_create()` calls, not factories. This is the same species of defect §7.1 of the project plan has twice found elsewhere — a tool named early and never installed, undetected because nothing exercised the claim. §9 now records actual practice rather than original intent; no code change accompanies this revision. Filed as DOC-018 | 1.2 |
+| John Kessie | 2026-07-26 | Add §4.4 SMS Dispatch: Twilio, a named provider pinned in application code rather than deferred behind a portable interface (no SMTP-equivalent standard exists for SMS to defer behind). Mirrors §4.3's Celery-task/bounded-retry/best-effort shape. See `docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md` | 1.3 |
 
 ---
 
@@ -119,6 +120,12 @@ Email is sent through Django's SMTP email backend, configured entirely from the 
 This mirrors the deferral already made for hosting (Section 7.2) and document storage (Section 5.2): TBD-001 leaves the deploying organisation undetermined, and a provider choice made now would have no basis. The SMTP backend is a portable interface in the same sense the S3 API is for storage — pointing `EMAIL_HOST` at a different provider is a configuration change, not a code change. Local development and end-to-end verification use Mailpit, a disposable SMTP catcher, so mail can be confirmed as sent without a real provider or a real mailbox.
 
 Mail dispatch runs as a Celery task off the request cycle, with bounded retry and delivery-failure logging to the application log rather than `audit_log`. Recorded in ADR-0011.
+
+### 4.4 SMS Dispatch
+
+SMS is sent through Twilio, a named provider — unlike mail dispatch, this is not deferred behind a portable interface. There is no SMTP-equivalent standard protocol for SMS to defer behind, so the choice is pinned in application code (the `twilio` Python SDK) rather than configured purely by environment. Credentials (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`) are environment-driven, same as mail dispatch's SMTP settings, so a future provider swap is a code change to one module (`backend/sms/`), not a system-wide one.
+
+SMS dispatch runs as a Celery task off the request cycle, same shape as mail dispatch: bounded retry, best-effort delivery, failure logging to the application log rather than `audit_log`. A per-user daily send cap (`SMS_DAILY_CAP_PER_USER`, default 20) is enforced in the Notification module via the existing Redis cache, not in SMS dispatch itself — SMS dispatch, like mail dispatch, knows nothing about why a message is sent or how often. See `docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md`.
 
 ## 5. Data
 

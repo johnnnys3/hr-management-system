@@ -68,6 +68,7 @@ Every person with an employee record and active employment status is an Employee
 - View your own compensation and payslip history, where applicable (`docs/07-iam-rbac.md` §4.2 — read own only, no editing).
 - Submit and track your own leave requests (`/leave`).
 - Read your own notifications (`/notifications`).
+- Choose how you're notified, on the Notifications tab of your profile (`/my-profile`): email is on by default, SMS is opt-in and requires verifying a phone number first (enter a number, confirm the code texted to it).
 - Request an additional role, if your job requires one (`/role-grant-requests`) — this is reviewed and decided by a System Administrator, not granted automatically.
 
 ### 2.2 Common task: requesting leave
