@@ -24,6 +24,8 @@ from .serializers import (
     MeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    PhoneVerificationConfirmSerializer,
+    PhoneVerificationRequestSerializer,
     SecondFactorEnrollResponseSerializer,
     SecondFactorRecoveryDecisionSerializer,
     SecondFactorRecoveryRequestSerializer,
@@ -194,6 +196,35 @@ class PasswordResetConfirmView(APIView):
         )
         if not ok:
             return Response({'error': {'code': 'validation_error', 'message': 'Invalid or expired reset link.'}},
+                             status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PhoneVerificationRequestView(APIView):
+    """`POST /api/auth/phone/`. Self only — a user verifies their own
+    delivery number, same reasoning as second-factor self-enrolment."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PhoneVerificationRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        services.request_phone_verification(request.user, serializer.validated_data['phone_number'])
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class PhoneVerificationConfirmView(APIView):
+    """`POST /api/auth/phone/confirm/`. Generic failure on wrong or expired
+    code — no distinction surfaced, same posture as password reset."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PhoneVerificationConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ok = services.confirm_phone_verification(request.user, serializer.validated_data['code'])
+        if not ok:
+            return Response({'error': {'code': 'validation_error', 'message': 'Invalid or expired code.'}},
                              status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

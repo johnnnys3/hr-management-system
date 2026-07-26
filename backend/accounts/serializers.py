@@ -44,6 +44,14 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     password = serializers.CharField(trim_whitespace=False)
 
 
+class PhoneVerificationRequestSerializer(serializers.Serializer):
+    phone_number = serializers.RegexField(regex=r'^\+[1-9]\d{6,14}$')
+
+
+class PhoneVerificationConfirmSerializer(serializers.Serializer):
+    code = serializers.RegexField(regex=r'^\d{6}$')
+
+
 class SecondFactorEnrollResponseSerializer(serializers.Serializer):
     provisioning_uri = serializers.CharField()
 
