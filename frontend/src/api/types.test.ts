@@ -57,7 +57,7 @@ const CASES: { name: string; schema: { parse: (v: unknown) => unknown }; valid: 
   },
   {
     name: 'UserAccount', schema: UserAccountSchema, breakField: 'is_active',
-    valid: { id: 1, email: 'a@b.com', is_active: true, groups: [], created_at: '', updated_at: '' },
+    valid: { id: 1, email: 'a@b.com', is_active: true, groups: [], employee_name: null, created_at: '', updated_at: '' },
   },
   {
     name: 'SecondFactorEnrollResponse', schema: SecondFactorEnrollResponseSchema, breakField: 'provisioning_uri',
@@ -142,7 +142,10 @@ const CASES: { name: string; schema: { parse: (v: unknown) => unknown }; valid: 
   },
   {
     name: 'RoleGrantRequestRecord', schema: RoleGrantRequestRecordSchema, breakField: 'status',
-    valid: { id: 1, requester: 1, subject: 2, role: 1, status: 'pending', approver: null, requested_at: '', decided_at: null },
+    valid: {
+      id: 1, requester: 1, subject: 2, role: 1, status: 'pending', approver: null, requested_at: '', decided_at: null,
+      requester_email: 'a@b.com', subject_email: 'c@d.com', subject_name: null, role_name: 'HR Officer',
+    },
   },
   {
     name: 'LeaveType', schema: LeaveTypeSchema, breakField: 'requires_approval',
