@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -11,7 +12,7 @@ from audit.models import AuditLog
 
 from .models import RoleGrantRequest
 from .permissions import CanDecideRoleGrantRequest, IsFullyAuthenticated, IsSystemAdministrator
-from .roles import RECRUITER
+from .roles import ASSIGNED_ROLES, RECRUITER
 from .serializers import (
     RoleGrantRequestCreateSerializer,
     RoleGrantRequestDecisionSerializer,
@@ -61,6 +62,21 @@ class UserDetailView(APIView):
             target_id=user.pk,
         )
         return Response(UserAdminSerializer(user).data)
+
+
+class AssignedRolesListView(APIView):
+    """`GET /api/roles/`. Lists the six assigned-role groups with their
+    database ids, so a client can build a role picker without hardcoding
+    group ids. System-Administrator-only, since only System Administrator
+    raises role-grant requests
+    (`docs/superpowers/specs/2026-07-27-role-grant-access-redesign.md`).
+    """
+
+    permission_classes = [IsSystemAdministrator]
+
+    def get(self, request):
+        groups = Group.objects.filter(name__in=ASSIGNED_ROLES).order_by('name')
+        return Response([{'id': g.pk, 'name': g.name} for g in groups])
 
 
 class RoleGrantRequestCreateView(APIView):

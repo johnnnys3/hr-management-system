@@ -5,10 +5,11 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.test import TestCase
+from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import ASSIGNED_ROLES, is_employee, is_manager
+from iam.roles import ASSIGNED_ROLES, SYSTEM_ADMINISTRATOR, is_employee, is_manager
 from reporting_structure.models import ReportingRelationship
 
 User = get_user_model()
@@ -17,6 +18,31 @@ User = get_user_model()
 class AssignedRoleGroupsTests(TestCase):
     def test_all_six_assigned_role_groups_exist(self):
         self.assertEqual(Group.objects.filter(name__in=ASSIGNED_ROLES).count(), 6)
+
+
+class AssignedRolesListViewTests(APITestCase):
+    def test_system_administrator_sees_all_six_assigned_roles(self):
+        admin = User.objects.create_user(email='admin2@example.com', password='x')
+        admin.groups.add(Group.objects.get(name=SYSTEM_ADMINISTRATOR))
+        self.client.force_authenticate(admin)
+
+        response = self.client.get('/api/roles/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual({r['name'] for r in response.data}, set(ASSIGNED_ROLES))
+
+    def test_non_system_administrator_is_denied(self):
+        non_admin = User.objects.create_user(email='non-admin2@example.com', password='x')
+        self.client.force_authenticate(non_admin)
+
+        response = self.client.get('/api/roles/')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_is_denied(self):
+        response = self.client.get('/api/roles/')
+
+        self.assertEqual(response.status_code, 401)
 
 
 class DerivedRoleTests(TestCase):

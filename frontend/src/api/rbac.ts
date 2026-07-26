@@ -16,6 +16,10 @@ export function updateUser(
   return apiFetch(`/api/users/${id}/`, { method: 'PATCH', body: data })
 }
 
+export function listAssignedRoles(): Promise<{ id: number; name: string }[]> {
+  return apiFetch('/api/roles/')
+}
+
 export function listRoleGrantRequests(): Promise<RoleGrantRequestRecord[]> {
   return apiFetch('/api/role-grant-requests/')
 }
