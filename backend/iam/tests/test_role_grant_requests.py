@@ -162,6 +162,36 @@ class ListRoleGrantRequestTests(APITestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_list_includes_readable_display_fields(self):
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.get(REQUESTS_URL)
+
+        record = response.data[0]
+        self.assertEqual(record['requester_email'], self.requester.email)
+        self.assertEqual(record['subject_email'], self.subject.email)
+        self.assertEqual(record['role_name'], PAYROLL_OFFICER)
+        self.assertIsNone(record['subject_name'])
+
+    def test_subject_name_reflects_a_linked_employee(self):
+        from departments.models import Department, JobTitle
+        from employees.models import Employee
+
+        department = Department.objects.create(name='Operations')
+        job_title = JobTitle.objects.create(name='Analyst')
+        employee = Employee.objects.create(
+            employee_number='E100', first_name='Jane', last_name='Doe',
+            date_of_birth='1990-01-01', department=department, job_title=job_title,
+            employment_status=Employee.STATUS_ACTIVE, hire_date='2026-01-01',
+        )
+        self.subject.employee = employee
+        self.subject.save(update_fields=['employee'])
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.data[0]['subject_name'], 'Jane Doe')
+
 
 class DecideRoleGrantRequestTests(APITestCase):
     def setUp(self):
