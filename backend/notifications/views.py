@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Notification
-from .serializers import NotificationSerializer
+from .models import Notification, NotificationPreference
+from .serializers import NotificationPreferenceSerializer, NotificationSerializer
 
 
 class NotificationListView(ListAPIView):
@@ -43,3 +43,22 @@ class NotificationMarkReadView(APIView):
         Notification.objects.filter(pk=notification.pk, read_at__isnull=True).update(read_at=timezone.now())
         notification.refresh_from_db()
         return Response(NotificationSerializer(notification).data)
+
+
+class NotificationPreferenceView(APIView):
+    """`GET/PATCH /api/notification-preferences/me/`. Self only, per
+    docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md §5.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        preference, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        return Response(NotificationPreferenceSerializer(preference).data)
+
+    def patch(self, request):
+        preference, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        serializer = NotificationPreferenceSerializer(preference, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
