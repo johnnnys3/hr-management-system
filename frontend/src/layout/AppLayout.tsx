@@ -106,10 +106,22 @@ export function AppLayout() {
             </Badge>
           </Link>
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <div role="button" tabIndex={0} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <button
+              type="button"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                font: 'inherit',
+              }}
+            >
               <UserOutlined />
               <span style={{ fontSize: 14 }}>{me?.email}</span>
-            </div>
+            </button>
           </Dropdown>
         </div>
       </Header>
