@@ -66,6 +66,10 @@ def confirm_password_reset(uid, token, new_password):
 
     user.set_password(new_password)
     user.save(update_fields=['password'])
+    # Every role re-verifies on next login after a reset, same as first
+    # login on a new account (send_email_verification sets
+    # email_verified_at back to None and queues a fresh code).
+    send_email_verification(user)
     return True
 
 
