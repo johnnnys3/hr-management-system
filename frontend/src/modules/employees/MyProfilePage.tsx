@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Alert, Button, DatePicker, Form, Input, List, Table, Tabs, Typography, message } from 'antd'
 import dayjs from 'dayjs'
 import { ApiError } from '../../api/client'
 import { getEmployeeDocumentDownloadUrl, listEmployeeDocuments, listEmploymentHistory } from '../../api/employees'
 import { listLeaveBalances } from '../../api/leave'
-import { getMyProfile, updateMyProfile } from '../../api/selfService'
+import { getMyProfile } from '../../api/selfService'
 import type { Employee, EmployeeDocument } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { useDepartments, useJobTitles } from '../departments/hooks'
@@ -44,22 +44,11 @@ export function MyProfilePage() {
 }
 
 function ProfileTab({ employee }: { employee: Employee }) {
-  const queryClient = useQueryClient()
-  const [form] = Form.useForm()
   const { me } = useAuth()
   const canSeeConfig = me?.groups.some((g) => HR_CONFIG_GROUPS.includes(g)) ?? false
   const { data: departments = [] } = useDepartments({ enabled: canSeeConfig })
   const { data: jobTitles = [] } = useJobTitles({ enabled: canSeeConfig })
   const { data: balances = [] } = useQuery({ queryKey: ['leave', 'balances'], queryFn: listLeaveBalances })
-
-  const updateMutation = useMutation({
-    mutationFn: updateMyProfile,
-    onSuccess: () => {
-      message.success('Profile updated.')
-      queryClient.invalidateQueries({ queryKey: ['self-service', 'me'] })
-    },
-    onError: (e) => message.error(e instanceof ApiError ? e.message : 'Failed to update profile.'),
-  })
 
   const departmentName = departments.find((d) => d.id === employee.department)?.name ?? employee.department
   const jobTitleName = jobTitles.find((j) => j.id === employee.job_title)?.name ?? employee.job_title
@@ -68,40 +57,25 @@ function ProfileTab({ employee }: { employee: Employee }) {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, maxWidth: 900 }}>
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          first_name: employee.first_name,
-          last_name: employee.last_name,
-          date_of_birth: dayjs(employee.date_of_birth),
-        }}
-        onFinish={(values) =>
-          updateMutation.mutate({
-            first_name: values.first_name,
-            last_name: values.last_name,
-            date_of_birth: values.date_of_birth.format('YYYY-MM-DD'),
-          })
-        }
-      >
+      <Form layout="vertical">
         <Form.Item label="Employee Number">
           <Input value={employee.employee_number} disabled />
         </Form.Item>
-        <Form.Item name="first_name" label="First Name" rules={[{ required: true }]}>
-          <Input />
+        <Form.Item label="First Name">
+          <Input value={employee.first_name} disabled />
         </Form.Item>
-        <Form.Item name="last_name" label="Last Name" rules={[{ required: true }]}>
-          <Input />
+        <Form.Item label="Last Name">
+          <Input value={employee.last_name} disabled />
         </Form.Item>
-        <Form.Item name="date_of_birth" label="Date of Birth" rules={[{ required: true }]}>
-          <DatePicker style={{ width: '100%' }} />
+        <Form.Item label="Date of Birth">
+          <DatePicker style={{ width: '100%' }} value={dayjs(employee.date_of_birth)} disabled />
         </Form.Item>
         <Form.Item label="Employment Status">
           <Input value={employee.employment_status} disabled />
         </Form.Item>
-        <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
-          Save
-        </Button>
+        <Typography.Text type="secondary">
+          To correct your name or date of birth, contact HR.
+        </Typography.Text>
       </Form>
       <div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 12 }}>At a Glance</div>

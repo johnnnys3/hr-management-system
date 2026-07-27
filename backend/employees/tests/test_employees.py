@@ -290,6 +290,21 @@ class EmployeeSelfServiceTests(APITestCase):
         self.assertEqual(self.employee.department_id, self.department.pk)
         self.assertEqual(self.employee.employment_status, Employee.STATUS_ACTIVE)
 
+    def test_employee_cannot_write_name_or_date_of_birth_via_self_service(self):
+        """Identity fields are HR Officer's to correct (`/api/employees/{id}/`),
+        not the employee's own — owner decision 2026-07-27."""
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch('/api/employees/me/', {
+            'first_name': 'Not Ada', 'last_name': 'Not Lovelace', 'date_of_birth': '2000-01-01',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.first_name, 'Ada')
+        self.assertEqual(self.employee.last_name, 'Lovelace')
+        self.assertEqual(str(self.employee.date_of_birth), '1990-01-01')
+
     def test_hr_officer_cannot_use_the_self_service_endpoint(self):
         hr_officer = _user_with_role('hrofficer@example.com', HR_OFFICER)
         self.client.force_authenticate(hr_officer)
