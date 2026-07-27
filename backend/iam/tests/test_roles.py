@@ -19,6 +19,15 @@ class AssignedRoleGroupsTests(TestCase):
     def test_all_five_assigned_role_groups_exist(self):
         self.assertEqual(Group.objects.filter(name__in=ASSIGNED_ROLES).count(), 5)
 
+    def test_recruiter_is_not_an_assigned_role(self):
+        """ADR-0013: Recruiter is retired, merged into HR Administrator.
+        The group row itself is not deleted by the retiring migration
+        (`RoleGrantRequest.role` is `on_delete=RESTRICT`, and deleting it
+        would either crash on any deployment with grant-request history or
+        discard that history) — it simply no longer appears in
+        `ASSIGNED_ROLES`, so it is never offered again."""
+        self.assertNotIn('Recruiter', ASSIGNED_ROLES)
+
 
 class AssignedRolesListViewTests(APITestCase):
     def test_system_administrator_sees_all_five_assigned_roles(self):

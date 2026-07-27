@@ -3,6 +3,26 @@
 from django.db import migrations, models
 
 
+def revert_self_approved_requisitions(apps, schema_editor):
+    """Before the CHECK constraint below can be added, any pre-existing
+    row it would forbid must be corrected — ADR-0013: HR Administrator now
+    both creates and approves requisitions, but self-approval was never
+    permitted, so a row with `approved_by == requested_by` is not a state
+    the system should have allowed even under the prior Recruiter/HR
+    Administrator split; it can only exist if the same account somehow
+    held both roles historically. Reverting to `pending_approval` with no
+    approver puts it back in the queue for a legitimate, distinct
+    approver, rather than fabricating one or leaving `approved` with no
+    approver on record."""
+    JobRequisition = apps.get_model('recruitment', 'JobRequisition')
+    db_alias = schema_editor.connection.alias
+    JobRequisition.objects.using(db_alias).filter(
+        approved_by__isnull=False,
+    ).filter(
+        approved_by=models.F('requested_by'),
+    ).update(approved_by=None, status='pending_approval')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +30,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # No-op reverse: there is nothing to undo — a row this remediated
+        # was already in a state the system should never have allowed.
+        migrations.RunPython(revert_self_approved_requisitions, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name='jobrequisition',
             constraint=models.CheckConstraint(
