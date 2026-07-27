@@ -42,26 +42,20 @@ const EMPLOYEE = {
 describe('MyProfilePage', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('shows the profile and saves an edit to the writable fields only', async () => {
+  it('shows the profile with name and date of birth read-only', async () => {
     vi.spyOn(selfServiceApi, 'getMyProfile').mockResolvedValue(EMPLOYEE)
-    const updateSpy = vi.spyOn(selfServiceApi, 'updateMyProfile').mockResolvedValue({ ...EMPLOYEE, first_name: 'Augusta' })
 
     renderPage()
-    const user = userEvent.setup()
 
     expect(await screen.findByDisplayValue('E-42')).toBeInTheDocument()
     expect(screen.getByDisplayValue('active')).toBeInTheDocument()
-
-    const firstNameInput = screen.getByDisplayValue('Ada')
-    await user.clear(firstNameInput)
-    await user.type(firstNameInput, 'Augusta')
-    await user.click(screen.getByText('Save'))
-
-    expect(updateSpy.mock.calls[0][0]).toEqual({
-      first_name: 'Augusta',
-      last_name: 'Lovelace',
-      date_of_birth: '1990-01-01',
-    })
+    expect(screen.getByDisplayValue('Ada')).toBeDisabled()
+    expect(screen.getByDisplayValue('Lovelace')).toBeDisabled()
+    // Date of birth DatePicker should also be disabled
+    const dateOfBirthInput = document.querySelector('#date_of_birth') as HTMLInputElement
+    expect(dateOfBirthInput).toBeDisabled()
+    expect(screen.getByText(/contact hr/i)).toBeInTheDocument()
+    expect(screen.queryByText('Save')).not.toBeInTheDocument()
   })
 
   it('lists employment history and documents for the caller\'s own employee id', async () => {

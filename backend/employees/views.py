@@ -203,15 +203,17 @@ class EmployeeMeView(APIView):
         employee = request.user.employee
         serializer = EmployeeSelfServiceSerializer(employee, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            employee = serializer.save()
-            audit.services.record(
-                category=AuditLog.CATEGORY_RECORD_CHANGE,
-                action='employee_self_service_updated',
-                actor=request.user,
-                target_type='employee',
-                target_id=employee.pk,
-            )
+        # Only save and audit when there are actual changes (validated_data non-empty)
+        if serializer.validated_data:
+            with transaction.atomic():
+                employee = serializer.save()
+                audit.services.record(
+                    category=AuditLog.CATEGORY_RECORD_CHANGE,
+                    action='employee_self_service_updated',
+                    actor=request.user,
+                    target_type='employee',
+                    target_id=employee.pk,
+                )
         return Response(EmployeeSelfServiceSerializer(employee).data)
 
 

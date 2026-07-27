@@ -53,8 +53,12 @@ class EmployeeSelfServiceSerializer(serializers.ModelSerializer):
     """`/api/employees/me/`, HRMS-FR-025 to HRMS-FR-027. A distinct,
     narrower serializer from `EmployeeSerializer` — not the same one with a
     permission check bolted on — so salary, job title, department, status,
-    and manager stay non-writable regardless of future additions to the
-    HR-facing serializer."""
+    manager, name, and date of birth stay non-writable regardless of future
+    additions to the HR-facing serializer. Identity fields (name, DOB) are
+    HR Officer's to correct (`/api/employees/{id}/`, already full CRUD),
+    not the employee's own — owner decision 2026-07-27. Everything on this
+    model is now read-only here; the endpoint's write side lives on
+    (`/api/employees/{id}/emergency-contacts/`) instead."""
 
     class Meta:
         model = Employee
@@ -63,10 +67,14 @@ class EmployeeSelfServiceSerializer(serializers.ModelSerializer):
             'department', 'job_title', 'employment_status', 'hire_date',
             'created_at', 'updated_at',
         ]
-        read_only_fields = [
-            'id', 'employee_number', 'department', 'job_title', 'employment_status',
-            'hire_date', 'created_at', 'updated_at',
-        ]
+        read_only_fields = fields
+
+    def update(self, instance, validated_data):
+        """No-op when all fields are read-only (validated_data will be empty).
+        Prevents unnecessary save() calls and audit events."""
+        if not validated_data:
+            return instance
+        return super().update(instance, validated_data)
 
 
 class EmploymentHistorySerializer(serializers.ModelSerializer):
