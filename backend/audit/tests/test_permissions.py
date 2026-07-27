@@ -2,8 +2,8 @@
 log; every other role is denied. `docs/02-project-plan.md` §7.3 costs most
 of M1's estimate into asserting the denied path.
 
-Six assigned roles exist (`docs/07-iam-rbac.md` §2.3): System
-Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer,
+Five assigned roles exist (`docs/07-iam-rbac.md` §2.3): System
+Administrator, HR Administrator, HR Officer, Payroll Officer,
 Executive — modelled here as Django groups, seeded ad hoc since IAM/RBAC
 (module 4) has not built the real seed data yet. Employee and Manager are
 derived roles, never granted as groups (§3); a user with no employee
@@ -23,7 +23,6 @@ User = get_user_model()
 ASSIGNED_ROLES_OTHER_THAN_SYSTEM_ADMINISTRATOR = [
     'HR Administrator',
     'HR Officer',
-    'Recruiter',
     'Payroll Officer',
     'Executive',
 ]

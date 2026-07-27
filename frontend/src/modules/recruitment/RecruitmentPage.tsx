@@ -29,27 +29,26 @@ const REQUISITION_STATUS_COLORS: Record<string, string> = {
 
 export function RecruitmentPage() {
   const { me } = useAuth()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
 
   const { data: requisitions = [] } = useQuery({
     queryKey: ['recruitment', 'requisitions', 'all'],
     queryFn: () => listJobRequisitions(),
-    enabled: isRecruiter || isHrAdministrator,
+    enabled: isHrAdministrator,
   })
   const { data: candidates = [] } = useQuery({
     queryKey: ['recruitment', 'candidates', undefined],
     queryFn: () => listCandidates(),
-    enabled: isRecruiter || isHrOfficer,
+    enabled: isHrAdministrator || isHrOfficer,
   })
 
   const items = [
-    ...(isRecruiter || isHrAdministrator
+    ...(isHrAdministrator
       ? [{ key: 'requisitions', label: 'Requisitions', content: <RequisitionsTab /> }]
       : []),
-    ...(isRecruiter ? [{ key: 'postings', label: 'Postings', content: <PostingsTab /> }] : []),
-    ...(isRecruiter || isHrOfficer
+    ...(isHrAdministrator ? [{ key: 'postings', label: 'Postings', content: <PostingsTab /> }] : []),
+    ...(isHrAdministrator || isHrOfficer
       ? [{ key: 'candidates', label: 'Candidates', content: <CandidatesTab /> }]
       : []),
   ]
@@ -76,7 +75,6 @@ export function RecruitmentPage() {
 function RequisitionsTab() {
   const { me } = useAuth()
   const queryClient = useQueryClient()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
   const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const [createOpen, setCreateOpen] = useState(false)
   const [inFlightRequisitionIds, setInFlightRequisitionIds] = useState<Set<number>>(new Set())
@@ -112,7 +110,7 @@ function RequisitionsTab() {
 
   return (
     <div>
-      {isRecruiter && (
+      {isHrAdministrator && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <Button type="primary" onClick={() => setCreateOpen(true)}>
             New Requisition
@@ -358,7 +356,7 @@ function CandidatesTab() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { me } = useAuth()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
+  const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const { data: candidates = [], isLoading } = useQuery({
@@ -375,7 +373,7 @@ function CandidatesTab() {
           style={{ width: 260 }}
           onSearch={setSearch}
         />
-        {isRecruiter && (
+        {isHrAdministrator && (
           <Button type="primary" onClick={() => setCreateOpen(true)}>
             New Candidate
           </Button>

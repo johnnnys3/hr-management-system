@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.8 |
+| Version | 1.9 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | July 2026 |
@@ -23,6 +23,7 @@
 | John Kessie | 2026-07-15 | §1.4: the `docs/01-srs.pdf` row is removed. The rendering was stale against SRS v1.1 and has been deleted from the repository on the project owner's decision; a related-documents table may not point at a file that does not exist. No design content changes | 1.6 |
 | John Kessie | 2026-07-21 | **Recruiter had no way to look up a pay grade id when issuing an offer (`docs/06-api-contracts.md` §4.6's `offered_pay_grade`, issue #98), since §4.2's "Salary structures, pay grades" row grants read only to HR Administrator, HR Officer, Payroll Officer.** §4.2's row is qualified: Recruiter gains a blind-selection read of pay grades (name only) for this purpose. §2.4's "Recruiter has no payroll or compensation access" (line 189) is narrowed to state the carve-out and why it does not defeat the split: Recruiter still cannot see `min_salary`/`max_salary`, cannot read salary structures, and holds no compensation write of any kind — the ghost-employee fraud path §2.4 closes runs through *defining* a pay grade and *creating an employee record*, neither of which this read touches. Owner-confirmed 2026-07-21 | 1.7 |
 | John Kessie | 2026-07-27 | **Access redesign** (`docs/superpowers/specs/2026-07-27-role-grant-access-redesign.md`). §7.3: raising a role-grant request is restricted to System Administrator, narrowed from any authenticated user — the approval-side constraint (approver distinct from requester) is unchanged. §8: the `iam.approve_role_grant` holder item is resolved — the permission now defaults to HR Administrator by migration (`backend/iam/migrations/0003_grant_approve_role_grant_to_hr_administrator.py`), which is within HRMS-NFR-024's scope and not System Administrator, so the §7.3 enforcement boundary established by SRS v1.1 (v1.5 above) is unaffected. Neither change touches the self-grant `CHECK` constraint or the distinct-approver enforcement | 1.8 |
+| John Kessie | 2026-07-27 | **Recruiter retired, merged into HR Administrator** (SRS v1.5, ADR-0013 amending ADR-0010). §2.2's reconciliation table and §2.3's role list drop Recruiter; six assigned roles becomes five. §2.4 extended to cover the same separation-of-duties reasoning applied to Recruiter's merge target. §4.2's matrix folds Recruiter's row into HR Administrator's Recruitment cell (C, R, U); the Employee records row is unchanged — HR Administrator still holds no `C` there, preserving the control ADR-0013 turns on. §4.3 gains a note: HR Administrator absorbing requisition creation alongside its existing requisition-approval authority opens a self-approval gap the prior role split closed structurally; closed by the same non-self-approval mechanism §4.4 already enforces for payroll finalisation, applied here in `JobRequisitionApproveView` and a matching database `CHECK` constraint. §5's Recruiter row is removed. §6.1's combination table is unaffected — Recruiter was never a combination partner. §9 traceability updated | 1.9 |
 
 ---
 
@@ -69,14 +70,14 @@ Every SRS user class is served. No class is removed; none is added.
 | SRS §2.3 user class | Served by role | Note |
 |---|---|---|
 | §2.3.1 System Administrator | System Administrator | Assigned |
-| §2.3.2 HR Administrator / HR Officer | HR Administrator **and** HR Officer | One class, two roles. See §2.4 |
-| §2.3.3 Recruiter | Recruiter | Assigned |
+| §2.3.2 HR Administrator / HR Officer | HR Administrator **and** HR Officer | One class, two roles, now including Recruiter's retired duties. See §2.4 |
+| §2.3.3 Recruiter (retired) | HR Administrator | Merged 2026-07-27, ADR-0013. Not a separate role; §2.3.3 is not reused as a section number, per SRS v1.5's revision history |
 | §2.3.4 Employee | Employee | Derived. See §3 |
 | §2.3.5 Manager / Supervisor | Manager | Derived. See §3 |
 | §2.3.6 Payroll Officer | Payroll Officer | Assigned |
 | §2.3.7 Executive / Management User | Executive | Assigned |
 
-Eight roles serve seven user classes.
+Seven roles serve seven user classes, following ADR-0013's retirement of Recruiter as a standalone role.
 
 The earlier planning list omitted Executive. That omission is not adopted: SRS §2.3.7 defines the class with substance, and the Phase 3 reporting requirements (HRMS-FR-049 to HRMS-FR-055) exist substantially to serve it. Removing a user class would be a scope reduction requiring SRS revision, not a design choice.
 
@@ -89,7 +90,6 @@ The planning list used "Super Admin". The SRS name **System Administrator** is u
 | System Administrator | Assigned |
 | HR Administrator | Assigned |
 | HR Officer | Assigned |
-| Recruiter | Assigned |
 | Payroll Officer | Assigned |
 | Executive | Assigned |
 | Employee | **Derived** |
@@ -112,6 +112,10 @@ The split follows SRS §4.6 exactly: its stimulus sequence has the **HR Officer*
 SRS §2.3.2 anticipates graduation: the class "should not automatically access technical system configuration unless assigned". That sentence presupposes that access within HR is not flat.
 
 **The two roles are disjoint by default, not nested.** HR Administrator is not a superset of HR Officer. Nesting would restore the single-account fraud path and defeat the split. Where one person genuinely performs both jobs, both roles are granted explicitly — see §6.
+
+**Recruiter (retired) was absorbed by HR Administrator, on the same reasoning.** ADR-0013 merges Recruiter into HR Administrator rather than HR Officer, because HR Officer already creates employee records (Recruiter never could) — merging there would let one role both run the full hiring pipeline and create the employee record it produces, the same fraud shape this section closes for pay grades. HR Administrator was already barred from employee-record creation, so absorbing Recruiter's recruitment C/R/U does not reopen it.
+
+This does introduce a narrower version of the same problem one level up: HR Administrator now creates job requisitions (absorbed from Recruiter) and already held requisition-approval authority. Nothing in the role split stops the same account from creating a requisition and approving it. §4.3 states the mechanism that closes this, modelled on §4.4's payroll self-approval constraint rather than a second role split — a second split was not available, since HR Administrator was already the only role structurally barred from the more serious half of the original problem (employee-record creation).
 
 ---
 
@@ -157,30 +161,30 @@ A role permitted to view employee records still sees only the rows its visibilit
 
 Legend: **C** create, **R** read, **U** update, **A** approve, **—** no access, **‡** grantable, not fixed by this design — see §4.4. Row scope in §5.
 
-| Module | Sys Admin | HR Admin | HR Officer | Recruiter | Payroll Officer | Executive | Manager | Employee |
-|---|---|---|---|---|---|---|---|---|
-| Employee records (FR-001–012) | — | R, U status | C, R, U | — | R (payroll fields) | — | R | R own |
-| HR configuration — departments, job titles, leave types, approval workflows (§2.7) | — | C, R, U | R | R | R | — | — | — |
-| Employee documents (FR-006) | — | R | C, R, U | — | — | — | — | R own |
-| Recruitment (FR-013–024) | — | R | R | C, R, U | — | — | — | — |
-| Requisition approval (FR-014) | — | A | — | — | — | — | — | — |
-| Onboarding (FR-023–024) | — | R | C, R, U | R | — | — | — | — |
-| Self-service profile (FR-025–027) | — | — | R, U | — | — | — | — | R, U own |
-| Payslips (FR-028, FR-044) | — | — | — | — | C, R | — | — | R own |
-| Payroll processing (FR-035–046, FR-048) | — | — | — | — | C, R, U | — | — | — |
-| Payroll finalisation approval (FR-047, BR-008) | — | ‡ | ‡ | ‡ | ‡ | ‡ | — | — |
-| Salary structures, pay grades (FR-056–057) | — | C, R, U | R | R (pay grades only, name not figures — see §4.3) | R | — | — | — |
-| Assign employee to pay grade (§4.6) | — | — | C, R, U | — | — | — | — | — |
-| Compensation history (FR-058) | — | R | R | — | R | — | — | — |
-| Bonus cycles, allowances, benefits (FR-059–061) | — | C, R, U | R | — | R | — | — | R own |
-| Leave requests (FR-063) | — | R | R, U | — | — | — | R | C, R own |
-| Leave approval (FR-064) | — | — | — | — | — | — | A | — |
-| Leave balances, history (FR-065, FR-070) | — | R | R, U | — | — | — | R | R own |
-| Leave calendar (FR-071) | — | R | R | — | — | — | R | — |
-| Reports and dashboards (FR-049–055) | — | R | R | — | R (payroll cost) | R | R | — |
-| User accounts, roles, permissions (§2.3.1) | C, R, U | — | — | — | — | — | — | — |
-| Audit log (NFR-013, NFR-022) | R | — | — | — | — | — | — | — |
-| System configuration (§2.3.1) | C, R, U | — | — | — | — | — | — | — |
+| Module | Sys Admin | HR Admin | HR Officer | Payroll Officer | Executive | Manager | Employee |
+|---|---|---|---|---|---|---|---|
+| Employee records (FR-001–012) | — | R, U status | C, R, U | R (payroll fields) | — | R | R own |
+| HR configuration — departments, job titles, leave types, approval workflows (§2.7) | — | C, R, U | R | R | — | — | — |
+| Employee documents (FR-006) | — | R | C, R, U | — | — | — | R own |
+| Recruitment (FR-013–024) | — | C, R, U | R | — | — | — | — |
+| Requisition approval (FR-014) | — | A, not self (see §4.3) | — | — | — | — | — |
+| Onboarding (FR-023–024) | — | R | C, R, U | — | — | — | — |
+| Self-service profile (FR-025–027) | — | — | R, U | — | — | — | R, U own |
+| Payslips (FR-028, FR-044) | — | — | — | C, R | — | — | R own |
+| Payroll processing (FR-035–046, FR-048) | — | — | — | C, R, U | — | — | — |
+| Payroll finalisation approval (FR-047, BR-008) | — | ‡ | ‡ | ‡ | ‡ | — | — |
+| Salary structures, pay grades (FR-056–057) | — | C, R, U | R | R | — | — | — |
+| Assign employee to pay grade (§4.6) | — | — | C, R, U | — | — | — | — |
+| Compensation history (FR-058) | — | R | R | R | — | — | — |
+| Bonus cycles, allowances, benefits (FR-059–061) | — | C, R, U | R | R | — | — | R own |
+| Leave requests (FR-063) | — | R | R, U | — | — | R | C, R own |
+| Leave approval (FR-064) | — | — | — | — | — | A | — |
+| Leave balances, history (FR-065, FR-070) | — | R | R, U | — | — | R | R own |
+| Leave calendar (FR-071) | — | R | R | — | — | R | — |
+| Reports and dashboards (FR-049–055) | — | R | R | R (payroll cost) | R | R | — |
+| User accounts, roles, permissions (§2.3.1) | C, R, U | — | — | — | — | — | — |
+| Audit log (NFR-013, NFR-022) | R | — | — | — | — | — | — |
+| System configuration (§2.3.1) | C, R, U | — | — | — | — | — | — |
 
 ### 4.3 Notes on the Matrix
 
@@ -188,7 +192,9 @@ Legend: **C** create, **R** read, **U** update, **A** approve, **—** no access
 
 **Executive is read-only and aggregate.** SRS §2.3.7 requires summarised reports, not full operational access. Executive reaches dashboards and analytics only, never an individual employee record or payslip. This satisfies HRMS-NFR-019 without exception.
 
-**Recruiter has no payroll or compensation access**, per SRS §2.3.3 — with one narrow carve-out: Recruiter may read pay grade names (not `min_salary`/`max_salary`, not salary structures) to select `offered_pay_grade` when issuing an offer (`docs/06-api-contracts.md` §4.6). This is a blind selection, not compensation visibility, and does not reach either half of §2.4's fraud path — Recruiter still cannot define a pay grade or create an employee record.
+**Recruiter is retired (ADR-0013); its access is absorbed by HR Administrator.** Onboarding read is folded in unchanged (HR Officer's existing C, R, U write authority, which triggers HRMS-BR-013 conversion, is undisturbed). The narrow pay-grade-name carve-out Recruiter held (`docs/06-api-contracts.md` §4.6's `offered_pay_grade`) is now moot: HR Administrator already holds full C, R, U on salary structures and pay grades, so no separate carve-out is needed. HR Administrator still cannot create an employee record — the Employee records row above is unchanged — so absorbing Recruiter's recruitment C, R, U does not reach either half of §2.4's fraud path.
+
+**Requisition approval is not self-approvable.** HR Administrator now creates job requisitions (absorbed from Recruiter) and already held requisition-approval authority. A requisition's approver must not be its creator — checked first in `JobRequisitionApproveView`, before `CanDecideRequisition`'s general HR-Administrator-membership check runs, and backed by a database `CHECK` constraint (`job_requisition_approver_not_requester`), the same non-self-approval mechanism §4.4 uses for payroll finalisation, applied here because the role split that previously made this structurally impossible no longer exists for requisitions.
 
 **Payroll Officer reads only the employee fields payroll requires** — identifiers, employment status, compensation, statutory numbers, bank details. Not recruitment records, not documents unrelated to payroll. HRMS-NFR-019 restricts payroll data to payroll users; the converse restriction applies equally.
 
@@ -222,7 +228,6 @@ Each rule is a queryset scoping method on the module's manager. **Every endpoint
 | Manager | Direct reports (BR-007, NFR-018) | — | Direct reports' | Team-level (FR-032) |
 | HR Officer | All | — | All | Organisation-wide |
 | HR Administrator | All | — | All | Organisation-wide |
-| Recruiter | — | — | — | — |
 | Payroll Officer | All, payroll fields (NFR-019) | All | — | Payroll cost |
 | Executive | — | — | — | Aggregate only |
 | System Administrator | — | — | — | — |

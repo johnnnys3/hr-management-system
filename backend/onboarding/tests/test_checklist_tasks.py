@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 from notifications.models import Notification
 from onboarding.models import OnboardingChecklist, OnboardingTask
 from recruitment.models import Candidate, CandidateApplication, JobPosting, JobRequisition
@@ -22,8 +22,8 @@ class OnboardingChecklistDetailTests(APITestCase):
         )
         self.checklist = OnboardingChecklist.objects.create(employee=employee)
 
-    def test_hr_officer_recruiter_and_hr_administrator_can_read(self):
-        for role in [HR_OFFICER, HR_ADMINISTRATOR, RECRUITER]:
+    def test_hr_officer_and_hr_administrator_can_read(self):
+        for role in [HR_OFFICER, HR_ADMINISTRATOR]:
             user = user_with_role(f'{role}@example.com', role)
             self.client.force_authenticate(user)
 
@@ -87,9 +87,9 @@ class OnboardingChecklistListTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
 
-    def test_recruiter_can_list(self):
-        recruiter = user_with_role('recruiter-list@example.com', RECRUITER)
-        self.client.force_authenticate(recruiter)
+    def test_hr_administrator_can_list(self):
+        hr_admin = user_with_role('hra-list@example.com', HR_ADMINISTRATOR)
+        self.client.force_authenticate(hr_admin)
 
         response = self.client.get('/api/onboarding-checklists/', {'employee_id': self.employee.pk})
 
@@ -126,9 +126,9 @@ class OnboardingTaskTests(APITestCase):
         list_response = self.client.get(f'/api/onboarding-checklists/{self.checklist.pk}/tasks/')
         self.assertEqual(len(list_response.data), 1)
 
-    def test_recruiter_cannot_create_a_task(self):
-        recruiter = user_with_role('recruiter@example.com', RECRUITER)
-        self.client.force_authenticate(recruiter)
+    def test_hr_administrator_cannot_create_a_task(self):
+        hr_admin = user_with_role('hra@example.com', HR_ADMINISTRATOR)
+        self.client.force_authenticate(hr_admin)
 
         response = self.client.post(
             f'/api/onboarding-checklists/{self.checklist.pk}/tasks/', {'name': 'IT provisioning'},
@@ -136,10 +136,10 @@ class OnboardingTaskTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_recruiter_can_list_tasks(self):
+    def test_hr_administrator_can_list_tasks(self):
         OnboardingTask.objects.create(checklist=self.checklist, name='IT provisioning')
-        recruiter = user_with_role('recruiter2@example.com', RECRUITER)
-        self.client.force_authenticate(recruiter)
+        hr_admin = user_with_role('hra2@example.com', HR_ADMINISTRATOR)
+        self.client.force_authenticate(hr_admin)
 
         response = self.client.get(f'/api/onboarding-checklists/{self.checklist.pk}/tasks/')
 

@@ -1,6 +1,6 @@
 """`CanAccessHRConfiguration`, `docs/07-iam-rbac.md` §4.2's HR
-configuration row: HR Administrator holds C, R, U; HR Officer, Recruiter,
-and Payroll Officer hold R only. Unit-tests `has_permission` directly,
+configuration row: HR Administrator holds C, R, U; HR Officer and
+Payroll Officer hold R only. Unit-tests `has_permission` directly,
 independent of the view-level integration tests in `test_departments.py`
 and `test_job_titles.py`."""
 from django.contrib.auth import get_user_model
@@ -9,7 +9,7 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 
 from departments.permissions import READ_ROLES, CanAccessHRConfiguration
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER
 
 User = get_user_model()
 
@@ -30,8 +30,8 @@ class CanAccessHRConfigurationTests(TestCase):
         request.user = user
         return self.permission.has_permission(request, view=None)
 
-    def test_read_roles_are_exactly_the_four_hr_configuration_read_roles(self):
-        self.assertCountEqual(READ_ROLES, [HR_ADMINISTRATOR, HR_OFFICER, RECRUITER, PAYROLL_OFFICER])
+    def test_read_roles_are_exactly_the_three_hr_configuration_read_roles(self):
+        self.assertCountEqual(READ_ROLES, [HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER])
 
     def test_anonymous_user_is_denied_read(self):
         self.assertFalse(self._has_permission('GET', AnonymousUser()))
@@ -52,12 +52,6 @@ class CanAccessHRConfigurationTests(TestCase):
         self.assertTrue(self._has_permission('GET', user))
         self.assertFalse(self._has_permission('POST', user))
         self.assertFalse(self._has_permission('PATCH', user))
-
-    def test_recruiter_can_read_but_not_write(self):
-        user = _user_with_role('recruiter@example.com', RECRUITER)
-
-        self.assertTrue(self._has_permission('GET', user))
-        self.assertFalse(self._has_permission('POST', user))
 
     def test_payroll_officer_can_read_but_not_write(self):
         user = _user_with_role('payroll@example.com', PAYROLL_OFFICER)

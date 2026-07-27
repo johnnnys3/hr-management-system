@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-15
+**Amended by:** ADR-0013 (Recruiter retired, merged into HR Administrator — six assigned roles becomes five)
 **Bears on:** TBD-010 (Exact user roles and permissions)
 
 ## Context

@@ -14,7 +14,7 @@ from notifications.models import Notification
 
 from . import storage
 from .models import Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter
-from .permissions import CanAccessJobRequisitions, CanDecideRequisition, IsRecruiter
+from .permissions import CanAccessJobRequisitions, CanDecideRequisition, CanWriteRecruitment
 from .serializers import (
     CandidateApplicationSerializer,
     CandidateSerializer,
@@ -83,13 +83,27 @@ class JobRequisitionDetailView(APIView):
 class JobRequisitionApproveView(APIView):
     """`POST /api/job-requisitions/{id}/approve/`, `docs/06-api-contracts.md`
     §4.6. A dedicated action endpoint, not a `PATCH` to `status`, per §2.9 —
-    the transition also writes `approved_by` and an audit entry."""
+    the transition also writes `approved_by` and an audit entry.
+
+    ADR-0013: HR Administrator now both creates and approves requisitions
+    (Recruiter, the prior role that only created them, is retired), so a
+    requisition's creator can no longer be assumed to differ from its
+    approver. Rejected `403` with `code: "self_approval_forbidden"` where
+    the caller is the requisition's `requested_by` — checked first, before
+    the general permission and status checks, mirroring
+    `PayrollRunApproveView` and its `job_requisition_approver_not_requester`
+    database counterpart, `docs/05-database-schema.md` §4.7."""
 
     permission_classes = [CanDecideRequisition]
 
     def post(self, request, pk):
         with transaction.atomic():
             requisition = get_object_or_404(JobRequisition.objects.select_for_update(), pk=pk)
+            if request.user.pk == requisition.requested_by_id:
+                return Response(
+                    {'code': 'self_approval_forbidden', 'detail': 'the requester of a job requisition cannot approve it.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             if requisition.status not in (JobRequisition.STATUS_DRAFT, JobRequisition.STATUS_PENDING_APPROVAL):
                 return Response(
                     {'detail': f'requisition cannot be approved from status {requisition.status!r}.'},
@@ -156,7 +170,7 @@ class JobPostingListCreateView(APIView):
     §4.6. `POST` requires `requisition.status = 'approved'` — enforced here,
     not a schema constraint (`docs/05-database-schema.md` §4.7)."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request):
         queryset = JobPosting.objects.order_by('-created_at')
@@ -189,7 +203,7 @@ class JobPostingListCreateView(APIView):
 class JobPostingDetailView(APIView):
     """`PATCH /api/job-postings/{id}/`, `docs/06-api-contracts.md` §4.6."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request, pk):
         posting = get_object_or_404(JobPosting, pk=pk)
@@ -214,7 +228,7 @@ class JobPostingDetailView(APIView):
 class JobPostingPublishView(APIView):
     """`POST /api/job-postings/{id}/publish/`, `docs/06-api-contracts.md` §4.6."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def post(self, request, pk):
         with transaction.atomic():
@@ -239,7 +253,7 @@ class CandidateListCreateView(APIView):
     pattern as `employee_document` (ADR-0007), `resume_object_key` is
     generated server-side, never taken from the client filename."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
@@ -290,7 +304,7 @@ class CandidateListCreateView(APIView):
 class CandidateDetailView(APIView):
     """`PATCH /api/candidates/{id}/`, `docs/06-api-contracts.md` §4.6."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request, pk):
         candidate = get_object_or_404(Candidate, pk=pk)
@@ -316,7 +330,7 @@ class CandidateApplicationListCreateView(APIView):
     """`GET, POST /api/candidates/{id}/applications/`,
     `docs/06-api-contracts.md` §4.6. Maps to `candidate_application`."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request, pk):
         candidate = get_object_or_404(Candidate, pk=pk)
@@ -350,10 +364,10 @@ class CandidateApplicationListCreateView(APIView):
 class InterviewListCreateView(APIView):
     """`GET, POST, PATCH /api/applications/{id}/interviews/`,
     `docs/06-api-contracts.md` §4.6. `interviewer_employee_id` may reference
-    any employee, not only Recruiters — HRMS-FR-018 does not restrict who
+    any employee, not only HR Administrators — HRMS-FR-018 does not restrict who
     may interview, only who may schedule."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request, pk):
         application = get_object_or_404(CandidateApplication, pk=pk)
@@ -381,7 +395,7 @@ class InterviewDetailView(APIView):
     the collection endpoint the same way `employees`' emergency-contacts
     endpoints are."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def patch(self, request, pk, interview_id):
         application = get_object_or_404(CandidateApplication, pk=pk)
@@ -406,7 +420,7 @@ class OfferLetterListCreateView(APIView):
     server-side once the offer is issued, same object-storage pattern as
     employee documents."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def get(self, request, pk):
         application = get_object_or_404(CandidateApplication, pk=pk)
@@ -462,7 +476,7 @@ class OfferLetterDecideView(APIView):
     HRMS-BR-013 requires onboarding initiation as the conversion trigger,
     Module 10's endpoint, not this one."""
 
-    permission_classes = [IsRecruiter]
+    permission_classes = [CanWriteRecruitment]
 
     def post(self, request, pk):
         serializer = OfferDecisionSerializer(data=request.data)

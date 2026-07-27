@@ -36,6 +36,19 @@ class JobRequisition(models.Model):
 
     class Meta:
         db_table = 'job_requisition'
+        constraints = [
+            # ADR-0013: HR Administrator now both creates and approves
+            # requisitions (Recruiter, the prior role that only created
+            # them, is retired). Mirrors payroll_run's
+            # approved_by <> initiated_by constraint, `docs/05-database-schema.md`
+            # §3.5 — the same self-approval control, applied here because
+            # the role split that made it structurally impossible no
+            # longer exists for requisitions.
+            models.CheckConstraint(
+                condition=models.Q(approved_by__isnull=True) | ~models.Q(approved_by=models.F('requested_by')),
+                name='job_requisition_approver_not_requester',
+            ),
+        ]
 
     def __str__(self):
         return f'requisition for {self.job_title} in {self.department} ({self.status})'

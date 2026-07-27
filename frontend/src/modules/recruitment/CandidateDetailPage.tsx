@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { listPayGrades, listSalaryStructures } from '../../api/compensation'
 import { listEmployees } from '../../api/employees'
 import { convertFromApplication } from '../../api/onboarding'
 import {
@@ -16,7 +17,6 @@ import {
   listInterviews,
   listJobPostings,
   listOffers,
-  listPayGradeOptions,
 } from '../../api/recruitment'
 import type { CandidateApplication, Interview } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
@@ -36,7 +36,7 @@ export function CandidateDetailPage() {
   const params = useParams<{ id: string }>()
   const candidateId = Number(params.id)
   const { me } = useAuth()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
+  const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const [applyOpen, setApplyOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -83,7 +83,7 @@ export function CandidateDetailPage() {
         <Typography.Title level={5} style={{ margin: 0 }}>
           Applications
         </Typography.Title>
-        {isRecruiter && (
+        {isHrAdministrator && (
           <Button type="primary" onClick={() => setApplyOpen(true)}>
             New Application
           </Button>
@@ -173,7 +173,7 @@ function ApplicationDetail({ application }: { application: CandidateApplication 
 
 function InterviewsPanel({ applicationId }: { applicationId: number }) {
   const { me } = useAuth()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
+  const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const queryClient = useQueryClient()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const { data: interviews = [], isLoading } = useQuery({
@@ -186,7 +186,7 @@ function InterviewsPanel({ applicationId }: { applicationId: number }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <Typography.Text strong>Interviews</Typography.Text>
-        {isRecruiter && (
+        {isHrAdministrator && (
           <Button size="small" onClick={() => setScheduleOpen(true)}>
             Schedule Interview
           </Button>
@@ -283,7 +283,7 @@ function ScheduleInterviewModal({
 function OfferPanel({ application }: { application: CandidateApplication }) {
   const applicationId = application.id
   const { me } = useAuth()
-  const isRecruiter = me?.groups.includes('Recruiter') ?? false
+  const isHrAdministrator = me?.groups.includes('HR Administrator') ?? false
   const isHrOfficer = me?.groups.includes('HR Officer') ?? false
   const queryClient = useQueryClient()
   const [issueOpen, setIssueOpen] = useState(false)
@@ -314,7 +314,7 @@ function OfferPanel({ application }: { application: CandidateApplication }) {
 
   const currentOffer = offers[0]
   const canIssueOffer =
-    isRecruiter && !isLoading && (!currentOffer || currentOffer.status === 'rejected' || currentOffer.status === 'withdrawn')
+    isHrAdministrator && !isLoading && (!currentOffer || currentOffer.status === 'rejected' || currentOffer.status === 'withdrawn')
   const canConvert = isHrOfficer && application.stage !== 'hired' && currentOffer?.status === 'accepted'
 
   return (
@@ -339,7 +339,7 @@ function OfferPanel({ application }: { application: CandidateApplication }) {
         <Space>
           <Typography.Text>Salary: {currentOffer.offered_salary}</Typography.Text>
           <Tag>{currentOffer.status}</Tag>
-          {isRecruiter && currentOffer.status === 'pending' && (
+          {isHrAdministrator && currentOffer.status === 'pending' && (
             <Space>
               <Button
                 size="small"
@@ -431,7 +431,12 @@ function IssueOfferModal({
 }) {
   const [offeredSalary, setOfferedSalary] = useState<number | null>(null)
   const [offeredPayGrade, setOfferedPayGrade] = useState<number | null>(null)
-  const { data: payGrades = [] } = useQuery({ queryKey: ['recruitment', 'pay-grades'], queryFn: listPayGradeOptions })
+  const { data: payGrades = [] } = useQuery({ queryKey: ['compensation', 'pay-grades'], queryFn: listPayGrades })
+  const { data: salaryStructures = [] } = useQuery({
+    queryKey: ['compensation', 'salary-structures'],
+    queryFn: listSalaryStructures,
+  })
+  const structureName = (id: number) => salaryStructures.find((s) => s.id === id)?.name ?? id
 
   const mutation = useMutation({
     mutationFn: () => createOffer(applicationId, String(offeredSalary), offeredPayGrade),
@@ -461,7 +466,7 @@ function IssueOfferModal({
           style={{ width: '100%' }}
           placeholder="Pay grade (optional)"
           allowClear
-          options={payGrades.map((g) => ({ label: `${g.name} (${g.salary_structure_name})`, value: g.id }))}
+          options={payGrades.map((g) => ({ label: `${g.name} (${structureName(g.salary_structure)})`, value: g.id }))}
           value={offeredPayGrade}
           onChange={setOfferedPayGrade}
         />

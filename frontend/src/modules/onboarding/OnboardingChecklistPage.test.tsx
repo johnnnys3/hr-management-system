@@ -70,7 +70,7 @@ describe('OnboardingChecklistPage', () => {
       { id: 1, checklist: 5, name: 'Sign contract', is_required: true, status: 'pending', completed_by: null, completed_at: null, created_at: '' },
     ])
 
-    renderPage(['Recruiter'])
+    renderPage(['HR Administrator'])
 
     expect(await screen.findByText('Sign contract')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument()

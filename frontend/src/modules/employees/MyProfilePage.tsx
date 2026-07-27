@@ -10,7 +10,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { useDepartments, useJobTitles } from '../departments/hooks'
 import { NotificationPreferencesTab } from './NotificationPreferencesTab'
 
-const HR_CONFIG_GROUPS = ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer']
+const HR_CONFIG_GROUPS = ['HR Administrator', 'HR Officer', 'Payroll Officer']
 
 function ProfileError({ error }: { error: unknown }) {
   return (

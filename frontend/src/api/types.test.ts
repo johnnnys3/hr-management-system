@@ -26,7 +26,6 @@ import {
   OfferLetterSchema,
   OnboardingChecklistSchema,
   OnboardingTaskSchema,
-  PayGradeOptionSchema,
   PayrollCostReportSchema,
   PayrollSummaryReportSchema,
   ReportExportRecordSchema,
@@ -123,10 +122,6 @@ const CASES: { name: string; schema: { parse: (v: unknown) => unknown }; valid: 
   {
     name: 'OfferLetter', schema: OfferLetterSchema, breakField: 'status',
     valid: { id: 1, application: 1, offered_salary: '50000', offered_pay_grade: null, status: 'pending', issued_at: '', decided_at: null, document_object_key: null },
-  },
-  {
-    name: 'PayGradeOption', schema: PayGradeOptionSchema, breakField: 'name',
-    valid: { id: 1, name: 'Grade 1', salary_structure_name: 'Default' },
   },
   {
     name: 'Notification', schema: NotificationSchema, breakField: 'channel',

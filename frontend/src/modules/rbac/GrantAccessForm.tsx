@@ -8,7 +8,6 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   'System Administrator': 'Manage accounts, roles, and system configuration',
   'HR Administrator': 'Manage employee records, departments, and HR configuration',
   'HR Officer': 'Handle day-to-day HR operations and onboarding',
-  'Recruiter': 'Manage job postings and candidates',
   'Payroll Officer': 'Process payroll and compensation',
   'Executive': 'View organization-wide reports',
 }

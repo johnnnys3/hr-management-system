@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 from onboarding.models import OnboardingChecklist
 from recruitment.models import Candidate, CandidateApplication, JobPosting, JobRequisition, OfferLetter
 
@@ -13,11 +13,11 @@ from .helpers import user_with_role
 class ConvertFromApplicationTests(APITestCase):
     def setUp(self):
         self.hr_officer = user_with_role('hro@example.com', HR_OFFICER)
-        recruiter = user_with_role('recruiter@example.com', RECRUITER)
+        hr_admin = user_with_role('hra1@example.com', HR_ADMINISTRATOR)
         self.department = Department.objects.create(name='Engineering')
         self.job_title = JobTitle.objects.create(name='Engineer')
         requisition = JobRequisition.objects.create(
-            department=self.department, job_title=self.job_title, requested_by=recruiter,
+            department=self.department, job_title=self.job_title, requested_by=hr_admin,
             status=JobRequisition.STATUS_APPROVED,
         )
         posting = JobPosting.objects.create(
@@ -72,17 +72,6 @@ class ConvertFromApplicationTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(OnboardingChecklist.objects.exists())
-
-    def test_recruiter_cannot_convert(self):
-        OfferLetter.objects.create(
-            application=self.application, offered_salary='95000.00', status=OfferLetter.STATUS_ACCEPTED,
-        )
-        recruiter = user_with_role('recruiter2@example.com', RECRUITER)
-        self.client.force_authenticate(recruiter)
-
-        response = self.client.post('/api/onboarding/convert/', self.payload)
-
-        self.assertEqual(response.status_code, 403)
 
     def test_hr_administrator_cannot_convert(self):
         OfferLetter.objects.create(

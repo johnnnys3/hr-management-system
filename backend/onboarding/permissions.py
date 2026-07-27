@@ -1,6 +1,6 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 
 
 class CanConvert(BasePermission):
@@ -15,7 +15,7 @@ class CanConvert(BasePermission):
 
 class CanAccessOnboarding(BasePermission):
     """`docs/07-iam-rbac.md` §4.2's Onboarding row: HR Officer holds C, R, U;
-    HR Administrator and Recruiter hold R.
+    HR Administrator holds R (absorbed from Recruiter, retired — ADR-0013).
     """
 
     def has_permission(self, request, view):
@@ -23,5 +23,5 @@ class CanAccessOnboarding(BasePermission):
         if not (user and user.is_authenticated):
             return False
         if request.method in SAFE_METHODS:
-            return user.groups.filter(name__in=[HR_OFFICER, HR_ADMINISTRATOR, RECRUITER]).exists()
+            return user.groups.filter(name__in=[HR_OFFICER, HR_ADMINISTRATOR]).exists()
         return user.groups.filter(name=HR_OFFICER).exists()

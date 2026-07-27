@@ -73,7 +73,7 @@ class RoleGrantRequestSerializer(serializers.ModelSerializer):
 
 class RoleGrantRequestCreateSerializer(serializers.Serializer):
     subject_user_id = serializers.PrimaryKeyRelatedField(source='subject', queryset=User.objects.all())
-    # Restricted to the six assigned-role groups (`docs/07-iam-rbac.md`
+    # Restricted to the five assigned-role groups (`docs/07-iam-rbac.md`
     # §2.3), not `Group.objects.all()` — an arbitrary existing Django group
     # unrelated to RBAC would otherwise be requestable and, for anything
     # outside `PRIVILEGED_ROLES`, granted immediately with no approval step.

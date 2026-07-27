@@ -13,7 +13,7 @@ from audit.models import AuditLog
 
 from .models import RoleGrantRequest
 from .permissions import CanDecideRoleGrantRequest, IsFullyAuthenticated, IsSystemAdministrator
-from .roles import ASSIGNED_ROLES, RECRUITER
+from .roles import ASSIGNED_ROLES
 from .serializers import (
     RoleGrantRequestCreateSerializer,
     RoleGrantRequestDecisionSerializer,
@@ -67,7 +67,7 @@ class UserDetailView(APIView):
 
 
 class AssignedRolesListView(APIView):
-    """`GET /api/roles/`. Lists the six assigned-role groups with their
+    """`GET /api/roles/`. Lists the five assigned-role groups with their
     database ids, so a client can build a role picker without hardcoding
     group ids. System-Administrator-only, since only System Administrator
     raises role-grant requests
@@ -139,32 +139,6 @@ class RoleGrantRequestCreateView(APIView):
                 target_id=subject.pk,
                 detail={'role': role.name},
             )
-
-            if role.name == RECRUITER:
-                # `docs/07-iam-rbac.md` §7.3: the approval constraint
-                # applies to the five privileged roles. Recruiter is the
-                # one assigned role outside that set, and its grant takes
-                # effect immediately — a request no one is required to
-                # decide would otherwise sit pending forever. Matched
-                # explicitly against `RECRUITER` rather than "not
-                # privileged" — `role_name` is already constrained to the
-                # six assigned-role groups by the serializer, but an
-                # explicit allow-list here means a future role added to
-                # `ASSIGNED_ROLES` without an explicit privileged/
-                # non-privileged classification fails closed (stays
-                # pending) rather than auto-granting by omission.
-                grant_request.status = RoleGrantRequest.STATUS_APPROVED
-                grant_request.decided_at = timezone.now()
-                grant_request.save(update_fields=['status', 'decided_at'])
-                subject.groups.add(role)
-                audit.services.record(
-                    category=AuditLog.CATEGORY_PERMISSION_CHANGE,
-                    action='role_grant_approved',
-                    actor=request.user,
-                    target_type='user_account',
-                    target_id=subject.pk,
-                    detail={'role': role.name},
-                )
 
         return Response(RoleGrantRequestSerializer(grant_request).data, status=status.HTTP_201_CREATED)
 

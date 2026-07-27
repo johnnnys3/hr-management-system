@@ -1,9 +1,5 @@
 import { apiFetch } from './client'
-import type { Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter, PayGradeOption } from './types'
-
-export function listPayGradeOptions(): Promise<PayGradeOption[]> {
-  return apiFetch('/api/pay-grades/')
-}
+import type { Candidate, CandidateApplication, Interview, JobPosting, JobRequisition, OfferLetter } from './types'
 
 export function listJobRequisitions(status?: string): Promise<JobRequisition[]> {
   const suffix = status ? `?status=${status}` : ''

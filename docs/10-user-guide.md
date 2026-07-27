@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-23 |
@@ -15,6 +15,7 @@
 | Name | Date | Reason for Changes | Version |
 |---|---|---|---|
 | John Kessie | 2026-07-23 | Initial user guide, covering all eight IAM roles plus system operations. Issued out of the plan's own build order — see §0 for the exception and its terms. Written against `docs/07-iam-rbac.md` v1.6, `frontend/src/routes.tsx`, and the current backend app set | 1.0 |
+| John Kessie | 2026-07-27 | **Recruiter retired, merged into HR Administrator** (SRS v1.5, ADR-0013 amending ADR-0010). §1's role table drops Recruiter (seven roles, five assigned). §4 (HR Administrator) gains §4.4 (taking a candidate to offer) and §4.5 (requisition approval, including the new self-approval refusal), absorbed from former §7.1/§7.2; §4.2 notes why HR Administrator rather than HR Officer was the merge target. §5.1/§5.2's stray Recruiter cross-references point to §4.4 instead. §7 is retired to a stub pointing at §4, not renumbered, so §8–§10 are undisturbed. §10.1 drops Recruiter from the grantable-roles list and its immediate-approval carve-out, since no assigned role is non-privileged anymore | 1.1 |
 
 ---
 
@@ -27,9 +28,9 @@ Two consequences of writing it early, stated plainly rather than glossed over:
 - **It documents a system that has not yet passed UAT or been deployed.** Every workflow described below reflects the develop branch as of `a5eb078` (2026-07-23). Nothing here is a claim that the system is production-ready or organisationally accepted — that acceptance is M19's independent participant's to give, per `docs/02-project-plan.md` §11 question 6 (resolved 2026-07-23) and `docs/08-testing-plan.md` §8, not this document's.
 - **This does not retire M7.** The plan's M7 milestone and its 2026-12-04 date are unchanged; this draft is issued for early review and will be revised, not superseded, when M19/M20 land — most likely to add a deployment/access-provisioning section once TBD-003 (hosting) resolves.
 
-This document answers SRS §2.6's nine named guides as sections of one file rather than nine separate files, matching `docs/02-project-plan.md` §7.1's single `docs/10-user-guide.md` deliverable: System Administrator (§10), HR Administrator (§4), Employee self-service (§2), Manager self-service (§3), Payroll processing (§6), Recruitment and onboarding (§7, §5.2), Leave management (§2.2, §3.2 — covered from each participant's side rather than as one merged section, since the workflow itself is role-specific), Basic troubleshooting (§9.1), and Frequently Asked Questions (§9.2). The optional tenth item — training videos — is out of scope, as the plan's own cost basis excludes it.
+This document answers SRS §2.6's nine named guides as sections of one file rather than nine separate files, matching `docs/02-project-plan.md` §7.1's single `docs/10-user-guide.md` deliverable: System Administrator (§10), HR Administrator (§4), Employee self-service (§2), Manager self-service (§3), Payroll processing (§6), Recruitment and onboarding (§4.4–4.5, §5.2), Leave management (§2.2, §3.2 — covered from each participant's side rather than as one merged section, since the workflow itself is role-specific), Basic troubleshooting (§9.1), and Frequently Asked Questions (§9.2). The optional tenth item — training videos — is out of scope, as the plan's own cost basis excludes it.
 
-**One gap worth naming rather than silently patching:** SRS §2.6 names no guide for the Executive role, and no guide for the HR Officer/Recruiter split `docs/07-iam-rbac.md` §2.4 draws within the "HR Administrator" user class. §5 and §7 below cover HR Officer and Recruiter as their own sections despite the SRS's grouping, since `docs/07-iam-rbac.md` treats them as separate roles with materially different permissions and a merged section would misdescribe access. §8 covers Executive on the same reasoning — every assigned role gets a section, regardless of how SRS §2.6 grouped the underlying user classes. This is a documentation completeness choice, not an SRS revision, and does not change §2.6 itself.
+**One gap worth naming rather than silently patching:** SRS §2.6 names no guide for the Executive role, and no guide for the HR Officer/HR Administrator split `docs/07-iam-rbac.md` §2.4 draws within the "HR Administrator" user class. §5 below covers HR Officer as its own section despite the SRS's grouping, since `docs/07-iam-rbac.md` treats it as a role with materially different permissions from HR Administrator and a merged section would misdescribe access. §8 covers Executive on the same reasoning — every assigned role gets a section, regardless of how SRS §2.6 grouped the underlying user classes. This is a documentation completeness choice, not an SRS revision, and does not change §2.6 itself. Recruiter was a third such section until ADR-0013 retired it, merged into HR Administrator's own §4 rather than kept apart — see §7.
 
 ### 0.1 How to Use This Document
 
@@ -41,18 +42,19 @@ Screen names below match `frontend/src/routes.tsx` route labels. If a screen is 
 
 ## 1. Roles at a Glance
 
-Eight roles serve seven SRS user classes (`docs/07-iam-rbac.md` §2.2). Six are **assigned** by a System Administrator; two — Employee and Manager — are **derived** automatically from your employment record and never granted.
+Seven roles serve seven SRS user classes (`docs/07-iam-rbac.md` §2.2). Five are **assigned** by a System Administrator; two — Employee and Manager — are **derived** automatically from your employment record and never granted.
 
 | Role | Kind | Section |
 |---|---|---|
 | System Administrator | Assigned | §10 |
 | HR Administrator | Assigned | §4 |
 | HR Officer | Assigned | §5 |
-| Recruiter | Assigned | §7 |
 | Payroll Officer | Assigned | §6 |
 | Executive | Assigned | §8 |
 | Employee | Derived | §2 |
 | Manager | Derived | §3 |
+
+Recruiter is retired, merged into HR Administrator (ADR-0013) — §7 is a stub pointing here, not reused for a different role, matching `docs/01-srs.md`'s §2.3.3 convention.
 
 If you hold more than one role — the system permits it (`docs/07-iam-rbac.md` §6) — every screen listed under each of your roles is available to you, and each screen behaves per that role's own permissions.
 
@@ -106,25 +108,37 @@ You become a Manager automatically the moment the org chart records one or more 
 
 ## 4. HR Administrator
 
-Governance and configuration, not day-to-day record transactions — see `docs/07-iam-rbac.md` §2.4 for why this is split from HR Officer.
+Governance and configuration, not day-to-day record transactions — see `docs/07-iam-rbac.md` §2.4 for why this is split from HR Officer. Also owns the recruitment pipeline (§4.4), absorbed from Recruiter when ADR-0013 retired that role — see §7.
 
 ### 4.1 What you can do
 
 - Define and maintain HR configuration (`/departments`): departments, job titles, leave types, pay grades, salary structures, approval workflow definitions.
 - Read (not create/update) employee records, and update only employment **status** (`docs/07-iam-rbac.md` §4.2) — the record-maintenance actions themselves belong to HR Officer.
-- Read employee documents, recruitment records, onboarding records, compensation history, and reports, across the organisation.
+- Read employee documents, onboarding records, compensation history, and reports, across the organisation.
+- Own the recruitment pipeline (`/recruitment`): job requisitions, postings, candidates, applications, interviews, offers — see §4.4.
 - Access Reports (`/reports`) at full HR scope.
 - Decide pending access requests (`/access`, "Access Approvals") — by default, HR Administrator holds `iam.approve_role_grant` (`docs/07-iam-rbac.md` §7.3/§8, amended 2026-07-27), so requests a System Administrator raises for a privileged role land in your queue, not theirs.
 
 ### 4.2 What you cannot do
 
-You cannot create or edit an individual employee record, and you cannot assign an employee to a pay grade — both are HR Officer actions. You hold no payroll processing access and no system-configuration/user-account access (that is System Administrator territory, held by no one else). This split exists specifically so that no single account can both invent a pay grade and create the employee record that benefits from it (`docs/07-iam-rbac.md` §2.4's ghost-employee fraud path).
+You cannot create or edit an individual employee record, and you cannot assign an employee to a pay grade — both are HR Officer actions. You hold no payroll processing access and no system-configuration/user-account access (that is System Administrator territory, held by no one else). This split exists specifically so that no single account can both invent a pay grade and create the employee record that benefits from it (`docs/07-iam-rbac.md` §2.4's ghost-employee fraud path) — the same reasoning ADR-0013 checked before merging Recruiter here rather than into HR Officer, since HR Officer creates employee records and HR Administrator does not.
 
 ### 4.3 Common task: defining a new leave type
 
 1. Go to **Departments** (which also hosts leave-type and pay-grade configuration).
 2. Create the leave type with its accrual rule and any approval-workflow specifics.
 3. It becomes immediately available to HR Officer for balance assignment and to every Employee when submitting a new leave request.
+
+### 4.4 Common task: taking a candidate to offer
+
+1. Go to **Recruitment**, create or select a requisition, and add candidates through the pipeline stages.
+2. Schedule interviews and record outcomes on the candidate detail screen (`/recruitment/candidates/:id`).
+3. When ready to extend an offer, select the `offered_pay_grade` from the list — you already have full compensation read access (§4.1), so unlike the retired Recruiter role this is not a blind, names-only selection.
+4. Issuing the offer advances the candidate's application to offer stage, which is what unlocks HR Officer's conversion step in Onboarding (§5.2) — the two roles hand off at exactly this point.
+
+### 4.5 Requisition approval, and why it cannot be your own requisition
+
+Requisition approval is your action (`/recruitment`, "Approve"/"Reject"), and so is creating the requisition in the first place — since ADR-0013, both sides of that transaction sit in the same role, where they used to sit in two (Recruiter created, HR Administrator approved). **The system will not let you approve a requisition you created yourself:** the attempt is rejected with `self_approval_forbidden`, enforced at both the API and the database layer, the same shape as §6.4's payroll rule. If you work in a small HR function where you are the only HR Administrator, a second HR Administrator account is required to approve your own requisitions — there is no override.
 
 ---
 
@@ -140,11 +154,11 @@ Record maintenance and transactions — the day-to-day HR work, deliberately dis
 - Assign an employee to a pay grade (`docs/07-iam-rbac.md` §4.6) — this is an HR Officer action specifically, not HR Administrator's.
 - Update (not approve) leave requests — corrections and cancellations, never approval (`docs/07-iam-rbac.md` §4.3 — approval is Manager-only, to prevent an HR bypass of the manager approval workflow).
 - Handle onboarding (`/onboarding`, `/onboarding/:id`): convert a candidate to an employee record once recruitment reaches offer stage, and manage onboarding checklists.
-- Read recruitment records and candidate detail (`/recruitment/candidates/:id`), narrower than Recruiter's own create/update access.
+- Read recruitment records and candidate detail (`/recruitment/candidates/:id`), narrower than HR Administrator's own create/update access (§4.4).
 
 ### 5.2 Common task: onboarding a new hire
 
-1. Once Recruitment (see §7) has moved a candidate to offer stage, go to **Onboarding**.
+1. Once Recruitment (see §4.4) has moved a candidate to offer stage, go to **Onboarding**.
 2. Convert the candidate record to an employee record. This requires the candidate's application to be at `stage='offer'` — the system enforces the sequence.
 3. Create the onboarding checklist (`/onboarding/:id`) and track task completion.
 4. Assign the new employee to their pay grade, if not already set during the offer.
@@ -187,25 +201,9 @@ Payroll Officer is one of the roles HRMS-NFR-024 requires a second factor for. O
 
 ---
 
-## 7. Recruiter
+## 7. Recruiter (retired)
 
-### 7.1 What you can do
-
-- Own the recruitment pipeline (`/recruitment`): job requisitions, postings, candidates, applications, interviews, offers.
-- Read pay grade **names** only, to select an `offered_pay_grade` when issuing an offer — not the salary figures behind that grade, and not the salary structure itself (`docs/07-iam-rbac.md` §4.3 — a blind selection, not compensation visibility).
-- Read onboarding records, to track a candidate's progress past offer.
-- Read HR configuration (departments, job titles) at a reference level.
-
-### 7.2 Common task: taking a candidate to offer
-
-1. Go to **Recruitment**, create or select a requisition, and add candidates through the pipeline stages.
-2. Schedule interviews and record outcomes on the candidate detail screen (`/recruitment/candidates/:id`).
-3. When ready to extend an offer, select the `offered_pay_grade` by name from the list available to you.
-4. Issuing the offer advances the candidate's application to offer stage, which is what unlocks HR Officer's conversion step in Onboarding (§5.2) — the two roles hand off at exactly this point.
-
-### 7.3 What you cannot do
-
-You cannot see actual compensation figures, cannot define or assign pay grades, and cannot see any payroll data. Requisition approval is HR Administrator's action, not yours — you create and manage the requisition, but its approval status changes elsewhere.
+Retired 2026-07-27, ADR-0013. Recruiter's duties are served by HR Administrator — see §4, particularly §4.4 and §4.5. This section number is not reused, per the no-renumbering convention `docs/01-srs.md`'s revision history established for §2.3.3, applied here to avoid disturbing §8–§10 and every cross-reference to them.
 
 ---
 
@@ -261,7 +259,7 @@ Written for whoever operates the system — provisioning accounts, running the s
 ### 10.1 What the System Administrator role can do, in-app
 
 - Create, read, and update user accounts (`/users`).
-- Raise an access request granting any assigned role (System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive) to another user (`/access`, "Grant Access") — this is the only route by which an assigned role is granted; none are self-service, and raising the request is restricted to System Administrator (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Recruiter takes effect immediately; every other role waits on an HR Administrator's approval (§4.1 above).
+- Raise an access request granting any assigned role (System Administrator, HR Administrator, HR Officer, Payroll Officer, Executive) to another user (`/access`, "Grant Access") — this is the only route by which an assigned role is granted; none are self-service, and raising the request is restricted to System Administrator (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Every assigned role now waits on an HR Administrator's approval (§4.1 above) — Recruiter was the one exception that took effect immediately, retired by ADR-0013 (§7).
 - Read the audit log (`/audit-log`) — full visibility, append-only, never edited.
 - Maintain system configuration.
 

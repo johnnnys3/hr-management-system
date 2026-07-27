@@ -18,7 +18,6 @@ from reporting_structure.models import ReportingRelationship
 SYSTEM_ADMINISTRATOR = 'System Administrator'
 HR_ADMINISTRATOR = 'HR Administrator'
 HR_OFFICER = 'HR Officer'
-RECRUITER = 'Recruiter'
 PAYROLL_OFFICER = 'Payroll Officer'
 EXECUTIVE = 'Executive'
 
@@ -26,14 +25,16 @@ ASSIGNED_ROLES = [
     SYSTEM_ADMINISTRATOR,
     HR_ADMINISTRATOR,
     HR_OFFICER,
-    RECRUITER,
     PAYROLL_OFFICER,
     EXECUTIVE,
 ]
 
 # `docs/07-iam-rbac.md` §7.3: a grant of any of these takes effect only on
 # approval by an `iam.approve_role_grant` holder who is not the requester.
-# All six assigned roles are privileged — the table lists every one of them.
+# All five assigned roles are privileged — the table lists every one of
+# them. Recruiter was the sixth and the one exception; ADR-0013 retired it
+# by merging it into HR Administrator, so there is no longer a non-
+# privileged assigned role.
 PRIVILEGED_ROLES = [
     SYSTEM_ADMINISTRATOR,
     HR_ADMINISTRATOR,
