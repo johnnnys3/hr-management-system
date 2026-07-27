@@ -28,14 +28,14 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.recruiter = Group.objects.get(name=RECRUITER)
 
     def test_an_unrelated_group_cannot_be_requested(self):
-        """`role_id` is restricted to the six assigned-role groups
+        """`role_name` is restricted to the six assigned-role groups
         (`docs/07-iam-rbac.md` §2.3) — an arbitrary Django group unrelated
         to RBAC must not be requestable, let alone auto-granted."""
         unrelated_group = Group.objects.create(name='Some Other App Group')
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': unrelated_group.pk,
+            'subject_user_id': self.subject.pk, 'role_name': unrelated_group.name,
         })
 
         self.assertEqual(response.status_code, 400)
@@ -45,7 +45,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+            'subject_user_id': self.subject.pk, 'role_name': self.payroll_officer.name,
         })
 
         self.assertEqual(response.status_code, 201)
@@ -56,7 +56,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.client.force_authenticate(non_admin)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+            'subject_user_id': self.subject.pk, 'role_name': self.payroll_officer.name,
         })
 
         self.assertEqual(response.status_code, 403)
@@ -66,7 +66,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.requester.pk, 'role_id': self.payroll_officer.pk,
+            'subject_user_id': self.requester.pk, 'role_name': self.payroll_officer.name,
         })
 
         self.assertEqual(response.status_code, 400)
@@ -84,7 +84,7 @@ class CreateRoleGrantRequestTests(APITestCase):
 
     def test_anonymous_cannot_request_a_grant(self):
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+            'subject_user_id': self.subject.pk, 'role_name': self.payroll_officer.name,
         })
 
         self.assertEqual(response.status_code, 401)
@@ -93,7 +93,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': self.recruiter.pk,
+            'subject_user_id': self.subject.pk, 'role_name': self.recruiter.name,
         })
 
         self.assertEqual(response.status_code, 201)
@@ -104,7 +104,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+            'subject_user_id': self.subject.pk, 'role_name': self.payroll_officer.name,
         })
 
         self.assertEqual(response.status_code, 201)

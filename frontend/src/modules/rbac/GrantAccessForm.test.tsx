@@ -73,7 +73,7 @@ describe('GrantAccessForm', () => {
     await user.click(await screen.findByText(/process payroll and compensation/i))
     await user.click(screen.getByRole('button', { name: /submit/i }))
 
-    await waitFor(() => expect(createSpy).toHaveBeenCalledWith(2, 3))
+    await waitFor(() => expect(createSpy).toHaveBeenCalledWith(2, 'Payroll Officer'))
     expect(await screen.findByText(/awaiting approval from an hr administrator/i)).toBeInTheDocument()
   })
 
