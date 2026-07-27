@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date | 2026-07-16 |
@@ -19,6 +19,7 @@
 | John Kessie | 2026-07-18 | **Not yet reconciled with `docs/02-project-plan.md` v1.6's Employee Management/Departments swap (modules 5 ↔ 6 in the plan's numbering; modules 6 ↔ 7 below, still v1.4).** This document is the source of the finding: §4.4's `employee.department_id` is a NOT NULL foreign key into §4.5's `department`, but the build order these headings sit in still builds Employee Management before Departments. Reconciliation will swap §4.4 and §4.5's ordering and heading numbers; §4.6 Reporting Structure does not move — its foreign keys point into `employee`, not the reverse, so it has no schema-level reason to precede Employee Management. Reconcile at M3 sign-off per plan §5.3 | 1.0 (unreconciled) |
 | John Kessie | 2026-07-18 | **Reconciled with `docs/02-project-plan.md` v1.6, per the two rows above.** §4.4 and §4.5 swap content (Departments now §4.4/module 5, Employee Management now §4.5/module 6), matching the build order; §4.6 Reporting Structure does not move. Every other module number in §4 is renumbered to v1.6 throughout (Recruitment 8, Onboarding 9, Notification 10, Employee/Manager Self-Service 11/12, Leave Management 13). No table, column, constraint, or requirement mapping changes — this is the renumbering the two rows above already called for, done. Filed as DOC-007 | 1.1 |
 | John Kessie | 2026-07-19 | **§4's own introduction stated module 17 (Reports) owns no table — but `docs/06-api-contracts.md` §4.15 promises `GET /api/report-exports/{job_id}/` with a persisted `pending`/`complete`/`failed` status and a signed URL once complete, and Reports has no underlying row (no `PayrollRun`-equivalent) to attach that state to.** Found starting REPORTS-001, same defect shape as `payslip.object_key`'s absence at PAYROLL-001 — a contract promise with no schema backing. §4 gains a new §4.13, `report_export` (report_type, params JSONB, requested_by, status, object_key, generated_at, failed_reason), same object-storage pattern as `payslip`/`bank_transfer_file`; `job_id` in the contract is this table's PK. §4's introductory sentence and the ERD block are updated to match; module 17 no longer reads as tableless. No other table, column, or requirement mapping changes. Owner-confirmed 2026-07-19 | 1.2 |
+| John Kessie | 2026-07-27 | **Recruiter retired, merged into HR Administrator** (SRS v1.5, ADR-0013 amending ADR-0010). §4.7's `job_requisition.approved_by` gains `CHECK (approved_by IS NULL OR approved_by <> requested_by)`, mirroring §3.5's `payroll_run` constraint — HR Administrator now both creates and approves requisitions, where Recruiter and HR Administrator previously held those two functions apart. No other table, column, or requirement mapping changes | 1.3 |
 
 ---
 
@@ -350,7 +351,7 @@ not a bare `SELECT DISTINCT manager_employee_id` — a manager whose own employm
 | job_title_id | BIGINT | FK → job_title, ON DELETE RESTRICT | |
 | requested_by | BIGINT | FK → user_account, ON DELETE RESTRICT | |
 | status | TEXT | NOT NULL, DEFAULT 'draft', CHECK IN ('draft','pending_approval','approved','rejected','closed') | HRMS-FR-014: "approval statuses" |
-| approved_by | BIGINT | FK → user_account, ON DELETE SET NULL, NULL | |
+| approved_by | BIGINT | FK → user_account, ON DELETE SET NULL, NULL, CHECK (approved_by IS NULL OR approved_by <> requested_by) | ADR-0013: HR Administrator now both creates and approves requisitions (Recruiter, the prior role that only created them, is retired), so the self-approval constraint §3.5's `payroll_run` already carries is mirrored here |
 | created_at, updated_at | — | — | |
 
 **`job_posting`.** HRMS-FR-015, distinct from requisition per `CONTEXT.md`.

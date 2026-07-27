@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.5 |
 | Prepared by | John Kessie |
 | Organization | TBD |
 | Date Created | May 2026 |
@@ -18,6 +18,7 @@
 | John Kessie | 2026-07-18 | **HRMS-FR-028/HRMS-FR-044 and HRMS-FR-029/HRMS-FR-063 are duplicate pairs, found while scoping Module 11 (Employee Self-Service) against `docs/02-project-plan.md` §6.1's build order.** §4.3 (self-service) and §4.4 (Payroll) both state "the system shall allow employees to view their own payslips", verbatim, as FR-028 and FR-044; §4.3 and §4.7 (Leave Management) both state the same leave-submission requirement as FR-029 and FR-063. Each pair had been assigned to two different modules by the plan, which read as Employee Self-Service (module 11) depending on unbuilt Payroll (16) and Leave Management (13) — a sixth instance of the provider-precedes-consumer defect this project's plan has caught five times before, except here the defect is duplication, not a genuine second requirement scheduled early. FR-044 and FR-063 are marked canonical; FR-028 and FR-029 are marked as restating them, not superseding or removing them, since neither this project's convention nor traceability tooling assumes requirement IDs are renumbered once assigned. No requirement's modality, scope, or module ownership beyond this correction changes. Filed as DOC-009; `docs/02-project-plan.md` and `docs/04-system-architecture.md` reconciled in the same change | 1.2 |
 | John Kessie | 2026-07-18 | **HRMS-FR-031 duplicates HRMS-FR-064, found while scoping Module 12 (Manager Self-Service) — the same pattern DOC-009 found in Module 11, checked for on the strength of that precedent rather than stumbled on independently.** §4.3's "Manager Approves Request" stimulus/response sequence and FR-031 ("approve or reject requests") name no request type; §4.7's FR-064 is the same action, qualified to "leave requests" — and no other manager-approval workflow exists anywhere in this document for FR-031 to mean. FR-064 is marked canonical; FR-031 is marked as restating it. **Unlike FR-028/FR-029, HRMS-FR-032 (manager team-level reports) is not part of this correction** — `docs/06-api-contracts.md` §4.15 assigns it to Reports (module 17) as a genuine, distinct read surface, not a restatement of any other requirement; it is a real forward dependency, recorded as a deferred residual at `docs/02-project-plan.md` rather than resolved here. Filed as DOC-010; `docs/02-project-plan.md` reconciled in the same change | 1.3 |
 | John Kessie | 2026-07-26 | §3.4 amended: SMS added as an opt-in notification channel (pending-task and request-update categories), subject to user preference and a verified phone number on the account. No existing notification-triggering event's delivery changes as part of this revision — the mechanism is added, not switched on for any event. See docs/superpowers/specs/2026-07-26-notifications-email-sms-design.md. | 1.4 |
+| John Kessie | 2026-07-27 | **§2.3.3 Recruiter is merged into §2.3.2's HR class**, specifically absorbed by the HR Administrator role, not HR Officer. HR Officer was rejected as the target: Recruiter cannot create employee records today (only HR Officer and, under this revision, HR Administrator can), so a candidate's entire pipeline — requisition through accepted offer — sits behind a different role than the one that turns an accepted offer into an employee record. Merging into HR Officer would collapse that into a single role able to fabricate a candidate and create the resulting employee alone; merging into HR Administrator preserves it, since HR Administrator was already barred from employee-record creation (§2.4 of `docs/07-iam-rbac.md`) for the same reason. §2.3.3 is retained as a stub pointing to §2.3.2, not renumbered, following the no-renumbering convention DOC-009/DOC-010 established for requirement IDs, applied here to section numbers so no cross-reference to §2.3.4–§2.3.7 elsewhere in this document or in `docs/07-iam-rbac.md`/ADR-0010 is disturbed. Appendix B.2 folds the Recruiter access line into HR Administrator's. HR Administrator absorbing requisition creation alongside the requisition-approval authority it already held (§4.2 of `docs/07-iam-rbac.md`) opens a self-approval gap the prior two-role split closed structurally; closing it is deferred to `docs/07-iam-rbac.md` and ADR-0013, not stated as a new business rule here, on the same precedent as HRMS-BR-008's payroll self-approval constraint, which is likewise enforced at the design layer rather than restated as a second business rule. No functional requirement's text, module ownership, or scope changes | 1.5 |
 
 ---
 
@@ -223,21 +224,18 @@ The System Administrator manages system configuration, user accounts, roles, per
 
 #### 2.3.2 HR Administrator / HR Officer
 
-The HR Administrator manages employee records and HR workflows.
+The HR Administrator manages employee records, HR workflows, and hiring activities.
 
 - Frequent system user.
 - Requires access to employee records, recruitment, onboarding, leave, and reports.
 - Requires strong data entry and review permissions.
+- Requires candidate communication, offer letter, and interview-tracking features (absorbed from §2.3.3, retired 2026-07-27 — see revision history).
+- May not need access to payroll or compensation records, in the hiring-activities part of this class's work.
 - Should not automatically access technical system configuration unless assigned.
 
-#### 2.3.3 Recruiter
+#### 2.3.3 Recruiter (retired)
 
-The Recruiter manages hiring activities.
-
-- Uses recruitment and onboarding modules.
-- Tracks candidates and interview stages.
-- May not need access to payroll or compensation records.
-- Requires candidate communication and offer letter features.
+Retired 2026-07-27. Recruiter's duties are served by §2.3.2 — see this document's revision history for the reasoning. This section number is not reused, per the no-renumbering convention `docs/02-project-plan.md` DOC-009 and DOC-010 established for requirement IDs, applied here to avoid disturbing §2.3.4–§2.3.7 and every cross-reference to them.
 
 #### 2.3.4 Employee
 
@@ -445,8 +443,8 @@ Priority: High
 
 #### 4.2 Stimulus/Response Sequences
 
-- Create Job Requisition: Recruiter logs in, opens Recruitment, creates a job requisition, enters job details, submits it, and the system saves the requisition with the appropriate status.
-- Move Candidate to Offer Stage: Recruiter opens a candidate profile, updates the status to Offer, generates an offer letter, and the system stores the offer letter record.
+- Create Job Requisition: HR Administrator logs in, opens Recruitment, creates a job requisition, enters job details, submits it, and the system saves the requisition with the appropriate status.
+- Move Candidate to Offer Stage: HR Administrator opens a candidate profile, updates the status to Offer, generates an offer letter, and the system stores the offer letter record.
 
 #### 4.2 Functional Requirements
 
@@ -901,8 +899,7 @@ Human Resource Management System
 
 ```
 System Administrator -> User Accounts, Roles, Permissions, Audit Logs
-HR Administrator -> Employee Records, Recruitment, Onboarding, Reports
-Recruiter -> Job Requisitions, Applicants, Interviews, Offers
+HR Administrator -> Employee Records, Recruitment, Onboarding, Reports, Job Requisitions, Applicants, Interviews, Offers
 Employee -> Own Profile, Payslips, Leave Requests
 Manager -> Team Data, Approvals, Team Reports
 Payroll Officer -> Payroll, Payslips, Deductions, Bank Files

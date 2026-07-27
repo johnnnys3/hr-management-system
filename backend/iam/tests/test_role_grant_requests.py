@@ -1,13 +1,13 @@
-"""`docs/07-iam-rbac.md` §7.3: self-grant refused, privileged grant needs
-an approver who is not the requester; a non-privileged (Recruiter) grant
-takes effect immediately."""
+"""`docs/07-iam-rbac.md` §7.3: self-grant refused, every assigned role is
+privileged and needs an approver who is not the requester (ADR-0013
+retired Recruiter, the one previously non-privileged assigned role)."""
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.db import IntegrityError, transaction
 from rest_framework.test import APITestCase
 
 from iam.models import RoleGrantRequest
-from iam.roles import HR_ADMINISTRATOR, PAYROLL_OFFICER, RECRUITER, SYSTEM_ADMINISTRATOR
+from iam.roles import HR_ADMINISTRATOR, PAYROLL_OFFICER, SYSTEM_ADMINISTRATOR
 
 
 User = get_user_model()
@@ -25,10 +25,9 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.requester.groups.add(Group.objects.get(name=SYSTEM_ADMINISTRATOR))
         self.subject = User.objects.create_user(email='subject@example.com', password='x')
         self.payroll_officer = Group.objects.get(name=PAYROLL_OFFICER)
-        self.recruiter = Group.objects.get(name=RECRUITER)
 
     def test_an_unrelated_group_cannot_be_requested(self):
-        """`role_name` is restricted to the six assigned-role groups
+        """`role_name` is restricted to the five assigned-role groups
         (`docs/07-iam-rbac.md` §2.3) — an arbitrary Django group unrelated
         to RBAC must not be requestable, let alone auto-granted."""
         unrelated_group = Group.objects.create(name='Some Other App Group')
@@ -88,17 +87,6 @@ class CreateRoleGrantRequestTests(APITestCase):
         })
 
         self.assertEqual(response.status_code, 401)
-
-    def test_non_privileged_role_grant_takes_effect_immediately(self):
-        self.client.force_authenticate(self.requester)
-
-        response = self.client.post(REQUESTS_URL, {
-            'subject_user_id': self.subject.pk, 'role_name': self.recruiter.name,
-        })
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'approved')
-        self.assertTrue(self.subject.groups.filter(name=RECRUITER).exists())
 
     def test_privileged_role_grant_does_not_take_effect_until_approved(self):
         self.client.force_authenticate(self.requester)

@@ -32,7 +32,7 @@ describe('RecruitmentPage', () => {
   afterEach(() => vi.restoreAllMocks())
 
   // ponytail: slow under jsdom (antd Table + two useQuery + a mutation), not stuck — give it headroom.
-  it('shows only the Requisitions tab for HR Administrator, with Approve/Reject', async () => {
+  it('shows all tabs for HR Administrator, with New Requisition and Approve/Reject (ADR-0013)', async () => {
     vi.spyOn(departmentsApi, 'listDepartments').mockResolvedValue([
       { id: 1, name: 'Engineering', is_active: true, created_at: '', updated_at: '' },
     ])
@@ -42,6 +42,8 @@ describe('RecruitmentPage', () => {
     vi.spyOn(recruitmentApi, 'listJobRequisitions').mockResolvedValue([
       { id: 1, department: 1, job_title: 1, requested_by: 5, status: 'pending_approval', approved_by: null, created_at: '', updated_at: '' },
     ])
+    vi.spyOn(recruitmentApi, 'listJobPostings').mockResolvedValue([])
+    vi.spyOn(recruitmentApi, 'listCandidates').mockResolvedValue([])
     const approveSpy = vi.spyOn(recruitmentApi, 'approveJobRequisition').mockResolvedValue({
       id: 1, department: 1, job_title: 1, requested_by: 5, status: 'approved', approved_by: 1, created_at: '', updated_at: '',
     })
@@ -49,23 +51,21 @@ describe('RecruitmentPage', () => {
     const user = userEvent.setup()
 
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /postings/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /candidates/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /postings/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /candidates/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /new requisition/i })).toBeInTheDocument()
 
     await user.click(await screen.findByRole('button', { name: /^approve$/i }))
     await waitFor(() => expect(approveSpy).toHaveBeenCalledWith(1))
   }, 15000)
 
-  it('shows all tabs and a New Requisition button for Recruiter', async () => {
-    vi.spyOn(departmentsApi, 'listDepartments').mockResolvedValue([])
-    vi.spyOn(departmentsApi, 'listJobTitles').mockResolvedValue([])
-    vi.spyOn(recruitmentApi, 'listJobRequisitions').mockResolvedValue([])
-    vi.spyOn(recruitmentApi, 'listJobPostings').mockResolvedValue([])
+  it('shows only the Candidates tab for HR Officer, read-only', async () => {
     vi.spyOn(recruitmentApi, 'listCandidates').mockResolvedValue([])
-    renderPage(['Recruiter'])
+    renderPage(['HR Officer'])
 
-    expect(await screen.findByRole('tab', { name: /postings/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /candidates/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /new requisition/i })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: /candidates/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /requisitions/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /postings/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /new candidate/i })).not.toBeInTheDocument()
   })
 })

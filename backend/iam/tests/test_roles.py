@@ -1,4 +1,4 @@
-"""`docs/07-iam-rbac.md` §2, §3: the six assigned-role groups exist from
+"""`docs/07-iam-rbac.md` §2, §3: the five assigned-role groups exist from
 migration, and derived roles are not groups."""
 from datetime import date
 
@@ -16,12 +16,12 @@ User = get_user_model()
 
 
 class AssignedRoleGroupsTests(TestCase):
-    def test_all_six_assigned_role_groups_exist(self):
-        self.assertEqual(Group.objects.filter(name__in=ASSIGNED_ROLES).count(), 6)
+    def test_all_five_assigned_role_groups_exist(self):
+        self.assertEqual(Group.objects.filter(name__in=ASSIGNED_ROLES).count(), 5)
 
 
 class AssignedRolesListViewTests(APITestCase):
-    def test_system_administrator_sees_all_six_assigned_roles(self):
+    def test_system_administrator_sees_all_five_assigned_roles(self):
         admin = User.objects.create_user(email='admin2@example.com', password='x')
         admin.groups.add(Group.objects.get(name=SYSTEM_ADMINISTRATOR))
         self.client.force_authenticate(admin)

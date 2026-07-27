@@ -40,6 +40,11 @@ HR_ADMIN_2_TOTP_SECRET = 'MFRGGZDFMZTWQ2LK'  # noqa: S105 — test-only, guarded
 # Administrator too, and also run in parallel with each other and with
 # recruitment.spec.ts's use of the account above.
 HR_ADMIN_3_TOTP_SECRET = 'ONSWG4TFOQYTEMZU'  # noqa: S105 — test-only, guarded below
+# A fourth — ADR-0013 merged Recruiter into HR Administrator, so
+# recruitment.spec.ts now needs two HR Administrator accounts of its own
+# (requisition creator and approver), not one Recruiter (unauthenticated
+# by TOTP) and one HR Administrator.
+HR_ADMIN_4_TOTP_SECRET = 'GEZDGNBVGY3TQOJQ'  # noqa: S105 — test-only, guarded below
 SYSADMIN_TOTP_SECRET = 'JPTYNGFW62WOZ5HM'  # noqa: S105 — test-only, guarded below
 
 
@@ -86,8 +91,8 @@ class Command(BaseCommand):
         hr_administrator = self._user('e2e.hra@example.com', 'HR Administrator')
         hr_administrator_2 = self._user('e2e.hra2@example.com', 'HR Administrator')
         hr_administrator_3 = self._user('e2e.hra3@example.com', 'HR Administrator')
+        hr_administrator_4 = self._user('e2e.hra4@example.com', 'HR Administrator')
         self._user('e2e.hro@example.com', 'HR Officer')
-        self._user('e2e.recruiter@example.com', 'Recruiter')
         payroll_initiator = self._user('e2e.payroll1@example.com', 'Payroll Officer')
         # payroll.approve_payroll_run is granted to no role by default
         # (docs/07-iam-rbac.md §4.4 — deployment-deferred, same shape as
@@ -101,6 +106,7 @@ class Command(BaseCommand):
         self._enroll_second_factor(hr_administrator, HR_ADMIN_TOTP_SECRET)
         self._enroll_second_factor(hr_administrator_2, HR_ADMIN_2_TOTP_SECRET)
         self._enroll_second_factor(hr_administrator_3, HR_ADMIN_3_TOTP_SECRET)
+        self._enroll_second_factor(hr_administrator_4, HR_ADMIN_4_TOTP_SECRET)
         self._enroll_second_factor(system_administrator, SYSADMIN_TOTP_SECRET)
         # Manager is a derived role (`iam.roles.is_manager`), never an
         # assigned group — this account's manager status comes entirely

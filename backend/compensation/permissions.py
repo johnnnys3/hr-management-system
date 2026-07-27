@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission
 
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER, is_employee
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, is_employee
 
 HR_READ_ROLES = [HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER]
 
@@ -24,20 +24,21 @@ class CanAccessSalaryFramework(BasePermission):
 
 
 class CanAccessPayGrades(BasePermission):
-    """`GET, POST, PATCH /api/pay-grades/`: same as `CanAccessSalaryFramework`,
-    plus Recruiter read — needed to pick `offered_pay_grade` when issuing an
-    offer (`docs/06-api-contracts.md` §4.6). Recruiter gets id/name only, not
-    salary figures (`docs/07-iam-rbac.md` §2.4: Recruiter has no compensation
-    access) — enforced by the view choosing a blind-selection serializer, not
-    here. Recruiter still cannot write, and does not gain salary-structure
-    access (`CanAccessSalaryFramework`, unchanged, gates that endpoint)."""
+    """`GET, POST, PATCH /api/pay-grades/`: same as `CanAccessSalaryFramework`.
+
+    Previously also granted Recruiter a blind-selection read (id/name
+    only, no salary figures) to pick `offered_pay_grade` when issuing an
+    offer (`docs/06-api-contracts.md` §4.6). Recruiter is retired
+    (ADR-0013), merged into HR Administrator, which already holds full
+    read here via `HR_READ_ROLES` — the narrower carve-out is moot, not
+    reinstated for HR Administrator."""
 
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
             return False
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return _in_groups(user, HR_READ_ROLES + [RECRUITER])
+            return _in_groups(user, HR_READ_ROLES)
         return _in_groups(user, [HR_ADMINISTRATOR])
 
 

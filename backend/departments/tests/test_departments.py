@@ -1,13 +1,13 @@
 """`/api/departments/`, `docs/06-api-contracts.md` §4.4 and
 `docs/07-iam-rbac.md` §4.2's HR configuration row: HR Administrator holds
-C, R, U; HR Officer, Recruiter, and Payroll Officer hold R only."""
+C, R, U; HR Officer and Payroll Officer hold R only."""
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from rest_framework.test import APITestCase
 
 from audit.models import AuditLog
 from departments.models import Department
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER
 
 User = get_user_model()
 
@@ -81,7 +81,7 @@ class DepartmentListCreateTests(APITestCase):
         """Verify that recruiters and payroll officers can list departments."""
         Department.objects.create(name='Engineering')
 
-        for role in (RECRUITER, PAYROLL_OFFICER):
+        for role in (PAYROLL_OFFICER,):
             user = _user_with_role(f'{role.lower().replace(" ", "")}@example.com', role)
             self.client.force_authenticate(user)
 

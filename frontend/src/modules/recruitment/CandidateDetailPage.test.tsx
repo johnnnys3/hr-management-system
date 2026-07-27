@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as compensationApi from '../../api/compensation'
 import * as employeesApi from '../../api/employees'
 import * as recruitmentApi from '../../api/recruitment'
 import { AuthContext } from '../../auth/AuthContext'
@@ -14,7 +15,7 @@ function renderPage() {
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider
         value={{
-          me: { id: 1, email: 'recruiter@b.com', groups: ['Recruiter'], is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
+          me: { id: 1, email: 'hradmin@b.com', groups: ['HR Administrator'], is_employee: true, is_manager: false, second_factor_enrollment_pending: false },
           isLoading: false,
           refetch: async () => {},
           logout: async () => {},
@@ -71,9 +72,13 @@ describe('CandidateDetailPage', () => {
     vi.spyOn(recruitmentApi, 'listInterviews').mockResolvedValue([])
     vi.spyOn(recruitmentApi, 'listOffers').mockResolvedValue([])
     vi.spyOn(employeesApi, 'listEmployees').mockResolvedValue([])
-    vi.spyOn(recruitmentApi, 'listPayGradeOptions').mockResolvedValue([
-      { id: 5, name: 'Level 3', salary_structure_name: 'Engineering Ladder' },
-      { id: 6, name: 'Level 3', salary_structure_name: 'Sales Ladder' },
+    vi.spyOn(compensationApi, 'listPayGrades').mockResolvedValue([
+      { id: 5, salary_structure: 100, name: 'Level 3', min_salary: '1000.00', max_salary: '2000.00', created_at: '', updated_at: '' },
+      { id: 6, salary_structure: 200, name: 'Level 3', min_salary: '1500.00', max_salary: '2500.00', created_at: '', updated_at: '' },
+    ])
+    vi.spyOn(compensationApi, 'listSalaryStructures').mockResolvedValue([
+      { id: 100, name: 'Engineering Ladder', description: null, effective_from: '', created_at: '', updated_at: '' },
+      { id: 200, name: 'Sales Ladder', description: null, effective_from: '', created_at: '', updated_at: '' },
     ])
     const createOffer = vi.spyOn(recruitmentApi, 'createOffer').mockResolvedValue({
       id: 100, application: 10, offered_salary: '90000', offered_pay_grade: 5, status: 'pending',

@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
-from iam.roles import HR_ADMINISTRATOR, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER
 from recruitment.models import JobPosting, JobRequisition
 
 from .helpers import user_with_role
@@ -21,24 +21,28 @@ def _publish_url(pk):
 
 class JobPostingTests(APITestCase):
     def setUp(self):
-        self.recruiter = user_with_role('recruiter@example.com', RECRUITER)
+        # ADR-0013: Recruiter is retired, merged into HR Administrator. Two
+        # accounts stand in for requester and approver, since a requisition's
+        # approver must not be its own requester.
         self.hr_admin = user_with_role('hradmin@example.com', HR_ADMINISTRATOR)
+        self.hr_admin_2 = user_with_role('hradmin2@example.com', HR_ADMINISTRATOR)
+        self.hr_officer = user_with_role('hrofficer@example.com', HR_OFFICER)
         department = Department.objects.create(name='Engineering')
         job_title = JobTitle.objects.create(name='Engineer')
         self.approved_requisition = JobRequisition.objects.create(
-            department=department, job_title=job_title, requested_by=self.recruiter,
-            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin,
+            department=department, job_title=job_title, requested_by=self.hr_admin,
+            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin_2,
         )
         self.draft_requisition = JobRequisition.objects.create(
-            department=department, job_title=job_title, requested_by=self.recruiter,
+            department=department, job_title=job_title, requested_by=self.hr_admin,
         )
         self.other_approved_requisition = JobRequisition.objects.create(
-            department=department, job_title=job_title, requested_by=self.recruiter,
-            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin,
+            department=department, job_title=job_title, requested_by=self.hr_admin,
+            status=JobRequisition.STATUS_APPROVED, approved_by=self.hr_admin_2,
         )
 
-    def test_recruiter_can_create_a_posting_for_an_approved_requisition(self):
-        self.client.force_authenticate(self.recruiter)
+    def test_hr_administrator_can_create_a_posting_for_an_approved_requisition(self):
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(POSTINGS_URL, {
             'requisition': self.approved_requisition.pk,
@@ -50,7 +54,7 @@ class JobPostingTests(APITestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_posting_rejected_for_unapproved_requisition(self):
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(POSTINGS_URL, {
             'requisition': self.draft_requisition.pk,
@@ -64,7 +68,7 @@ class JobPostingTests(APITestCase):
     def test_external_channel_is_accepted_without_a_job_board_integration(self):
         """`docs/02-project-plan.md` §8 TBD-012: the `channel` value exists
         regardless of whether the external integration itself is built."""
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(POSTINGS_URL, {
             'requisition': self.approved_requisition.pk,
@@ -76,12 +80,12 @@ class JobPostingTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['channel'], JobPosting.CHANNEL_EXTERNAL)
 
-    def test_recruiter_can_publish(self):
+    def test_hr_administrator_can_publish(self):
         posting = JobPosting.objects.create(
             requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
             channel=JobPosting.CHANNEL_INTERNAL,
         )
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(_publish_url(posting.pk))
 
@@ -95,7 +99,7 @@ class JobPostingTests(APITestCase):
             requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
             channel=JobPosting.CHANNEL_INTERNAL, published_at=timezone.now(),
         )
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(_publish_url(posting.pk))
 
@@ -111,7 +115,7 @@ class JobPostingTests(APITestCase):
             requisition=self.approved_requisition, title='Backend Engineer', description='Build things.',
             channel=JobPosting.CHANNEL_INTERNAL,
         )
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.patch(
             _detail_url(posting.pk), {'requisition': self.other_approved_requisition.pk},
@@ -121,12 +125,19 @@ class JobPostingTests(APITestCase):
         posting.refresh_from_db()
         self.assertEqual(posting.requisition_id, self.approved_requisition.pk)
 
-    def test_hr_administrator_cannot_access_postings(self):
-        self.client.force_authenticate(self.hr_admin)
+    def test_hr_officer_can_read_but_not_create_postings(self):
+        self.client.force_authenticate(self.hr_officer)
 
-        response = self.client.get(POSTINGS_URL)
+        read_response = self.client.get(POSTINGS_URL)
+        write_response = self.client.post(POSTINGS_URL, {
+            'requisition': self.approved_requisition.pk,
+            'title': 'Backend Engineer',
+            'description': 'Build things.',
+            'channel': JobPosting.CHANNEL_INTERNAL,
+        })
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(write_response.status_code, 403)
 
     def test_anonymous_is_denied(self):
         response = self.client.get(POSTINGS_URL)

@@ -218,13 +218,6 @@ export const OfferLetterSchema = z.object({
 })
 export type OfferLetter = z.infer<typeof OfferLetterSchema>
 
-export const PayGradeOptionSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  salary_structure_name: z.string(),
-})
-export type PayGradeOption = z.infer<typeof PayGradeOptionSchema>
-
 export const NotificationCategorySchema = z.enum(['pending_task', 'request_update'])
 export type NotificationCategory = z.infer<typeof NotificationCategorySchema>
 

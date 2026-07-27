@@ -77,15 +77,19 @@ describe('GrantAccessForm', () => {
     expect(await screen.findByText(/awaiting approval from an hr administrator/i)).toBeInTheDocument()
   })
 
-  it('shows the immediate-grant confirmation for Recruiter', async () => {
+  it('shows the immediate-grant confirmation when the backend reports a role as already approved', async () => {
+    // No assigned role is non-privileged since ADR-0013 retired Recruiter
+    // (the one that was), but the form's success-message branch is generic
+    // over `result.status`, not hardcoded per role — exercised here against
+    // a real role's mocked response rather than a real-world scenario.
     vi.spyOn(rbacApi, 'listUsers').mockResolvedValue([
       { id: 2, email: 'jane@example.com', is_active: true, groups: [], employee_name: null, created_at: '', updated_at: '' },
     ])
-    vi.spyOn(rbacApi, 'listAssignedRoles').mockResolvedValue([{ id: 4, name: 'Recruiter' }])
+    vi.spyOn(rbacApi, 'listAssignedRoles').mockResolvedValue([{ id: 3, name: 'HR Officer' }])
     vi.spyOn(rbacApi, 'createRoleGrantRequest').mockResolvedValue({
-      id: 11, requester: 1, subject: 2, role: 4, status: 'approved', approver: null,
+      id: 11, requester: 1, subject: 2, role: 3, status: 'approved', approver: null,
       requested_at: '', decided_at: '', requester_email: 'admin@example.com',
-      subject_email: 'jane@example.com', subject_name: null, role_name: 'Recruiter',
+      subject_email: 'jane@example.com', subject_name: null, role_name: 'HR Officer',
     })
     renderForm()
     const user = userEvent.setup()
@@ -93,9 +97,9 @@ describe('GrantAccessForm', () => {
     await user.click(screen.getByLabelText(/who gets access/i))
     await user.click(await screen.findByText('jane@example.com'))
     await user.click(screen.getByLabelText(/what access/i))
-    await user.click(await screen.findByText(/manage job postings and candidates/i))
+    await user.click(await screen.findByText(/handle day-to-day hr operations/i))
     await user.click(screen.getByRole('button', { name: /submit/i }))
 
-    expect(await screen.findByText(/recruiter access granted immediately/i)).toBeInTheDocument()
+    expect(await screen.findByText(/hr officer access granted immediately/i)).toBeInTheDocument()
   })
 })

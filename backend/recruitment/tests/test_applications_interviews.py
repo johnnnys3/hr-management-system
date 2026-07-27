@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from departments.models import Department, JobTitle
 from employees.models import Employee
-from iam.roles import RECRUITER
+from iam.roles import HR_ADMINISTRATOR
 from recruitment.models import Candidate, CandidateApplication, Interview, JobPosting, JobRequisition
 
 from .helpers import user_with_role
@@ -15,12 +15,12 @@ from .helpers import user_with_role
 
 class ApplicationTests(APITestCase):
     def setUp(self):
-        self.recruiter = user_with_role('recruiter@example.com', RECRUITER)
+        self.hr_admin = user_with_role('hradmin@example.com', HR_ADMINISTRATOR)
         self.candidate = Candidate.objects.create(first_name='Grace', last_name='Hopper', email='grace@example.com')
         department = Department.objects.create(name='Engineering')
         job_title = JobTitle.objects.create(name='Engineer')
         requisition = JobRequisition.objects.create(
-            department=department, job_title=job_title, requested_by=self.recruiter,
+            department=department, job_title=job_title, requested_by=self.hr_admin,
             status=JobRequisition.STATUS_APPROVED,
         )
         self.posting = JobPosting.objects.create(
@@ -28,8 +28,8 @@ class ApplicationTests(APITestCase):
             channel=JobPosting.CHANNEL_INTERNAL,
         )
 
-    def test_recruiter_can_create_an_application(self):
-        self.client.force_authenticate(self.recruiter)
+    def test_hr_administrator_can_create_an_application(self):
+        self.client.force_authenticate(self.hr_admin)
 
         response = self.client.post(
             f'/api/candidates/{self.candidate.pk}/applications/', {'posting': self.posting.pk},
@@ -41,7 +41,7 @@ class ApplicationTests(APITestCase):
         self.assertEqual(application.stage, CandidateApplication.STAGE_APPLIED)
 
     def test_duplicate_application_to_the_same_posting_is_rejected(self):
-        self.client.force_authenticate(self.recruiter)
+        self.client.force_authenticate(self.hr_admin)
         self.client.post(f'/api/candidates/{self.candidate.pk}/applications/', {'posting': self.posting.pk})
 
         response = self.client.post(f'/api/candidates/{self.candidate.pk}/applications/', {'posting': self.posting.pk})
@@ -56,12 +56,12 @@ class ApplicationTests(APITestCase):
 
 class InterviewTests(APITestCase):
     def setUp(self):
-        self.recruiter = user_with_role('recruiter@example.com', RECRUITER)
+        self.hr_admin = user_with_role('hradmin@example.com', HR_ADMINISTRATOR)
         candidate = Candidate.objects.create(first_name='Grace', last_name='Hopper', email='grace@example.com')
         department = Department.objects.create(name='Engineering')
         job_title = JobTitle.objects.create(name='Engineer')
         requisition = JobRequisition.objects.create(
-            department=department, job_title=job_title, requested_by=self.recruiter,
+            department=department, job_title=job_title, requested_by=self.hr_admin,
             status=JobRequisition.STATUS_APPROVED,
         )
         posting = JobPosting.objects.create(
@@ -74,8 +74,8 @@ class InterviewTests(APITestCase):
             date_of_birth='1990-01-01', department=department, job_title=job_title, hire_date=date.today(),
         )
 
-    def test_recruiter_can_schedule_an_interview(self):
-        self.client.force_authenticate(self.recruiter)
+    def test_hr_administrator_can_schedule_an_interview(self):
+        self.client.force_authenticate(self.hr_admin)
         scheduled_at = timezone.now() + timedelta(days=3)
 
         response = self.client.post(f'/api/applications/{self.application.pk}/interviews/', {
@@ -84,13 +84,13 @@ class InterviewTests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
 
-    def test_interviewer_need_not_be_a_recruiter(self):
+    def test_interviewer_need_not_be_hr_administrator(self):
         """HRMS-FR-018 does not restrict who may be scheduled as interviewer,
         only who may schedule/update — `self.interviewer` holds no group at
         all and is still accepted as `interviewer_employee`. Recording the
-        outcome (status, feedback) remains Recruiter-only, per
-        `IsRecruiter` on this endpoint."""
-        self.client.force_authenticate(self.recruiter)
+        outcome (status, feedback) remains HR-Administrator-only, per
+        `CanWriteRecruitment` on this endpoint (absorbed from Recruiter, retired — ADR-0013)."""
+        self.client.force_authenticate(self.hr_admin)
         scheduled_at = timezone.now() + timedelta(days=3)
         response = self.client.post(f'/api/applications/{self.application.pk}/interviews/', {
             'interviewer_employee': self.interviewer.pk, 'scheduled_at': scheduled_at.isoformat(),
@@ -99,8 +99,8 @@ class InterviewTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['interviewer_employee'], self.interviewer.pk)
 
-    def test_recruiter_can_record_interview_outcome(self):
-        self.client.force_authenticate(self.recruiter)
+    def test_hr_administrator_can_record_interview_outcome(self):
+        self.client.force_authenticate(self.hr_admin)
         scheduled_at = timezone.now() + timedelta(days=3)
         response = self.client.post(f'/api/applications/{self.application.pk}/interviews/', {
             'interviewer_employee': self.interviewer.pk, 'scheduled_at': scheduled_at.isoformat(),

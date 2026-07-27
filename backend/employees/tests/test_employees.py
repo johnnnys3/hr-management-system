@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 from audit.models import AuditLog
 from departments.models import Department, JobTitle
 from employees.models import Employee, EmploymentHistory
-from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER
+from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER
 
 User = get_user_model()
 
@@ -73,10 +73,10 @@ class EmployeeListCreateTests(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_recruiter_and_payroll_officer_cannot_create_an_employee(self):
+    def test_payroll_officer_cannot_create_an_employee(self):
         department = Department.objects.create(name='Engineering')
         job_title = JobTitle.objects.create(name='Engineer')
-        for role in (RECRUITER, PAYROLL_OFFICER):
+        for role in (PAYROLL_OFFICER,):
             user = _user_with_role(f'{role.lower().replace(" ", "")}@example.com', role)
             self.client.force_authenticate(user)
 

@@ -54,7 +54,7 @@ export const router = createBrowserRouter([
               {
                 element: (
                   <ProtectedRoute
-                    requireGroup={['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer']}
+                    requireGroup={['HR Administrator', 'HR Officer', 'Payroll Officer']}
                   />
                 ),
                 children: [{ path: '/departments', element: <DepartmentsPage /> }],
@@ -67,17 +67,17 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <ProtectedRoute requireGroup={['Recruiter', 'HR Administrator', 'HR Officer']} />,
+                element: <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer']} />,
                 children: [
                   { path: '/recruitment', element: <RecruitmentPage /> },
                   {
-                    element: <ProtectedRoute requireGroup={['Recruiter', 'HR Officer']} />,
+                    element: <ProtectedRoute requireGroup={['HR Administrator', 'HR Officer']} />,
                     children: [{ path: '/recruitment/candidates/:id', element: <CandidateDetailPage /> }],
                   },
                 ],
               },
               {
-                element: <ProtectedRoute requireGroup={['HR Officer', 'HR Administrator', 'Recruiter']} />,
+                element: <ProtectedRoute requireGroup={['HR Officer', 'HR Administrator']} />,
                 children: [{ path: '/onboarding/:id', element: <OnboardingChecklistPage /> }],
               },
               {

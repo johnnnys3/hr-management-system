@@ -28,13 +28,13 @@ export function buildNavGroups(me: Me | null, unreadNotifications = 0): NavGroup
 
   const people: NavItem[] = [
     ...(me.is_manager ? [{ key: '/my-team', label: 'My Team', icon: 'TeamOutlined' }] : []),
-    ...(hasAnyGroup(me, ['HR Administrator', 'HR Officer', 'Recruiter', 'Payroll Officer'])
+    ...(hasAnyGroup(me, ['HR Administrator', 'HR Officer', 'Payroll Officer'])
       ? [{ key: '/departments', label: 'Departments', icon: 'ApartmentOutlined' }]
       : []),
     ...(hasAnyGroup(me, ['HR Administrator', 'HR Officer'])
       ? [{ key: '/employees', label: 'Employees', icon: 'IdcardOutlined' }]
       : []),
-    ...(hasAnyGroup(me, ['Recruiter', 'HR Administrator', 'HR Officer'])
+    ...(hasAnyGroup(me, ['HR Administrator', 'HR Officer'])
       ? [{ key: '/recruitment', label: 'Recruitment', icon: 'SolutionOutlined' }]
       : []),
     ...(me.groups.includes('HR Officer') ? [{ key: '/onboarding', label: 'Onboarding', icon: 'RocketOutlined' }] : []),

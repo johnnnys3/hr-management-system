@@ -14,7 +14,7 @@ from audit.models import AuditLog
 
 User = get_user_model()
 
-DENIED_ROLES = ['Recruiter', 'Payroll Officer', 'Executive']
+DENIED_ROLES = ['Payroll Officer', 'Executive']
 
 
 def _url(employee_id):

@@ -76,7 +76,7 @@ function ConfigTable({
   const { me } = useAuth()
   // HR configuration (departments, job titles) is HR Administrator's to
   // create/update — docs/07-iam-rbac.md §4.2. Others (HR Officer,
-  // Recruiter, Payroll Officer) read only.
+  // Payroll Officer) read only.
   const canManage = me?.groups.includes('HR Administrator') ?? false
   const queryClient = useQueryClient()
   const { data: records = [], isLoading, error } = useQuery({ queryKey, queryFn: listFn })
