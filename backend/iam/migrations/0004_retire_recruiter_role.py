@@ -11,14 +11,16 @@ HR_ADMINISTRATOR_GROUP_NAME = 'HR Administrator'
 def retire_recruiter(apps, schema_editor):
     """ADR-0013: Recruiter is merged into HR Administrator, not HR Officer
     — see `docs/adr/0013-recruiter-merged-into-hr-administrator.md`.
-    Existing Recruiter members are re-granted HR Administrator; the
-    Recruiter group itself is left in place, not deleted. `RoleGrantRequest.role`
-    is `on_delete=RESTRICT` (`iam/models.py`) — deleting a group any historical
-    grant request references would raise `RestrictedError` on any deployment
-    that ever granted Recruiter, and would discard that audit history
-    (HRMS-NFR-022) even if it somehow didn't. The group simply drops out of
-    `ASSIGNED_ROLES`, so it is never offered again; no code path reads
-    `Group.objects.filter(name='Recruiter')` expecting it to be gone."""
+    Existing Recruiter members are re-granted HR Administrator and removed
+    from Recruiter; the Recruiter *group row* itself is left in place, not
+    deleted — only its membership is emptied. `RoleGrantRequest.role` is
+    `on_delete=RESTRICT` (`iam/models.py`) — deleting the group row would
+    raise `RestrictedError` on any deployment with a historical grant
+    request referencing it, and would discard that audit history
+    (HRMS-NFR-022) even if it somehow didn't. Membership rows carry no such
+    constraint, so clearing them is safe: the group simply drops out of
+    `ASSIGNED_ROLES` and out of every account's group list, and is never
+    offered again."""
     Group = apps.get_model('auth', 'Group')
     db_alias = schema_editor.connection.alias
     try:
@@ -26,8 +28,9 @@ def retire_recruiter(apps, schema_editor):
     except Group.DoesNotExist:
         return
     hr_administrator = Group.objects.using(db_alias).get(name=HR_ADMINISTRATOR_GROUP_NAME)
-    for user in recruiter.user_set.using(db_alias).all():
+    for user in list(recruiter.user_set.using(db_alias).all()):
         user.groups.add(hr_administrator)
+        user.groups.remove(recruiter)
 
 
 class Migration(migrations.Migration):
