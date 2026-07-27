@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from rest_framework.test import APITestCase
 
+from audit.models import AuditLog
 from departments.models import Department, JobTitle
 from employees.models import Employee, EmploymentHistory
 from iam.roles import HR_ADMINISTRATOR, HR_OFFICER, PAYROLL_OFFICER, RECRUITER
@@ -304,6 +305,13 @@ class EmployeeSelfServiceTests(APITestCase):
         self.assertEqual(self.employee.first_name, 'Ada')
         self.assertEqual(self.employee.last_name, 'Lovelace')
         self.assertEqual(str(self.employee.date_of_birth), '1990-01-01')
+        # No audit event should be recorded when all fields are read-only
+        self.assertFalse(
+            AuditLog.objects.filter(
+                action='employee_self_service_updated',
+                target_id=self.employee.pk,
+            ).exists()
+        )
 
     def test_hr_officer_cannot_use_the_self_service_endpoint(self):
         hr_officer = _user_with_role('hrofficer@example.com', HR_OFFICER)

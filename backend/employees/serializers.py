@@ -69,6 +69,13 @@ class EmployeeSelfServiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def update(self, instance, validated_data):
+        """No-op when all fields are read-only (validated_data will be empty).
+        Prevents unnecessary save() calls and audit events."""
+        if not validated_data:
+            return instance
+        return super().update(instance, validated_data)
+
 
 class EmploymentHistorySerializer(serializers.ModelSerializer):
     class Meta:

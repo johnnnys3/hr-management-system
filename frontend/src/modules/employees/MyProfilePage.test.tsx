@@ -51,6 +51,9 @@ describe('MyProfilePage', () => {
     expect(screen.getByDisplayValue('active')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Ada')).toBeDisabled()
     expect(screen.getByDisplayValue('Lovelace')).toBeDisabled()
+    // Date of birth DatePicker should also be disabled
+    const dateOfBirthInput = document.querySelector('#date_of_birth') as HTMLInputElement
+    expect(dateOfBirthInput).toBeDisabled()
     expect(screen.getByText(/contact hr/i)).toBeInTheDocument()
     expect(screen.queryByText('Save')).not.toBeInTheDocument()
   })
