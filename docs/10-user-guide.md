@@ -69,7 +69,7 @@ Every person with an employee record and active employment status is an Employee
 - Submit and track your own leave requests (`/leave`).
 - Read your own notifications (`/notifications`).
 
-If your job requires an additional role, ask your System Administrator — raising an access request is restricted to that role (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27); an Employee cannot request one for themselves or anyone else.
+If your job requires an additional role, ask your System Administrator — raising an access request is restricted to the System Administrator role (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Employees who do not also hold the System Administrator role must ask an administrator; they cannot request access on their own or others' behalf.
 
 ### 2.2 Common task: requesting leave
 
@@ -261,7 +261,7 @@ Written for whoever operates the system — provisioning accounts, running the s
 ### 10.1 What the System Administrator role can do, in-app
 
 - Create, read, and update user accounts (`/users`).
-- Raise an access request granting any assigned role (HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive) to another user (`/access`, "Grant Access") — this is the only route by which an assigned role is granted; none are self-service, and raising the request is restricted to System Administrator (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Recruiter takes effect immediately; every other role waits on an HR Administrator's approval (§4.1 above).
+- Raise an access request granting any assigned role (System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive) to another user (`/access`, "Grant Access") — this is the only route by which an assigned role is granted; none are self-service, and raising the request is restricted to System Administrator (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Recruiter takes effect immediately; every other role waits on an HR Administrator's approval (§4.1 above).
 - Read the audit log (`/audit-log`) — full visibility, append-only, never edited.
 - Maintain system configuration.
 

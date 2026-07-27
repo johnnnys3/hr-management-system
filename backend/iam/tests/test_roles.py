@@ -30,6 +30,12 @@ class AssignedRolesListViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual({r['name'] for r in response.data}, set(ASSIGNED_ROLES))
+        # Validate the complete name-to-database-ID mapping for returned roles,
+        # using the assigned groups as the expected source. Each returned role
+        # must have an ID matching the corresponding Group's primary key.
+        expected_mapping = {g.name: g.pk for g in Group.objects.filter(name__in=ASSIGNED_ROLES)}
+        actual_mapping = {r['name']: r['id'] for r in response.data}
+        self.assertEqual(actual_mapping, expected_mapping)
 
     def test_non_system_administrator_is_denied(self):
         non_admin = User.objects.create_user(email='non-admin2@example.com', password='x')

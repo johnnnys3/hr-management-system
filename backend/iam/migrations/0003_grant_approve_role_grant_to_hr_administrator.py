@@ -20,12 +20,13 @@ def grant_permission(apps, schema_editor):
     # Force-create this app's permissions now so the lookup below is safe
     # regardless of what has or hasn't run.
     app_config = global_apps.get_app_config('iam')
-    create_permissions(app_config, apps=apps, verbosity=0)
+    db_alias = schema_editor.connection.alias
+    create_permissions(app_config, apps=apps, verbosity=0, database=db_alias)
 
     Group = apps.get_model('auth', 'Group')
     Permission = apps.get_model('auth', 'Permission')
-    hr_administrator = Group.objects.get(name=HR_ADMINISTRATOR_GROUP_NAME)
-    permission = Permission.objects.get(codename=APPROVE_ROLE_GRANT_CODENAME)
+    hr_administrator = Group.objects.using(db_alias).get(name=HR_ADMINISTRATOR_GROUP_NAME)
+    permission = Permission.objects.using(db_alias).get(codename=APPROVE_ROLE_GRANT_CODENAME)
     hr_administrator.permissions.add(permission)
 
 

@@ -48,6 +48,8 @@ export function GrantAccessForm() {
             style={{ minWidth: 320 }}
             value={subjectUserId ?? undefined}
             onChange={(value) => setSubjectUserId(value)}
+            showSearch
+            optionFilterProp="label"
             options={users.map((u) => ({
               value: u.id,
               label: u.employee_name ? `${u.employee_name} (${u.email})` : u.email,

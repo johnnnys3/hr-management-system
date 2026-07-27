@@ -254,11 +254,21 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # No-op reverse: revoking this on rollback would retroactively
-        # invalidate approvals already made under it, the same reasoning
-        # 0002's no-op reverse gives for not deleting groups.
-        migrations.RunPython(grant_permission, migrations.RunPython.noop),
+        migrations.RunPython(grant_permission, reverse_code=lambda apps, schema_editor: revoke_permission(apps, schema_editor)),
     ]
+
+
+def revoke_permission(apps, schema_editor):
+    """Reverse handler: removes `iam.approve_role_grant` from HR Administrator
+    on rollback. Restores the pre-migration authorization state while leaving
+    historical approvals intact — the approval records remain, but the group
+    loses the permission to decide new requests."""
+    db_alias = schema_editor.connection.alias
+    Group = apps.get_model('auth', 'Group')
+    Permission = apps.get_model('auth', 'Permission')
+    hr_administrator = Group.objects.using(db_alias).get(name=HR_ADMINISTRATOR_GROUP_NAME)
+    permission = Permission.objects.using(db_alias).get(codename=APPROVE_ROLE_GRANT_CODENAME)
+    hr_administrator.permissions.remove(permission)
 ```
 
 - [ ] **Step 4: Apply the migration and run the test to verify it passes**
@@ -870,6 +880,22 @@ describe('GrantAccessForm', () => {
 
     expect(await screen.findByText(/recruiter access granted immediately/i)).toBeInTheDocument()
   })
+
+  it('filters users by typing a name or email', async () => {
+    vi.spyOn(rbacApi, 'listUsers').mockResolvedValue([
+      { id: 2, email: 'jane@example.com', is_active: true, groups: [], employee_name: 'Jane Doe', created_at: '', updated_at: '' },
+      { id: 3, email: 'john@example.com', is_active: true, groups: [], employee_name: 'John Smith', created_at: '', updated_at: '' },
+    ])
+    vi.spyOn(rbacApi, 'listAssignedRoles').mockResolvedValue([])
+    renderForm()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText(/who gets access/i))
+    await user.type(screen.getByLabelText(/who gets access/i), 'Jane')
+
+    expect(await screen.findByText('Jane Doe (jane@example.com)')).toBeInTheDocument()
+    expect(screen.queryByText('John Smith (john@example.com)')).not.toBeInTheDocument()
+  })
 })
 ```
 
@@ -932,6 +958,8 @@ export function GrantAccessForm() {
             style={{ minWidth: 320 }}
             value={subjectUserId ?? undefined}
             onChange={(value) => setSubjectUserId(value)}
+            showSearch
+            optionFilterProp="label"
             options={users.map((u) => ({
               value: u.id,
               label: u.employee_name ? `${u.employee_name} (${u.email})` : u.email,
@@ -1126,7 +1154,9 @@ export function AccessApprovalsQueue() {
         renderItem={(record) => (
           <List.Item>
             <Space>
-              <Tag color={record.status === 'approved' ? 'green' : 'red'}>{record.status}</Tag>
+              <Tag color={record.status === 'approved' ? 'green' : 'red'}>
+                {record.status === 'approved' ? 'Approved' : 'Declined'}
+              </Tag>
               {record.requester_email} requested {record.role_name} access for{' '}
               {record.subject_name ? `${record.subject_name} (${record.subject_email})` : record.subject_email}
             </Space>
