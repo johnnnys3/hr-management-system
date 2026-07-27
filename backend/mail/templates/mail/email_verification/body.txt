@@ -1,0 +1,7 @@
+Your HRMS account was just created with this email address.
+
+Use the following code to verify it:
+
+{{ code }}
+
+If you did not expect this, no action is needed.

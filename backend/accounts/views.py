@@ -15,6 +15,7 @@ from audit.models import AuditLog
 from . import services, totp
 from .models import SecondFactor, SecondFactorRecoveryRequest, User
 from .permissions import (
+    EMAIL_VERIFICATION_PENDING_SESSION_KEY,
     SECOND_FACTOR_ENROLLMENT_PENDING_SESSION_KEY,
     CanDecideSecondFactorRecovery,
     IsFullyAuthenticated,
@@ -91,6 +92,22 @@ class LoginView(APIView):
             )
             return Response({'error': {'code': 'not_authenticated', 'message': 'Invalid credentials.'}},
                              status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.email_verified_at is None:
+            # Every role, first login and immediately after a password
+            # reset (accounts.services.confirm_password_reset clears
+            # email_verified_at and sends a fresh code) — checked before
+            # the second-factor branch below since it applies regardless
+            # of role, unlike HRMS-NFR-024's three-role scope.
+            login(request, user)
+            request.session[EMAIL_VERIFICATION_PENDING_SESSION_KEY] = True
+            audit.services.record(
+                category=AuditLog.CATEGORY_LOGIN_ATTEMPT,
+                action='login_success',
+                actor=user,
+                detail={'email_verification_required': True},
+            )
+            return Response({**MeSerializer(user).data, 'email_verification_required': True})
 
         if user.requires_second_factor():
             # Locked for the duration of the check-and-consume: without this,
@@ -226,6 +243,24 @@ class PhoneVerificationConfirmView(APIView):
         if not ok:
             return Response({'error': {'code': 'validation_error', 'message': 'Invalid or expired code.'}},
                              status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EmailVerificationConfirmView(APIView):
+    """`POST /api/auth/email/confirm/`. Self only — confirms the code sent
+    when a System Administrator created the account. Generic failure on
+    wrong or expired code, same posture as password reset/phone confirm."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PhoneVerificationConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ok = services.confirm_email_verification(request.user, serializer.validated_data['code'])
+        if not ok:
+            return Response({'error': {'code': 'validation_error', 'message': 'Invalid or expired code.'}},
+                             status=status.HTTP_400_BAD_REQUEST)
+        request.session.pop(EMAIL_VERIFICATION_PENDING_SESSION_KEY, None)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

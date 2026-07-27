@@ -66,6 +66,10 @@ def confirm_password_reset(uid, token, new_password):
 
     user.set_password(new_password)
     user.save(update_fields=['password'])
+    # Every role re-verifies on next login after a reset, same as first
+    # login on a new account (send_email_verification sets
+    # email_verified_at back to None and queues a fresh code).
+    send_email_verification(user)
     return True
 
 
@@ -113,4 +117,37 @@ def confirm_phone_verification(user, code):
     user.phone_verification_code_hash = None
     user.phone_verification_expires_at = None
     user.save(update_fields=['phone_verified_at', 'phone_verification_code_hash', 'phone_verification_expires_at'])
+    return True
+
+
+def send_email_verification(user):
+    """Queues a verification code to `user.email`. Called on account
+    creation (`/api/users/` POST) — no cooldown, since it's admin-triggered
+    rather than self-service (nothing for a cooldown to protect against
+    here, unlike phone verification's user-facing "send code" button)."""
+    code = _generate_code()
+    user.email_verified_at = None
+    user.email_verification_code_hash = make_password(code)
+    user.email_verification_expires_at = timezone.now() + timezone.timedelta(seconds=PHONE_CODE_TTL_SECONDS)
+    user.save(update_fields=[
+        'email_verified_at', 'email_verification_code_hash', 'email_verification_expires_at',
+    ])
+    mail.services.send(template='email_verification', recipient=user.email, context={'code': code})
+
+
+def confirm_email_verification(user, code):
+    """Returns True if the code matched and was not expired."""
+    if (
+        user.email_verification_code_hash is None
+        or user.email_verification_expires_at is None
+        or timezone.now() > user.email_verification_expires_at
+    ):
+        return False
+    if not check_password(code, user.email_verification_code_hash):
+        return False
+
+    user.email_verified_at = timezone.now()
+    user.email_verification_code_hash = None
+    user.email_verification_expires_at = None
+    user.save(update_fields=['email_verified_at', 'email_verification_code_hash', 'email_verification_expires_at'])
     return True
