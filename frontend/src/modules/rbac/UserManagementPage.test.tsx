@@ -19,7 +19,7 @@ describe('UserManagementPage', () => {
 
   it('lists users from GET /api/users/', async () => {
     vi.spyOn(rbacApi, 'listUsers').mockResolvedValue([
-      { id: 1, email: 'admin@b.com', is_active: true, groups: ['System Administrator'], created_at: '', updated_at: '' },
+      { id: 1, email: 'admin@b.com', is_active: true, groups: ['System Administrator'], employee_name: null, created_at: '', updated_at: '' },
     ])
     renderPage()
 
@@ -33,6 +33,7 @@ describe('UserManagementPage', () => {
       email: 'new@b.com',
       is_active: true,
       groups: [],
+      employee_name: null,
       created_at: '',
       updated_at: '',
     })
@@ -52,13 +53,14 @@ describe('UserManagementPage', () => {
 
   it('edits a user via row click, without sending an empty password', async () => {
     vi.spyOn(rbacApi, 'listUsers').mockResolvedValue([
-      { id: 1, email: 'admin@b.com', is_active: true, groups: [], created_at: '', updated_at: '' },
+      { id: 1, email: 'admin@b.com', is_active: true, groups: [], employee_name: null, created_at: '', updated_at: '' },
     ])
     const updateSpy = vi.spyOn(rbacApi, 'updateUser').mockResolvedValue({
       id: 1,
       email: 'admin@b.com',
       is_active: false,
       groups: [],
+      employee_name: null,
       created_at: '',
       updated_at: '',
     })

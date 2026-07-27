@@ -68,7 +68,8 @@ Every person with an employee record and active employment status is an Employee
 - View your own compensation and payslip history, where applicable (`docs/07-iam-rbac.md` §4.2 — read own only, no editing).
 - Submit and track your own leave requests (`/leave`).
 - Read your own notifications (`/notifications`).
-- Request an additional role, if your job requires one (`/role-grant-requests`) — this is reviewed and decided by a System Administrator, not granted automatically.
+
+If your job requires an additional role, ask your System Administrator — raising an access request is restricted to the System Administrator role (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Employees who do not also hold the System Administrator role must ask an administrator; they cannot request access on their own or others' behalf.
 
 ### 2.2 Common task: requesting leave
 
@@ -113,6 +114,7 @@ Governance and configuration, not day-to-day record transactions — see `docs/0
 - Read (not create/update) employee records, and update only employment **status** (`docs/07-iam-rbac.md` §4.2) — the record-maintenance actions themselves belong to HR Officer.
 - Read employee documents, recruitment records, onboarding records, compensation history, and reports, across the organisation.
 - Access Reports (`/reports`) at full HR scope.
+- Decide pending access requests (`/access`, "Access Approvals") — by default, HR Administrator holds `iam.approve_role_grant` (`docs/07-iam-rbac.md` §7.3/§8, amended 2026-07-27), so requests a System Administrator raises for a privileged role land in your queue, not theirs.
 
 ### 4.2 What you cannot do
 
@@ -258,7 +260,8 @@ Written for whoever operates the system — provisioning accounts, running the s
 
 ### 10.1 What the System Administrator role can do, in-app
 
-- Create, read, and update user accounts and role grants (`/users`) — this is the only route by which any assigned role (HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive) is granted; none are self-service.
+- Create, read, and update user accounts (`/users`).
+- Raise an access request granting any assigned role (System Administrator, HR Administrator, HR Officer, Recruiter, Payroll Officer, Executive) to another user (`/access`, "Grant Access") — this is the only route by which an assigned role is granted; none are self-service, and raising the request is restricted to System Administrator (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27). Recruiter takes effect immediately; every other role waits on an HR Administrator's approval (§4.1 above).
 - Read the audit log (`/audit-log`) — full visibility, append-only, never edited.
 - Maintain system configuration.
 

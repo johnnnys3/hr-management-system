@@ -42,6 +42,7 @@ export const UserAccountSchema = z.object({
   email: z.string(),
   is_active: z.boolean(),
   groups: z.array(z.string()),
+  employee_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 })
@@ -279,6 +280,10 @@ export const RoleGrantRequestRecordSchema = z.object({
   approver: z.number().nullable(),
   requested_at: z.string(),
   decided_at: z.string().nullable(),
+  requester_email: z.string(),
+  subject_email: z.string(),
+  subject_name: z.string().nullable(),
+  role_name: z.string(),
 })
 export type RoleGrantRequestRecord = z.infer<typeof RoleGrantRequestRecordSchema>
 

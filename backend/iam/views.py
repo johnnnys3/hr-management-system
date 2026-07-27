@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -11,7 +12,7 @@ from audit.models import AuditLog
 
 from .models import RoleGrantRequest
 from .permissions import CanDecideRoleGrantRequest, IsFullyAuthenticated, IsSystemAdministrator
-from .roles import RECRUITER
+from .roles import ASSIGNED_ROLES, RECRUITER
 from .serializers import (
     RoleGrantRequestCreateSerializer,
     RoleGrantRequestDecisionSerializer,
@@ -63,18 +64,42 @@ class UserDetailView(APIView):
         return Response(UserAdminSerializer(user).data)
 
 
+class AssignedRolesListView(APIView):
+    """`GET /api/roles/`. Lists the six assigned-role groups with their
+    database ids, so a client can build a role picker without hardcoding
+    group ids. System-Administrator-only, since only System Administrator
+    raises role-grant requests
+    (`docs/superpowers/specs/2026-07-27-role-grant-access-redesign.md`).
+    """
+
+    permission_classes = [IsSystemAdministrator]
+
+    def get(self, request):
+        groups = Group.objects.filter(name__in=ASSIGNED_ROLES).order_by('name')
+        return Response([{'id': g.pk, 'name': g.name} for g in groups])
+
+
 class RoleGrantRequestCreateView(APIView):
     """`POST /api/role-grant-requests/`, `docs/06-api-contracts.md` §4.9.
 
-    Any authenticated user may raise a request — `docs/07-iam-rbac.md`
-    §7.3 gates *effecting* the grant, not raising it. The self-grant
-    refusal is enforced by the database `CHECK` constraint; this view
-    turns the resulting `IntegrityError`-shaped failure into the
+    Raising a request is restricted to System Administrator
+    (`docs/07-iam-rbac.md` §7.3, amended 2026-07-27) — narrowed from "any
+    authenticated user" as part of the Access redesign
+    (`docs/superpowers/specs/2026-07-27-role-grant-access-redesign.md`).
+    `GET` on this same view stays open to any authenticated user, since it
+    only ever returns the caller's own requests plus requests awaiting
+    their decision — narrowing `POST` doesn't change what `GET` can show.
+
+    The self-grant refusal is enforced by the database `CHECK` constraint;
+    this view turns the resulting `IntegrityError`-shaped failure into the
     documented `self_grant_forbidden` response rather than a 500, since a
     self-grant is a routine, expected rejection, not a server fault.
     """
 
-    permission_classes = [IsFullyAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsSystemAdministrator()]
+        return [IsFullyAuthenticated()]
 
     def get(self, request):
         """`GET /api/role-grant-requests/`, `docs/06-api-contracts.md` §4.9:

@@ -9,6 +9,7 @@ from rest_framework.test import APITestCase
 from iam.models import RoleGrantRequest
 from iam.roles import HR_ADMINISTRATOR, PAYROLL_OFFICER, RECRUITER, SYSTEM_ADMINISTRATOR
 
+
 User = get_user_model()
 
 REQUESTS_URL = '/api/role-grant-requests/'
@@ -21,6 +22,7 @@ def _decide_url(pk):
 class CreateRoleGrantRequestTests(APITestCase):
     def setUp(self):
         self.requester = User.objects.create_user(email='admin@example.com', password='x')
+        self.requester.groups.add(Group.objects.get(name=SYSTEM_ADMINISTRATOR))
         self.subject = User.objects.create_user(email='subject@example.com', password='x')
         self.payroll_officer = Group.objects.get(name=PAYROLL_OFFICER)
         self.recruiter = Group.objects.get(name=RECRUITER)
@@ -39,7 +41,7 @@ class CreateRoleGrantRequestTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(self.subject.groups.filter(name='Some Other App Group').exists())
 
-    def test_authenticated_user_can_request_a_grant_for_another_user(self):
+    def test_system_administrator_can_request_a_grant_for_another_user(self):
         self.client.force_authenticate(self.requester)
 
         response = self.client.post(REQUESTS_URL, {
@@ -48,6 +50,17 @@ class CreateRoleGrantRequestTests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['status'], 'pending')
+
+    def test_non_system_administrator_cannot_request_a_grant(self):
+        non_admin = User.objects.create_user(email='not-admin@example.com', password='x')
+        self.client.force_authenticate(non_admin)
+
+        response = self.client.post(REQUESTS_URL, {
+            'subject_user_id': self.subject.pk, 'role_id': self.payroll_officer.pk,
+        })
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(RoleGrantRequest.objects.exists())
 
     def test_self_grant_is_refused_at_the_api_layer(self):
         self.client.force_authenticate(self.requester)
@@ -148,6 +161,36 @@ class ListRoleGrantRequestTests(APITestCase):
         response = self.client.get(REQUESTS_URL)
 
         self.assertEqual(response.status_code, 401)
+
+    def test_list_includes_readable_display_fields(self):
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.get(REQUESTS_URL)
+
+        record = response.data[0]
+        self.assertEqual(record['requester_email'], self.requester.email)
+        self.assertEqual(record['subject_email'], self.subject.email)
+        self.assertEqual(record['role_name'], PAYROLL_OFFICER)
+        self.assertIsNone(record['subject_name'])
+
+    def test_subject_name_reflects_a_linked_employee(self):
+        from departments.models import Department, JobTitle
+        from employees.models import Employee
+
+        department = Department.objects.create(name='Operations')
+        job_title = JobTitle.objects.create(name='Analyst')
+        employee = Employee.objects.create(
+            employee_number='E100', first_name='Jane', last_name='Doe',
+            date_of_birth='1990-01-01', department=department, job_title=job_title,
+            employment_status=Employee.STATUS_ACTIVE, hire_date='2026-01-01',
+        )
+        self.subject.employee = employee
+        self.subject.save(update_fields=['employee'])
+        self.client.force_authenticate(self.requester)
+
+        response = self.client.get(REQUESTS_URL)
+
+        self.assertEqual(response.data[0]['subject_name'], 'Jane Doe')
 
 
 class DecideRoleGrantRequestTests(APITestCase):
@@ -254,8 +297,13 @@ class DecideRoleGrantRequestTests(APITestCase):
 
         self.assertNotIn(permission, admin_group.permissions.all())
 
-    def test_hr_administrator_is_not_granted_approve_role_grant_by_default(self):
+    def test_hr_administrator_is_granted_approve_role_grant_by_default(self):
+        """`docs/07-iam-rbac.md` §7.3/§8 (amended 2026-07-27): the
+        deployment-configured approver defaults to HR Administrator, which
+        already satisfies HRMS-NFR-024's scope requirement for the role and
+        is not System Administrator — the migration in this task closes
+        what was previously an open deployment question."""
         hr_admin_group = Group.objects.get(name=HR_ADMINISTRATOR)
         permission = Permission.objects.get(codename='approve_role_grant')
 
-        self.assertNotIn(permission, hr_admin_group.permissions.all())
+        self.assertIn(permission, hr_admin_group.permissions.all())

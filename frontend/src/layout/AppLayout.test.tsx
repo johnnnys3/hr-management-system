@@ -45,11 +45,11 @@ describe('AppLayout', () => {
     window.localStorage.clear()
   })
 
-  it('shows My Work items and only Role Grant Requests under Admin for a plain employee', async () => {
+  it('shows only My Work for a plain employee (no Admin group at all)', async () => {
     renderLayout(makeMe())
     expect(await screen.findByText('Dashboard')).toBeInTheDocument()
     expect(screen.getByText('Leave')).toBeInTheDocument()
-    expect(screen.getByText('Role Grant Requests')).toBeInTheDocument()
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument()
     expect(screen.queryByText('People')).not.toBeInTheDocument()
     expect(screen.queryByText('Users')).not.toBeInTheDocument()
     expect(screen.queryByText('Employees')).not.toBeInTheDocument()

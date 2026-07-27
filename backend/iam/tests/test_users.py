@@ -105,3 +105,31 @@ class UserDetailTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.target.groups.filter(name='Payroll Officer').exists())
+
+    def test_employee_name_is_included_when_linked(self):
+        from departments.models import Department, JobTitle
+        from employees.models import Employee
+
+        department = Department.objects.create(name='Engineering')
+        job_title = JobTitle.objects.create(name='Engineer')
+        employee = Employee.objects.create(
+            employee_number='E200', first_name='Ada', last_name='Lovelace',
+            date_of_birth='1990-01-01', department=department, job_title=job_title,
+            employment_status=Employee.STATUS_ACTIVE, hire_date='2026-01-01',
+        )
+        target_user = User.objects.create_user(email='ada@example.com', password='x', employee=employee)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.get(USERS_URL)
+
+        record = next(u for u in response.data if u['id'] == target_user.pk)
+        self.assertEqual(record['employee_name'], 'Ada Lovelace')
+
+    def test_employee_name_is_null_when_unlinked(self):
+        target_user = User.objects.create_user(email='unlinked@example.com', password='x')
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.get(USERS_URL)
+
+        record = next(u for u in response.data if u['id'] == target_user.pk)
+        self.assertIsNone(record['employee_name'])

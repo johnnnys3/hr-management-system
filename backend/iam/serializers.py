@@ -20,11 +20,18 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
     groups = serializers.SlugRelatedField(many=True, read_only=True, slug_field='name')
+    employee_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'is_active', 'groups', 'password', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'is_active', 'groups', 'password', 'employee_name', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_employee_name(self, user):
+        employee = getattr(user, 'employee', None)
+        if employee is None:
+            return None
+        return f'{employee.first_name} {employee.last_name}'
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -44,10 +51,24 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
 
 class RoleGrantRequestSerializer(serializers.ModelSerializer):
+    requester_email = serializers.EmailField(source='requester.email', read_only=True)
+    subject_email = serializers.EmailField(source='subject.email', read_only=True)
+    subject_name = serializers.SerializerMethodField()
+    role_name = serializers.CharField(source='role.name', read_only=True)
+
     class Meta:
         model = RoleGrantRequest
-        fields = ['id', 'requester', 'subject', 'role', 'status', 'approver', 'requested_at', 'decided_at']
+        fields = [
+            'id', 'requester', 'subject', 'role', 'status', 'approver', 'requested_at', 'decided_at',
+            'requester_email', 'subject_email', 'subject_name', 'role_name',
+        ]
         read_only_fields = fields
+
+    def get_subject_name(self, obj):
+        employee = getattr(obj.subject, 'employee', None)
+        if employee is None:
+            return None
+        return f'{employee.first_name} {employee.last_name}'
 
 
 class RoleGrantRequestCreateSerializer(serializers.Serializer):
