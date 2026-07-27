@@ -58,20 +58,20 @@ function ProfileTab({ employee }: { employee: Employee }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, maxWidth: 900 }}>
       <Form layout="vertical">
-        <Form.Item label="Employee Number">
-          <Input value={employee.employee_number} disabled />
+        <Form.Item label="Employee Number" htmlFor="employee_number">
+          <Input id="employee_number" value={employee.employee_number} disabled />
         </Form.Item>
-        <Form.Item label="First Name">
-          <Input value={employee.first_name} disabled />
+        <Form.Item label="First Name" htmlFor="first_name">
+          <Input id="first_name" value={employee.first_name} disabled />
         </Form.Item>
-        <Form.Item label="Last Name">
-          <Input value={employee.last_name} disabled />
+        <Form.Item label="Last Name" htmlFor="last_name">
+          <Input id="last_name" value={employee.last_name} disabled />
         </Form.Item>
-        <Form.Item label="Date of Birth">
-          <DatePicker style={{ width: '100%' }} value={dayjs(employee.date_of_birth)} disabled />
+        <Form.Item label="Date of Birth" htmlFor="date_of_birth">
+          <DatePicker id="date_of_birth" style={{ width: '100%' }} value={dayjs(employee.date_of_birth)} disabled />
         </Form.Item>
-        <Form.Item label="Employment Status">
-          <Input value={employee.employment_status} disabled />
+        <Form.Item label="Employment Status" htmlFor="employment_status">
+          <Input id="employment_status" value={employee.employment_status} disabled />
         </Form.Item>
         <Typography.Text type="secondary">
           To correct your name or date of birth, contact HR.

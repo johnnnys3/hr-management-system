@@ -2,13 +2,12 @@ import { expect, test } from '@playwright/test'
 import { loginAs } from '../helpers/auth'
 
 // SRS §4.3: Employee Updates Personal Details.
-test('Employee updates an allowed field; a restricted field is rejected server-side (HRMS-FR-027)', async ({ page, context, baseURL }) => {
+test('Employee profile is read-only; a restricted field is rejected server-side (HRMS-FR-027)', async ({ page, context, baseURL }) => {
   await loginAs(context, baseURL!, 'e2e.employee@example.com', 'E2eTestpass123!')
 
   await page.goto('/my-profile')
-  await page.getByLabel('First Name').fill('Grace')
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Profile updated.')).toBeVisible()
+  await expect(page.getByLabel('First Name')).toBeDisabled()
+  await expect(page.getByText(/contact hr/i)).toBeVisible()
 
   // Restricted fields (salary, job title, department, status, manager) are
   // not rendered as editable inputs at all — client-side rejection is their
