@@ -77,8 +77,8 @@ class RoleGrantRequestCreateSerializer(serializers.Serializer):
     # §2.3), not `Group.objects.all()` — an arbitrary existing Django group
     # unrelated to RBAC would otherwise be requestable and, for anything
     # outside `PRIVILEGED_ROLES`, granted immediately with no approval step.
-    role_id = serializers.PrimaryKeyRelatedField(
-        source='role', queryset=Group.objects.filter(name__in=ASSIGNED_ROLES),
+    role_name = serializers.SlugRelatedField(
+        source='role', slug_field='name', queryset=Group.objects.filter(name__in=ASSIGNED_ROLES),
     )
 
 

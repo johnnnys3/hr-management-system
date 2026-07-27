@@ -17,12 +17,12 @@ export function GrantAccessForm() {
   const { data: users = [] } = useQuery({ queryKey: ['rbac', 'users'], queryFn: listUsers })
   const { data: roles = [] } = useQuery({ queryKey: ['rbac', 'roles'], queryFn: listAssignedRoles })
   const [subjectUserId, setSubjectUserId] = useState<number | null>(null)
-  const [roleId, setRoleId] = useState<number | null>(null)
+  const [roleName, setRoleName] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const mutation = useMutation({
-    mutationFn: () => createRoleGrantRequest(subjectUserId as number, roleId as number),
+    mutationFn: () => createRoleGrantRequest(subjectUserId as number, roleName as string),
     onSuccess: (result) => {
       setError(null)
       setConfirmation(
@@ -60,16 +60,16 @@ export function GrantAccessForm() {
           <Select
             aria-label="What access"
             style={{ minWidth: 320 }}
-            value={roleId ?? undefined}
-            onChange={(value) => setRoleId(value)}
+            value={roleName ?? undefined}
+            onChange={(value) => setRoleName(value)}
             options={roles.map((r) => ({
-              value: r.id,
+              value: r.name,
               label: `${r.name} — ${ROLE_DESCRIPTIONS[r.name] ?? ''}`,
             }))}
           />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={mutation.isPending} disabled={!subjectUserId || !roleId}>
+          <Button type="primary" htmlType="submit" loading={mutation.isPending} disabled={!subjectUserId || !roleName}>
             Submit
           </Button>
         </Form.Item>

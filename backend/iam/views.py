@@ -147,7 +147,7 @@ class RoleGrantRequestCreateView(APIView):
                 # effect immediately — a request no one is required to
                 # decide would otherwise sit pending forever. Matched
                 # explicitly against `RECRUITER` rather than "not
-                # privileged" — `role_id` is already constrained to the
+                # privileged" — `role_name` is already constrained to the
                 # six assigned-role groups by the serializer, but an
                 # explicit allow-list here means a future role added to
                 # `ASSIGNED_ROLES` without an explicit privileged/

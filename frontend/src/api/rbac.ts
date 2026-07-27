@@ -24,10 +24,10 @@ export function listRoleGrantRequests(): Promise<RoleGrantRequestRecord[]> {
   return apiFetch('/api/role-grant-requests/')
 }
 
-export function createRoleGrantRequest(subjectUserId: number, roleId: number): Promise<RoleGrantRequestRecord> {
+export function createRoleGrantRequest(subjectUserId: number, roleName: string): Promise<RoleGrantRequestRecord> {
   return apiFetch('/api/role-grant-requests/', {
     method: 'POST',
-    body: { subject_user_id: subjectUserId, role_id: roleId },
+    body: { subject_user_id: subjectUserId, role_name: roleName },
   })
 }
 
