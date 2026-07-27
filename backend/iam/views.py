@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+import accounts.services
 import audit.services
 from accounts.models import User
 from audit.models import AuditLog
@@ -33,6 +34,7 @@ class UserListCreateView(APIView):
         serializer = UserAdminSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        accounts.services.send_email_verification(user)
         audit.services.record(
             category=AuditLog.CATEGORY_RECORD_CHANGE,
             action='user_account_created',

@@ -38,6 +38,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_verified_at = models.DateTimeField(null=True, blank=True)
     phone_verification_code_hash = models.CharField(max_length=128, null=True, blank=True)
     phone_verification_expires_at = models.DateTimeField(null=True, blank=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    email_verification_code_hash = models.CharField(max_length=128, null=True, blank=True)
+    email_verification_expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

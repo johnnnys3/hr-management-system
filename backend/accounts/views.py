@@ -229,6 +229,23 @@ class PhoneVerificationConfirmView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class EmailVerificationConfirmView(APIView):
+    """`POST /api/auth/email/confirm/`. Self only — confirms the code sent
+    when a System Administrator created the account. Generic failure on
+    wrong or expired code, same posture as password reset/phone confirm."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PhoneVerificationConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ok = services.confirm_email_verification(request.user, serializer.validated_data['code'])
+        if not ok:
+            return Response({'error': {'code': 'validation_error', 'message': 'Invalid or expired code.'}},
+                             status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class SecondFactorEnrollView(APIView):
     """`POST /api/auth/second-factor/`. Self-enrolment only (HRMS-NFR-024).
 
