@@ -1,5 +1,11 @@
 # HRMS
 
+![Django](https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white)
+![DRF](https://img.shields.io/badge/DRF-a30000?logo=django&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/license-unspecified-lightgrey)
+
 An HR management system built as a modular Django/DRF backend with a React SPA frontend, per `docs/03-tech-stack.md`. See `CONTEXT.md` for domain vocabulary and `docs/` for the full requirements/architecture/schema/API/IAM documentation set.
 
 ## Prerequisites
@@ -90,3 +96,7 @@ A handful of frontend tests interact with antd `Select`/`Table`/`Tabs` component
 - `CONTEXT.md` — domain vocabulary, architecture summary, constraints, deployment conditions
 - `docs/01-srs.md` through `docs/08-testing-plan.md` — the full requirements/planning/architecture/schema/API/IAM/testing documentation set, in dependency order
 - `docs/adr/` — architecture decision records
+
+## License
+
+No license specified.
